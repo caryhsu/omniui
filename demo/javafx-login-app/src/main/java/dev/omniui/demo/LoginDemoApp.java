@@ -31,6 +31,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 
@@ -327,6 +336,78 @@ public final class LoginDemoApp extends Application {
         VBox alertSection = section("Alert Demo", "alertSection",
             infoAlertButton, confirmAlertButton, warnAlertButton, errorAlertButton, alertStatus);
 
+        // ---- RadioButton / ToggleButton demo --------------------------------
+        ToggleGroup radioGroup = new ToggleGroup();
+        RadioButton radio1 = new RadioButton("Option A");
+        radio1.setId("radioA");
+        radio1.setToggleGroup(radioGroup);
+        radio1.setSelected(true);
+        RadioButton radio2 = new RadioButton("Option B");
+        radio2.setId("radioB");
+        radio2.setToggleGroup(radioGroup);
+        ToggleButton toggleBtn = new ToggleButton("Toggle Me");
+        toggleBtn.setId("toggleButton");
+        Label radioStatus = new Label("Radio: A selected");
+        radioStatus.setId("radioStatus");
+        radioGroup.selectedToggleProperty().addListener((obs, o, n) -> {
+            if (n == radio1) radioStatus.setText("Radio: A selected");
+            else if (n == radio2) radioStatus.setText("Radio: B selected");
+        });
+        toggleBtn.selectedProperty().addListener((obs, o, n) ->
+            radioStatus.setText(radioStatus.getText() + " | Toggle: " + (n ? "on" : "off")));
+
+        VBox radioToggleSection = section("RadioButton / ToggleButton Demo", "radioToggleSection",
+            radio1, radio2, toggleBtn, radioStatus);
+
+        // ---- Slider / Spinner demo ------------------------------------------
+        Slider demoSlider = new Slider(0, 100, 25);
+        demoSlider.setId("demoSlider");
+        demoSlider.setShowTickLabels(true);
+        demoSlider.setShowTickMarks(true);
+        Label sliderValue = new Label("Slider: 25.0");
+        sliderValue.setId("sliderValue");
+        demoSlider.valueProperty().addListener((obs, o, n) ->
+            sliderValue.setText(String.format("Slider: %.1f", n.doubleValue())));
+
+        Spinner<Integer> demoSpinner = new Spinner<>(0, 100, 10, 1);
+        demoSpinner.setId("demoSpinner");
+        demoSpinner.setEditable(true);
+        Label spinnerValue = new Label("Spinner: 10");
+        spinnerValue.setId("spinnerValue");
+        demoSpinner.valueProperty().addListener((obs, o, n) ->
+            spinnerValue.setText("Spinner: " + n));
+
+        VBox sliderSpinnerSection = section("Slider / Spinner Demo", "sliderSpinnerSection",
+            demoSlider, sliderValue, demoSpinner, spinnerValue);
+
+        // ---- ProgressBar demo -----------------------------------------------
+        ProgressBar demoProgressBar = new ProgressBar(0.4);
+        demoProgressBar.setId("demoProgressBar");
+        demoProgressBar.setPrefWidth(300);
+        ProgressIndicator demoProgressIndicator = new ProgressIndicator(0.7);
+        demoProgressIndicator.setId("demoProgressIndicator");
+        Label progressLabel = new Label("Bar: 40%  |  Indicator: 70%");
+        progressLabel.setId("progressLabel");
+
+        VBox progressSection = section("ProgressBar Demo", "progressSection",
+            demoProgressBar, demoProgressIndicator, progressLabel);
+
+        // ---- TabPane demo ---------------------------------------------------
+        TabPane demoTabPane = new TabPane();
+        demoTabPane.setId("demoTabPane");
+        Tab tabOne = new Tab("First");
+        tabOne.setContent(new Label("Content of First tab"));
+        tabOne.setClosable(false);
+        Tab tabTwo = new Tab("Second");
+        tabTwo.setContent(new Label("Content of Second tab"));
+        tabTwo.setClosable(false);
+        Tab tabThree = new Tab("Third");
+        tabThree.setContent(new Label("Content of Third tab"));
+        tabThree.setClosable(false);
+        demoTabPane.getTabs().addAll(tabOne, tabTwo, tabThree);
+
+        VBox tabSection = section("TabPane Demo", "tabSection", demoTabPane);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -342,7 +423,11 @@ public final class LoginDemoApp extends Application {
             menuBarSection,
             datePickerSection,
             dialogSection,
-            alertSection
+            alertSection,
+            radioToggleSection,
+            sliderSpinnerSection,
+            progressSection,
+            tabSection
         );
         root.setPadding(new Insets(24));
 

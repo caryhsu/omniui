@@ -130,10 +130,19 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         String handle = asString(nodeRef.metadata().get("handle"));
 
         return switch (action) {
-            case "click" -> handleClick(node, fxId, handle);
-            case "select" -> handleSelect(node, fxId, handle, payload);
-            case "type" -> handleType(node, fxId, handle, payload);
-            case "get_text" -> ActionResult.success("javafx", handle, Map.of("fxId", fxId), ReflectiveJavaFxSupport.textOf(node));
+            case "click"        -> handleClick(node, fxId, handle);
+            case "select"       -> handleSelect(node, fxId, handle, payload);
+            case "type"         -> handleType(node, fxId, handle, payload);
+            case "get_text"     -> ActionResult.success("javafx", handle, Map.of("fxId", fxId), ReflectiveJavaFxSupport.textOf(node));
+            case "get_selected" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "isSelected"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
+            case "set_selected" -> handleSetSelected(node, fxId, handle, payload);
+            case "get_value"    -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getValue"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v == null ? null : v.toString()); }
+            case "set_slider"   -> handleSetSlider(node, fxId, handle, payload);
+            case "set_spinner"  -> handleSetSpinner(node, fxId, handle, payload);
+            case "step_spinner" -> handleStepSpinner(node, fxId, handle, payload);
+            case "get_progress" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getProgress"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
+            case "get_tabs"     -> handleGetTabs(node, fxId, handle);
+            case "select_tab"   -> handleSelectTab(node, fxId, handle, payload);
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }
@@ -1095,6 +1104,103 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             for (int i = children.size() - 1; i >= 0; i--) stack.push(children.get(i));
         }
         return null;
+    }
+
+    // ---- Input / navigation action helpers ----------------------------------
+
+    private ActionResult handleSetSelected(Object node, String fxId, String handle, JsonObject payload) {
+        boolean selected = payload != null && payload.has("value") && payload.get("value").getAsBoolean();
+        ReflectiveJavaFxSupport.invoke(node, "setSelected", selected);
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), selected);
+    }
+
+    private ActionResult handleSetSlider(Object node, String fxId, String handle, JsonObject payload) {
+        if (payload == null || !payload.has("value")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_value"));
+        }
+        double target = payload.get("value").getAsDouble();
+        double min = ((Number) ReflectiveJavaFxSupport.invoke(node, "getMin")).doubleValue();
+        double max = ((Number) ReflectiveJavaFxSupport.invoke(node, "getMax")).doubleValue();
+        if (target < min || target > max) {
+            return ActionResult.failure(List.of("javafx"),
+                Map.of("reason", "value_out_of_range", "value", target, "min", min, "max", max));
+        }
+        ReflectiveJavaFxSupport.invoke(node, "setValue", target);
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), target);
+    }
+
+    private ActionResult handleSetSpinner(Object node, String fxId, String handle, JsonObject payload) {
+        if (payload == null || !payload.has("value")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_value"));
+        }
+        String strVal = payload.get("value").getAsString();
+        try {
+            Object factory = ReflectiveJavaFxSupport.invoke(node, "getValueFactory");
+            if (factory == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_value_factory"));
+            }
+            Object converter = ReflectiveJavaFxSupport.invoke(factory, "getConverter");
+            Object converted = ReflectiveJavaFxSupport.invoke(converter, "fromString", strVal);
+            ReflectiveJavaFxSupport.invoke(factory, "setValue", converted);
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), strVal);
+        } catch (IllegalStateException ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "set_spinner_failed", "error", ex.getMessage()));
+        }
+    }
+
+    private ActionResult handleStepSpinner(Object node, String fxId, String handle, JsonObject payload) {
+        if (payload == null || !payload.has("steps")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_steps"));
+        }
+        int steps = payload.get("steps").getAsInt();
+        if (steps > 0) {
+            ReflectiveJavaFxSupport.invoke(node, "increment", steps);
+        } else if (steps < 0) {
+            ReflectiveJavaFxSupport.invoke(node, "decrement", -steps);
+        }
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult handleGetTabs(Object node, String fxId, String handle) {
+        try {
+            java.util.List<?> tabsList = (java.util.List<?>) ReflectiveJavaFxSupport.invoke(node, "getTabs");
+            int size = tabsList.size();
+            List<Map<String, Object>> tabs = new ArrayList<>();
+            for (int i = 0; i < size; i++) {
+                Object tab = tabsList.get(i);
+                Map<String, Object> t = new LinkedHashMap<>();
+                t.put("text", asString(safeInvoke(tab, "getText")));
+                Object dis = safeInvoke(tab, "isDisabled");
+                t.put("disabled", dis instanceof Boolean b ? b : false);
+                tabs.add(t);
+            }
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), tabs);
+        } catch (IllegalStateException ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_tabs_failed", "error", ex.getMessage()));
+        }
+    }
+
+    private ActionResult handleSelectTab(Object node, String fxId, String handle, JsonObject payload) {
+        if (payload == null || !payload.has("tab")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_tab"));
+        }
+        String title = payload.get("tab").getAsString();
+        try {
+            java.util.List<?> tabsList = (java.util.List<?>) ReflectiveJavaFxSupport.invoke(node, "getTabs");
+            int size = tabsList.size();
+            for (int i = 0; i < size; i++) {
+                Object tab = tabsList.get(i);
+                String text = asString(safeInvoke(tab, "getText"));
+                if (title.equals(text)) {
+                    Object selectionModel = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
+                    ReflectiveJavaFxSupport.invokeOnType(selectionModel, "javafx.scene.control.SelectionModel", "select", new Class[]{int.class}, i);
+                    return ActionResult.success("javafx", handle, Map.of("fxId", fxId), title);
+                }
+            }
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "tab_not_found", "tab", title));
+        } catch (IllegalStateException ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "select_tab_failed", "error", ex.getMessage()));
+        }
     }
 
     private record TraversalFrame(Object node, String path) {

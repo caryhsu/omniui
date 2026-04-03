@@ -11,12 +11,16 @@ if __package__ in (None, ""):
     import login_direct  # type: ignore
     import login_with_fallback  # type: ignore
     import menu_bar_demo  # type: ignore
+    import progress_demo  # type: ignore
+    import radio_toggle_demo  # type: ignore
     import recorder_preview  # type: ignore
     import run_benchmark  # type: ignore
     import select_combo_role  # type: ignore
     import select_list_item  # type: ignore
     import select_table_row  # type: ignore
     import select_tree_item  # type: ignore
+    import slider_spinner_demo  # type: ignore
+    import tab_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -29,12 +33,16 @@ else:
         login_direct,
         login_with_fallback,
         menu_bar_demo,
+        progress_demo,
+        radio_toggle_demo,
         recorder_preview,
         run_benchmark,
         select_combo_role,
         select_list_item,
         select_table_row,
         select_tree_item,
+        slider_spinner_demo,
+        tab_demo,
     )
 
 
@@ -82,6 +90,18 @@ def main() -> None:
 
     _section("Alert Demo")
     alert_demo.main()
+
+    _section("RadioButton / ToggleButton Demo")
+    radio_toggle_demo.main()
+
+    _section("Slider / Spinner Demo")
+    slider_spinner_demo.main()
+
+    _section("ProgressBar Demo")
+    progress_demo.main()
+
+    _section("TabPane Demo")
+    tab_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

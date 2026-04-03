@@ -174,6 +174,48 @@ class OmniUIClient:
             payload["button"] = button
         return self._direct_action("dismiss_dialog", payload)
 
+    # ---- RadioButton / ToggleButton ----------------------------------------
+
+    def get_selected(self, **selector: Any) -> ActionResult:
+        """Return the selected (boolean) state of a RadioButton or ToggleButton."""
+        return self._perform("get_selected", selector)
+
+    def set_selected(self, value: bool, **selector: Any) -> ActionResult:
+        """Set the selected state of a RadioButton or ToggleButton."""
+        return self._perform("set_selected", selector, {"value": value})
+
+    # ---- Slider ------------------------------------------------------------
+
+    def set_slider(self, value: float, **selector: Any) -> ActionResult:
+        """Set the value of a Slider node."""
+        return self._perform("set_slider", selector, {"value": value})
+
+    # ---- Spinner -----------------------------------------------------------
+
+    def set_spinner(self, value: str, **selector: Any) -> ActionResult:
+        """Set the value of a Spinner node (passed as string, converted by Spinner's converter)."""
+        return self._perform("set_spinner", selector, {"value": str(value)})
+
+    def step_spinner(self, steps: int, **selector: Any) -> ActionResult:
+        """Increment (positive steps) or decrement (negative steps) a Spinner."""
+        return self._perform("step_spinner", selector, {"steps": steps})
+
+    # ---- ProgressBar / ProgressIndicator -----------------------------------
+
+    def get_progress(self, **selector: Any) -> ActionResult:
+        """Return the current progress (0.0–1.0, or -1.0 if indeterminate) of a ProgressBar."""
+        return self._perform("get_progress", selector)
+
+    # ---- TabPane -----------------------------------------------------------
+
+    def get_tabs(self, **selector: Any) -> ActionResult:
+        """Return a list of tab descriptors ({text, disabled}) for a TabPane."""
+        return self._perform("get_tabs", selector)
+
+    def select_tab(self, tab: str, **selector: Any) -> ActionResult:
+        """Select a tab by its title text in a TabPane."""
+        return self._perform("select_tab", selector, {"tab": tab})
+
     def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
         """Send an action with no selector normalization or OCR/vision fallback."""
         response = self._request_json(
