@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.mypy_cache/
+.venv/
+venv/
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
+
+# Local tool state
+.opencode/
+
+# Demo runtime outputs
+*.output.txt
+*.outout.txt
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp

@@ -1,0 +1,10 @@
+{
+  "sessionId": "session-local-001",
+  "appName": "LoginDemo",
+  "platform": "javafx",
+  "capabilities": [
+    "discover",
+    "action",
+    "screenshot"
+  ]
+}

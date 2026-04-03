@@ -1,0 +1,16 @@
+[project]
+name = "omniui"
+version = "0.1.0"
+description = "Multi-modal UI automation framework with JavaFX-first resolution."
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["omniui*"]

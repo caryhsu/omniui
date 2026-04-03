@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "resolved": {
+    "tier": "javafx",
+    "targetRef": "node-001",
+    "matchedAttributes": {
+      "fxId": "loginButton"
+    },
+    "confidence": null
+  },
+  "trace": {
+    "attemptedTiers": [
+      "javafx"
+    ],
+    "resolvedTier": "javafx"
+  },
+  "value": null
+}

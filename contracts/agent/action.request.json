@@ -1,0 +1,7 @@
+{
+  "action": "click",
+  "selector": {
+    "id": "loginButton"
+  },
+  "payload": {}
+}

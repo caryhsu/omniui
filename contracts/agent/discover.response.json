@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {
+      "handle": "node-001",
+      "fxId": "loginButton",
+      "nodeType": "Button",
+      "text": "Login",
+      "hierarchyPath": "/Scene/VBox/Button[1]",
+      "visible": true,
+      "enabled": true
+    }
+  ]
+}

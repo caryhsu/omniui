@@ -1,0 +1,185 @@
+# OmniUI
+
+英文版檔名：`README.md`
+
+OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-first 的自動化策略。
+
+目前的解析與操作優先順序是：
+- JavaFX scene graph 結構解析與 event-level direct interaction
+- OCR 文字辨識 fallback
+- Vision template match fallback
+
+這個 repo 目前已經包含：
+- Python client: [omniui](omniui)
+- 本機 HTTP Java agent: [java-agent](java-agent)
+- JavaFX 參考登入程式: [demo/javafx-login-app](demo/javafx-login-app)
+- demo 與 benchmark script: [scripts](scripts)
+
+## 目前狀態
+
+已完成能力：
+- 透過本機 Java agent 連到 live JavaFX runtime 做 node discovery
+- 直接執行 JavaFX `click`、`type`、`get_text`
+- Python API: `connect`、`get_nodes`、`click`、`type`、`get_text`、`verify_text`
+- selector fallback chain: `javafx -> ocr -> vision`
+- action tracing、refresh 後 retry、action history
+- recorder-lite 穩定 click script 產生
+- JavaFX login demo app 與 end-to-end demo script
+
+尚未完成：
+- 對任意第三方 JavaFX process 的動態 JVM attach
+- 真正的 OCR 引擎整合，例如 Tesseract / PaddleOCR
+- 真正的 vision backend，例如 OpenCV template matching
+- 對 fallback bounds 做 OS-level 真實滑鼠點擊
+
+## 專案結構
+
+```text
+omniui/
+  core/
+  selector_engine/
+  ocr_module/
+  vision_module/
+  recorder_lite/
+java-agent/
+demo/javafx-login-app/
+scripts/
+openspec/
+```
+
+## 環境需求
+
+- Python 3.11+
+- Java 21+
+- Maven 3.9+
+- 目前 demo app 主要以 Windows 為驗證環境
+
+## 快速開始
+
+1. 啟動 JavaFX demo app：
+
+```bash
+demo\javafx-login-app\run-dev-with-agent.bat
+```
+
+這會開啟一個登入視窗，並以 OmniUI Java agent enabled 模式啟動，預設監聽 `http://127.0.0.1:48100`。
+
+2. 在另一個 terminal 執行 Python demo flow：
+
+```bash
+python scripts/demo_login_flow.py
+```
+
+目前 demo flow 會展示：
+- `username` / `password` 使用 JavaFX direct interaction
+- `loginButton` 用 `text="Login"` 觸發 OCR fallback
+- 最後驗證 `status == "Success"`
+
+3. 若 demo app 仍在執行，可另外跑 benchmark：
+
+```bash
+python scripts/benchmark_phase1.py
+```
+
+這會輸出：
+- JavaFX node query 平均耗時
+- OCR fallback 平均耗時
+
+更多可直接執行的 demo：
+- [demo/README.zh-TW.md](demo/README.zh-TW.md)
+
+單一指令 demo 入口：
+
+```bash
+python scripts/run_demo.py
+```
+
+打包版 demo runtime 輔助腳本：
+- `scripts/build_demo_runtime.ps1`
+- `scripts/build_demo_runtime.bat`
+- `scripts/build_demo_runtime.sh`
+
+建置完成後，這些 helper 會直接列出下一步可用的 packaged `with-agent` 與 `plain` launcher。
+
+其中 `.sh` 輔助腳本目前主要給 Windows 上的 Git Bash 使用。demo app 與打包後 launcher 流程仍以 Windows 為主要文件與驗證環境。
+
+## Python API 範例
+
+文件入口：
+
+- [docs/index.zh-TW.md](docs/index.zh-TW.md)
+- [架構圖](docs/architecture.zh-TW.md)
+- [Manual smoke checklist](docs/manual-smoke.zh-TW.md)
+
+完整 API 文件：
+
+- [docs/api/python-client.zh-TW.md](docs/api/python-client.zh-TW.md)
+
+最小範例：
+
+```python
+from omniui import OmniUI
+
+client = OmniUI.connect(app_name="LoginDemo")
+
+client.click(id="username")
+client.type("admin", id="username")
+
+client.click(id="password")
+client.type("1234", id="password")
+
+client.click(text="Login")
+client.verify_text(id="status", expected="Success")
+```
+
+參數、回傳 model、fallback 行為與欄位定義，請以完整 API 文件為準，不建議把 README 當成正式 API reference。
+
+## Recorder-lite
+
+目前 recorder-lite 是從 client 的 action history 產生 script，只輸出穩定的 click selector，不會輸出 raw coordinate。
+
+範例輸出：
+
+```text
+click(id="username")
+click(text="Login")
+```
+
+不穩定或無法安全表達的互動會直接略過，不會硬產生脆弱腳本。
+
+## 測試
+
+執行 Python 測試：
+
+```bash
+python -m unittest tests.test_agent_contracts tests.test_client tests.test_demo_script tests.test_recorder tests.test_benchmark tests.test_markdown_i18n
+```
+
+建置 Java agent 與 demo app：
+
+```bash
+mvn -pl demo/javafx-login-app -am package
+```
+
+檢查 Markdown 國際化一致性：
+
+```bash
+python scripts/check_markdown_i18n.py
+```
+
+## OpenSpec
+
+這個實作是透過 OpenSpec 流程開發，artifact 位於：
+
+[openspec/changes/add-omniui-javafx-automation-framework](openspec/changes/add-omniui-javafx-automation-framework)
+
+主要文件：
+- [proposal.zh-TW.md](openspec/changes/add-omniui-javafx-automation-framework/proposal.zh-TW.md)
+- [design.zh-TW.md](openspec/changes/add-omniui-javafx-automation-framework/design.zh-TW.md)
+- [tasks.zh-TW.md](openspec/changes/add-omniui-javafx-automation-framework/tasks.zh-TW.md)
+
+## 補充說明
+
+- agent protocol 定義在 [agent-protocol.zh-TW.md](docs/protocol/agent-protocol.zh-TW.md)
+- 目前 demo support path 由 Java agent 擁有 HTTP startup 與 JavaFX runtime discovery
+- repo 內的 OCR / vision engine 目前是 deterministic placeholder implementation，目的是先把 Phase 1 架構與資料流跑通，之後再換成正式套件
