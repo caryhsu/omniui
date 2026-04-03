@@ -35,3 +35,18 @@ The system SHALL provide high-level Python methods sufficient to express the sup
 #### Scenario: Use selection-oriented action for advanced control
 - **WHEN** a supported advanced JavaFX scenario requires an interaction that is better modeled as selection or expansion instead of a raw click
 - **THEN** the Python client exposes a high-level action that represents that interaction without requiring the user to manipulate transport payloads directly
+
+### Requirement: Low-level troubleshooting API
+The system SHALL provide low-level Python methods for `find`, `screenshot`, `ocr`, and `vision_match` to support debugging and advanced automation flows.
+
+#### Scenario: Inspect OCR result explicitly
+- **WHEN** a user calls `ocr(image)` through the Python client
+- **THEN** the system returns recognized text results and positional metadata suitable for manual troubleshooting
+
+### Requirement: Stable selector argument model
+The system SHALL allow high-level Python actions to be invoked with selector fields such as `id`, `text`, and `type` without exposing backend-specific transport or adapter details in the script surface.
+
+#### Scenario: Use structural selector arguments in click API
+- **WHEN** a user calls `click(text="Login", type="Button")`
+- **THEN** the Python API accepts the selector and delegates backend resolution without requiring explicit OCR or vision flags from the caller
+
