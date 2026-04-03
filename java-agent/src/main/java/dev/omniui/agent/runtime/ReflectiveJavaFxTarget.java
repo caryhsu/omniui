@@ -178,6 +178,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
         try {
             if (selectComboBoxItem(node, value)
+                || selectChoiceBoxItem(node, value)
                 || selectListItem(node, value)
                 || selectTreeItem(node, value)
                 || selectTableRow(node, value, column)) {
@@ -208,6 +209,25 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             return false;
         }
         ReflectiveJavaFxSupport.invoke(node, "setValue", value);
+        Object selectionModel = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
+        ReflectiveJavaFxSupport.invokeOnType(
+            selectionModel,
+            "javafx.scene.control.SingleSelectionModel",
+            "select",
+            new Class<?>[] {int.class},
+            index
+        );
+        return true;
+    }
+
+    private boolean selectChoiceBoxItem(Object node, String value) {
+        if (!"ChoiceBox".equals(node.getClass().getSimpleName())) {
+            return false;
+        }
+        Integer index = findItemIndex(ReflectiveJavaFxSupport.invoke(node, "getItems"), value);
+        if (index == null) {
+            return false;
+        }
         Object selectionModel = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
         ReflectiveJavaFxSupport.invokeOnType(
             selectionModel,

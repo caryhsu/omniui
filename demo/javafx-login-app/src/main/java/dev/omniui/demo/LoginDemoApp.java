@@ -25,6 +25,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.PasswordField;
@@ -427,6 +428,23 @@ public final class LoginDemoApp extends Application {
         demoHyperlink.setId("demoHyperlink");
         VBox hyperlinkSection = section("Hyperlink Demo", "hyperlinkSection", demoHyperlink);
 
+        // ---- CheckBox demo --------------------------------------------------
+        CheckBox checkA = new CheckBox("Option A");
+        checkA.setId("checkA");
+        checkA.setSelected(true);
+        CheckBox checkB = new CheckBox("Option B");
+        checkB.setId("checkB");
+        CheckBox checkC = new CheckBox("Option C");
+        checkC.setId("checkC");
+        VBox checkBoxSection = section("CheckBox Demo", "checkBoxSection", checkA, checkB, checkC);
+
+        // ---- ChoiceBox demo -------------------------------------------------
+        ChoiceBox<String> demoChoiceBox = new ChoiceBox<>();
+        demoChoiceBox.setId("demoChoiceBox");
+        demoChoiceBox.getItems().addAll("Apple", "Banana", "Cherry");
+        demoChoiceBox.setValue("Apple");
+        VBox choiceBoxSection = section("ChoiceBox Demo", "choiceBoxSection", demoChoiceBox);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -449,7 +467,9 @@ public final class LoginDemoApp extends Application {
             tabSection,
             textAreaSection,
             passwordFieldSection,
-            hyperlinkSection
+            hyperlinkSection,
+            checkBoxSection,
+            choiceBoxSection
         );
         root.setPadding(new Insets(24));
 

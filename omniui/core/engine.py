@@ -206,6 +206,10 @@ class OmniUIClient:
         """Return the current progress (0.0–1.0, or -1.0 if indeterminate) of a ProgressBar."""
         return self._perform("get_progress", selector)
 
+    def get_value(self, **selector: Any) -> ActionResult:
+        """Return the current value of a Slider, Spinner, or ChoiceBox node."""
+        return self._perform("get_value", selector)
+
     # ---- TabPane -----------------------------------------------------------
 
     def get_tabs(self, **selector: Any) -> ActionResult:

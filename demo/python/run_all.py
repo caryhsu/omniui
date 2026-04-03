@@ -20,6 +20,8 @@ if __package__ in (None, ""):
     import select_table_row  # type: ignore
     import select_tree_item  # type: ignore
     import slider_spinner_demo  # type: ignore
+    import checkbox_demo  # type: ignore
+    import choicebox_demo  # type: ignore
     import hyperlink_demo  # type: ignore
     import password_field_demo  # type: ignore
     import tab_demo  # type: ignore
@@ -45,6 +47,8 @@ else:
         select_table_row,
         select_tree_item,
         slider_spinner_demo,
+        checkbox_demo,
+        choicebox_demo,
         hyperlink_demo,
         password_field_demo,
         tab_demo,
@@ -117,6 +121,12 @@ def main() -> None:
 
     _section("Hyperlink Demo")
     hyperlink_demo.main()
+
+    _section("CheckBox Demo")
+    checkbox_demo.main()
+
+    _section("ChoiceBox Demo")
+    choicebox_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()
