@@ -175,13 +175,21 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private ActionResult handleSelect(Object node, String fxId, String handle, JsonObject payload) {
         String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
         String column = payload != null && payload.has("column") ? payload.get("column").getAsString() : null;
+        String simpleName = node.getClass().getSimpleName();
 
         try {
-            if (selectComboBoxItem(node, value)
-                || selectChoiceBoxItem(node, value)
-                || selectListItem(node, value)
-                || selectTreeItem(node, value)
-                || selectTableRow(node, value, column)) {
+            // For item-list controls, distinguish "item not found" from "wrong control type"
+            if ("ComboBox".equals(simpleName) || "ChoiceBox".equals(simpleName) || "ListView".equals(simpleName)) {
+                boolean selected = selectComboBoxItem(node, value)
+                    || selectChoiceBoxItem(node, value)
+                    || selectListItem(node, value);
+                if (!selected) {
+                    return ActionResult.failure(List.of("javafx"),
+                        Map.of("reason", "item_not_found", "fxId", fxId, "value", value));
+                }
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "value", value), value);
+            }
+            if (selectTreeItem(node, value) || selectTableRow(node, value, column)) {
                 return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "value", value), value);
             }
         } catch (RuntimeException ex) {

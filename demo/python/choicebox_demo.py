@@ -33,8 +33,7 @@ def main() -> None:
     assert not result.ok, "Expected failure for non-existent item"
     details = result.trace.details
     reason = details.get("reason", "") if isinstance(details, dict) else str(details)
-    assert "not_found" in reason or "not_supported" in reason, \
-        f"Expected item_not_found reason, got: {reason}"
+    assert reason == "item_not_found", f"Expected item_not_found reason, got: {reason}"
     print(f"select('Dragonfruit') correctly rejected: {reason}")
 
     print("\nchoicebox_demo succeeded ✓")
