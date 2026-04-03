@@ -228,6 +228,24 @@ class OmniUIClient:
         v = result.value
         return v is True or str(v).lower() == "true"
 
+    # ---- Accordion / TitledPane --------------------------------------------
+
+    def expand_pane(self, **selector: Any) -> ActionResult:
+        """Expand a TitledPane node (setExpanded=true)."""
+        return self._perform("expand_pane", selector)
+
+    def collapse_pane(self, **selector: Any) -> ActionResult:
+        """Collapse a TitledPane node (setExpanded=false)."""
+        return self._perform("collapse_pane", selector)
+
+    def get_expanded(self, **selector: Any) -> bool:
+        """Return True if a TitledPane node is currently expanded."""
+        result = self._perform("get_expanded", selector)
+        if not result.ok:
+            return False
+        v = result.value
+        return v is True or str(v).lower() == "true"
+
     def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
         """Send an action with no selector normalization or OCR/vision fallback."""
         response = self._request_json(

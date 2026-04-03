@@ -43,6 +43,8 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Accordion;
+import javafx.scene.control.TitledPane;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 
@@ -445,6 +447,16 @@ public final class LoginDemoApp extends Application {
         demoChoiceBox.setValue("Apple");
         VBox choiceBoxSection = section("ChoiceBox Demo", "choiceBoxSection", demoChoiceBox);
 
+        TitledPane pane1 = new TitledPane("Section 1", new Label("Content of Section 1"));
+        pane1.setId("pane1");
+        TitledPane pane2 = new TitledPane("Section 2", new Label("Content of Section 2"));
+        pane2.setId("pane2");
+        TitledPane pane3 = new TitledPane("Section 3", new Label("Content of Section 3"));
+        pane3.setId("pane3");
+        Accordion demoAccordion = new Accordion(pane1, pane2, pane3);
+        demoAccordion.setId("demoAccordion");
+        VBox accordionSection = section("Accordion Demo", "accordionSection", demoAccordion);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -469,7 +481,8 @@ public final class LoginDemoApp extends Application {
             passwordFieldSection,
             hyperlinkSection,
             checkBoxSection,
-            choiceBoxSection
+            choiceBoxSection,
+            accordionSection
         );
         root.setPadding(new Insets(24));
 
