@@ -143,6 +143,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "get_progress" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getProgress"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
             case "get_tabs"     -> handleGetTabs(node, fxId, handle);
             case "select_tab"   -> handleSelectTab(node, fxId, handle, payload);
+            case "get_visited"  -> { Object v = safeInvoke(node, "isVisited"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }

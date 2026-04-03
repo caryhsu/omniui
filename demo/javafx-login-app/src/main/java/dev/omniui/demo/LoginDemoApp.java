@@ -26,7 +26,9 @@ import javafx.scene.control.TreeView;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -408,6 +410,23 @@ public final class LoginDemoApp extends Application {
 
         VBox tabSection = section("TabPane Demo", "tabSection", demoTabPane);
 
+        // ---- TextArea demo --------------------------------------------------
+        TextArea demoTextArea = new TextArea("Hello\nWorld");
+        demoTextArea.setId("demoTextArea");
+        demoTextArea.setPrefRowCount(4);
+        VBox textAreaSection = section("TextArea Demo", "textAreaSection", demoTextArea);
+
+        // ---- PasswordField demo ---------------------------------------------
+        PasswordField demoPasswordField = new PasswordField();
+        demoPasswordField.setId("demoPasswordField");
+        demoPasswordField.setPromptText("Enter password");
+        VBox passwordFieldSection = section("PasswordField Demo", "passwordFieldSection", demoPasswordField);
+
+        // ---- Hyperlink demo -------------------------------------------------
+        Hyperlink demoHyperlink = new Hyperlink("Click me");
+        demoHyperlink.setId("demoHyperlink");
+        VBox hyperlinkSection = section("Hyperlink Demo", "hyperlinkSection", demoHyperlink);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -427,7 +446,10 @@ public final class LoginDemoApp extends Application {
             radioToggleSection,
             sliderSpinnerSection,
             progressSection,
-            tabSection
+            tabSection,
+            textAreaSection,
+            passwordFieldSection,
+            hyperlinkSection
         );
         root.setPadding(new Insets(24));
 

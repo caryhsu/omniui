@@ -216,6 +216,14 @@ class OmniUIClient:
         """Select a tab by its title text in a TabPane."""
         return self._perform("select_tab", selector, {"tab": tab})
 
+    def is_visited(self, **selector: Any) -> bool:
+        """Return True if a Hyperlink node has been visited (clicked)."""
+        result = self._perform("get_visited", selector, None)
+        if not result.ok:
+            return False
+        v = result.value
+        return v is True or str(v).lower() == "true"
+
     def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
         """Send an action with no selector normalization or OCR/vision fallback."""
         response = self._request_json(

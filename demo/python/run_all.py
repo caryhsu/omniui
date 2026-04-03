@@ -20,7 +20,10 @@ if __package__ in (None, ""):
     import select_table_row  # type: ignore
     import select_tree_item  # type: ignore
     import slider_spinner_demo  # type: ignore
+    import hyperlink_demo  # type: ignore
+    import password_field_demo  # type: ignore
     import tab_demo  # type: ignore
+    import text_area_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -42,7 +45,10 @@ else:
         select_table_row,
         select_tree_item,
         slider_spinner_demo,
+        hyperlink_demo,
+        password_field_demo,
         tab_demo,
+        text_area_demo,
     )
 
 
@@ -102,6 +108,15 @@ def main() -> None:
 
     _section("TabPane Demo")
     tab_demo.main()
+
+    _section("TextArea Demo")
+    text_area_demo.main()
+
+    _section("PasswordField Demo")
+    password_field_demo.main()
+
+    _section("Hyperlink Demo")
+    hyperlink_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()
