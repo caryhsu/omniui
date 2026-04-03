@@ -2,6 +2,7 @@ package dev.omniui.agent;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -119,12 +120,18 @@ public final class OmniUiAgentServer {
             }
 
             if (parts.length == 4 && "actions".equals(parts[3]) && "POST".equals(exchange.getRequestMethod())) {
-                JsonObject request = GSON.fromJson(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), JsonObject.class);
-                String action = request.get("action").getAsString();
-                JsonObject selector = request.getAsJsonObject("selector");
-                JsonObject payload = request.has("payload") ? request.getAsJsonObject("payload") : new JsonObject();
-                ActionResult result = session.target().perform(action, selector, payload);
-                writeJson(exchange, 200, result);
+                try {
+                    JsonObject request = GSON.fromJson(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), JsonObject.class);
+                    String action = request.get("action").getAsString();
+                    JsonElement selectorEl = request.get("selector");
+                    JsonObject selector = (selectorEl != null && selectorEl.isJsonObject()) ? selectorEl.getAsJsonObject() : null;
+                    JsonObject payload = request.has("payload") && request.get("payload").isJsonObject()
+                        ? request.getAsJsonObject("payload") : new JsonObject();
+                    ActionResult result = session.target().perform(action, selector, payload);
+                    writeJson(exchange, 200, result);
+                } catch (Exception ex) {
+                    writeError(exchange, 500, ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                }
                 return;
             }
 

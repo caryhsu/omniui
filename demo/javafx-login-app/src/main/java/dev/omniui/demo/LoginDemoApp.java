@@ -5,11 +5,20 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TreeItem;
@@ -22,6 +31,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
 import javafx.stage.Stage;
 
 public final class LoginDemoApp extends Application {
@@ -182,6 +192,141 @@ public final class LoginDemoApp extends Application {
             settingsGrid
         );
 
+        // ---- ContextMenu demo ---------------------------------------------
+        Label contextMenuTarget = new Label("Right-click me");
+        contextMenuTarget.setId("contextMenuTarget");
+
+        MenuItem cmCopyItem = new MenuItem("Copy");
+        cmCopyItem.setId("cmCopy");
+        MenuItem cmPasteItem = new MenuItem("Paste");
+        cmPasteItem.setId("cmPaste");
+        Menu cmSubmenu = new Menu("More");
+        cmSubmenu.setId("cmMore");
+        MenuItem cmDetailsItem = new MenuItem("Details");
+        cmDetailsItem.setId("cmDetails");
+        cmSubmenu.getItems().add(cmDetailsItem);
+
+        ContextMenu nodeContextMenu = new ContextMenu(cmCopyItem, cmPasteItem, new SeparatorMenuItem(), cmSubmenu);
+        contextMenuTarget.setContextMenu(nodeContextMenu);
+
+        Label contextMenuStatus = new Label("Context menu: none");
+        contextMenuStatus.setId("contextMenuStatus");
+        cmCopyItem.setOnAction(e -> contextMenuStatus.setText("Context menu: Copy"));
+        cmPasteItem.setOnAction(e -> contextMenuStatus.setText("Context menu: Paste"));
+        cmDetailsItem.setOnAction(e -> contextMenuStatus.setText("Context menu: Details"));
+
+        VBox contextMenuSection = section("ContextMenu Demo", "contextMenuSection",
+            contextMenuTarget, contextMenuStatus);
+
+        // ---- MenuBar demo -------------------------------------------------
+        MenuBar demoMenuBar = new MenuBar();
+        demoMenuBar.setId("demoMenuBar");
+
+        Menu fileMenu = new Menu("File");
+        fileMenu.setId("menuFile");
+        MenuItem newItem = new MenuItem("New");
+        newItem.setId("menuFileNew");
+        MenuItem saveAsItem = new MenuItem("Save As");
+        saveAsItem.setId("menuFileSaveAs");
+        fileMenu.getItems().addAll(newItem, saveAsItem);
+
+        Menu editMenu = new Menu("Edit");
+        editMenu.setId("menuEdit");
+        Menu editAdvanced = new Menu("Advanced");
+        editAdvanced.setId("menuEditAdvanced");
+        MenuItem reformatItem = new MenuItem("Reformat");
+        reformatItem.setId("menuEditReformat");
+        editAdvanced.getItems().add(reformatItem);
+        editMenu.getItems().add(editAdvanced);
+
+        demoMenuBar.getMenus().addAll(fileMenu, editMenu);
+
+        Label menuBarStatus = new Label("Menu: none");
+        menuBarStatus.setId("menuBarStatus");
+        newItem.setOnAction(e -> menuBarStatus.setText("Menu: File > New"));
+        saveAsItem.setOnAction(e -> menuBarStatus.setText("Menu: File > Save As"));
+        reformatItem.setOnAction(e -> menuBarStatus.setText("Menu: Edit > Advanced > Reformat"));
+
+        VBox menuBarSection = section("MenuBar Demo", "menuBarSection",
+            demoMenuBar, menuBarStatus);
+
+        // ---- DatePicker demo ----------------------------------------------
+        DatePicker demoPicker = new DatePicker();
+        demoPicker.setId("demoPicker");
+        demoPicker.setPromptText("Pick a date");
+
+        Label datePickerStatus = new Label("Picked date: none");
+        datePickerStatus.setId("datePickerStatus");
+        demoPicker.valueProperty().addListener((obs, oldVal, newVal) ->
+            datePickerStatus.setText("Picked date: " + (newVal == null ? "none" : newVal.toString()))
+        );
+
+        VBox datePickerSection = section("DatePicker Demo", "datePickerSection",
+            demoPicker, datePickerStatus);
+
+        // ---- Dialog demo --------------------------------------------------
+        Button showDialogButton = new Button("Show Dialog");
+        showDialogButton.setId("showDialogButton");
+
+        Label dialogStatus = new Label("Dialog: none");
+        dialogStatus.setId("dialogStatus");
+        showDialogButton.setOnAction(e -> Platform.runLater(() -> {
+            javafx.scene.control.Dialog<ButtonType> dialog = new javafx.scene.control.Dialog<>();
+            dialog.setTitle("Confirm Action");
+            dialog.setHeaderText("Please confirm");
+            dialog.setContentText("Are you sure you want to proceed?");
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+            dialog.setResultConverter(bt -> bt);
+            dialog.showAndWait().ifPresent(bt -> dialogStatus.setText("Dialog: " + bt.getText()));
+        }));
+
+        VBox dialogSection = section("Dialog Demo", "dialogSection",
+            showDialogButton, dialogStatus);
+
+        // ---- Alert demo ---------------------------------------------------
+        Button infoAlertButton = new Button("Information");
+        infoAlertButton.setId("infoAlertButton");
+        Button confirmAlertButton = new Button("Confirmation");
+        confirmAlertButton.setId("confirmAlertButton");
+        Button warnAlertButton = new Button("Warning");
+        warnAlertButton.setId("warnAlertButton");
+        Button errorAlertButton = new Button("Error");
+        errorAlertButton.setId("errorAlertButton");
+
+        Label alertStatus = new Label("Alert: none");
+        alertStatus.setId("alertStatus");
+
+        infoAlertButton.setOnAction(e -> Platform.runLater(() -> {
+            Alert a = new Alert(AlertType.INFORMATION, "This is an info message.", ButtonType.OK);
+            a.setTitle("Information");
+            a.setHeaderText("Info");
+            a.showAndWait();
+            alertStatus.setText("Alert: INFORMATION");
+        }));
+        confirmAlertButton.setOnAction(e -> Platform.runLater(() -> {
+            Alert a = new Alert(AlertType.CONFIRMATION, "Proceed?", ButtonType.YES, ButtonType.NO);
+            a.setTitle("Confirmation");
+            a.setHeaderText("Confirm");
+            a.showAndWait().ifPresent(bt -> alertStatus.setText("Alert: CONFIRMATION > " + bt.getText()));
+        }));
+        warnAlertButton.setOnAction(e -> Platform.runLater(() -> {
+            Alert a = new Alert(AlertType.WARNING, "This is a warning.", ButtonType.OK);
+            a.setTitle("Warning");
+            a.setHeaderText("Warning");
+            a.showAndWait();
+            alertStatus.setText("Alert: WARNING");
+        }));
+        errorAlertButton.setOnAction(e -> Platform.runLater(() -> {
+            Alert a = new Alert(AlertType.ERROR, "An error occurred.", ButtonType.OK);
+            a.setTitle("Error");
+            a.setHeaderText("Error");
+            a.showAndWait();
+            alertStatus.setText("Alert: ERROR");
+        }));
+
+        VBox alertSection = section("Alert Demo", "alertSection",
+            infoAlertButton, confirmAlertButton, warnAlertButton, errorAlertButton, alertStatus);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -192,7 +337,12 @@ public final class LoginDemoApp extends Application {
             selectionSection,
             hierarchySection,
             tableSection,
-            gridSection
+            gridSection,
+            contextMenuSection,
+            menuBarSection,
+            datePickerSection,
+            dialogSection,
+            alertSection
         );
         root.setPadding(new Insets(24));
 

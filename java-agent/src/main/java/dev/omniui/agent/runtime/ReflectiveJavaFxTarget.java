@@ -13,10 +13,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.nio.charset.StandardCharsets;
 
 public final class ReflectiveJavaFxTarget implements AutomationTarget {
+    private static final int OVERLAY_TIMEOUT_MS = 2_000;
+    private static final int OVERLAY_POLL_INTERVAL_MS = 50;
+
     private final String appName;
     private final Supplier<Object> sceneSupplier;
 
@@ -47,7 +51,19 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     @Override
     public ActionResult perform(String action, JsonObject selector, JsonObject payload) {
-        return ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
+        return switch (action) {
+            case "right_click"     -> performWithOverlayWait(() -> doRightClick(selector),      this::isContextMenuWindow);
+            case "open_menu"       -> performWithOverlayWait(() -> doOpenMenu(selector, payload), this::isMenuPopupWindow);
+            case "open_datepicker" -> performWithOverlayWait(() -> doOpenDatePicker(selector),  this::isDatePickerWindow);
+            case "click_menu_item" -> doClickMenuItem(payload);
+            case "navigate_menu"   -> doNavigateMenu(selector, payload);
+            case "dismiss_menu"    -> doDismissMenu();
+            case "navigate_month"  -> doNavigateMonth(payload);
+            case "pick_date"       -> doPickDate(payload);
+            case "get_dialog"      -> doGetDialog();
+            case "dismiss_dialog"  -> doDismissDialog(payload);
+            default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
+        };
     }
 
     @Override
@@ -69,7 +85,21 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         IdentityHashMap<Object, String> handles = new IdentityHashMap<>();
         AtomicInteger counter = new AtomicInteger();
         List<Map<String, Object>> result = new ArrayList<>();
-        walk(root, "/Scene", handles, counter, result);
+        walk(root, "/Scene", "primary", handles, counter, result);
+
+        // Also walk overlay windows (popups, dialogs, context menus, etc.)
+        List<Object> allWindows = getAllWindows();
+        Object primaryWindow = safeInvoke(scene, "getWindow");
+        for (Object window : allWindows) {
+            if (window == primaryWindow) continue;
+            Object overlayScene = safeInvoke(window, "getScene");
+            if (overlayScene == null) continue;
+            Object overlayRoot = safeInvoke(overlayScene, "getRoot");
+            if (overlayRoot == null) continue;
+            String windowType = classifyWindow(window);
+            walk(overlayRoot, "/Overlay", windowType, handles, counter, result);
+        }
+
         return result;
     }
 
@@ -387,13 +417,13 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         return new DiscoverySnapshot(nodes);
     }
 
-    private void walk(Object node, String path, IdentityHashMap<Object, String> handles, AtomicInteger counter, List<Map<String, Object>> result) {
+    private void walk(Object node, String path, String windowType, IdentityHashMap<Object, String> handles, AtomicInteger counter, List<Map<String, Object>> result) {
         String handle = handles.computeIfAbsent(node, ignored -> "node-" + counter.incrementAndGet());
-        result.add(toNodeMap(node, path, handle));
+        result.add(toNodeMap(node, path, handle, windowType));
         List<Object> children = childrenOf(node);
         for (int index = 0; index < children.size(); index++) {
             Object child = children.get(index);
-            walk(child, path + "/" + child.getClass().getSimpleName() + "[" + (index + 1) + "]", handles, counter, result);
+            walk(child, path + "/" + child.getClass().getSimpleName() + "[" + (index + 1) + "]", windowType, handles, counter, result);
         }
     }
 
@@ -409,7 +439,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         }
     }
 
-    private Map<String, Object> toNodeMap(Object node, String path, String handle) {
+    private Map<String, Object> toNodeMap(Object node, String path, String handle, String windowType) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("handle", handle);
         metadata.put("fxId", safeString(node, "getId"));
@@ -418,7 +448,14 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         metadata.put("hierarchyPath", path);
         metadata.put("visible", safeBoolean(node, "isVisible", true));
         metadata.put("enabled", !safeBoolean(node, "isDisabled", false));
+        if (windowType != null) {
+            metadata.put("windowType", windowType);
+        }
         return metadata;
+    }
+
+    private Map<String, Object> toNodeMap(Object node, String path, String handle) {
+        return toNodeMap(node, path, handle, "primary");
     }
 
     private String safeString(Object target, String methodName) {
@@ -441,6 +478,623 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private String asString(Object value) {
         return value == null ? "" : value.toString();
+    }
+
+    // ---- Overlay window utilities ------------------------------------------
+
+    /** Returns a snapshot of all open JavaFX windows (safe to call on any thread). */
+    private List<Object> getAllWindows() {
+        try {
+            Class<?> windowClass = ReflectiveJavaFxSupport.loadClass("javafx.stage.Window");
+            Object windows = ReflectiveJavaFxSupport.invokeStatic(windowClass, "getWindows");
+            if (windows instanceof List<?> list) {
+                return new ArrayList<>(list.stream().map(Object.class::cast).toList());
+            }
+        } catch (Exception ignored) {
+        }
+        return List.of();
+    }
+
+    private String classifyWindow(Object window) {
+        String simpleName = window.getClass().getSimpleName();
+        if (simpleName.contains("Alert") || simpleName.contains("Dialog")) return "dialog";
+        if (simpleName.contains("ContextMenu")) return "contextmenu";
+        if (simpleName.contains("Popup")) return "popup";
+        // Stage with DialogPane scene root → dialog
+        try {
+            Object scn = ReflectiveJavaFxSupport.invoke(window, "getScene");
+            if (scn != null) {
+                Object root = ReflectiveJavaFxSupport.invoke(scn, "getRoot");
+                if (root != null && root.getClass().getSimpleName().equals("DialogPane")) {
+                    return "dialog";
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "overlay";
+    }
+
+    private boolean isContextMenuWindow(Object window) {
+        String name = window.getClass().getName();
+        return name.contains("ContextMenu") || name.contains("PopupControl");
+    }
+
+    private boolean isMenuPopupWindow(Object window) {
+        String name = window.getClass().getName();
+        return name.contains("Menu") || name.contains("Popup");
+    }
+
+    private boolean isDatePickerWindow(Object window) {
+        try {
+            Object scn = ReflectiveJavaFxSupport.invoke(window, "getScene");
+            if (scn == null) return false;
+            Object root = ReflectiveJavaFxSupport.invoke(scn, "getRoot");
+            return root != null && root.getClass().getName().contains("DatePicker");
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    /**
+     * Runs {@code triggerOnFxThread} on the JavaFX thread, then polls off-thread
+     * until at least one window matching {@code windowPredicate} appears (or times out).
+     */
+    private ActionResult performWithOverlayWait(
+            Supplier<ActionResult> triggerOnFxThread,
+            Predicate<Object> windowPredicate) {
+        ActionResult triggerResult = ReflectiveJavaFxSupport.onFxThread(triggerOnFxThread);
+        long deadline = System.currentTimeMillis() + OVERLAY_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            List<Object> windows = getAllWindows();
+            if (windows.stream().anyMatch(windowPredicate)) {
+                return triggerResult;
+            }
+            try {
+                Thread.sleep(OVERLAY_POLL_INTERVAL_MS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return triggerResult;
+    }
+
+    private Object safeInvoke(Object target, String method, Object... args) {
+        try {
+            return ReflectiveJavaFxSupport.invoke(target, method, args);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    // ---- ContextMenu actions -----------------------------------------------
+
+    private ActionResult doRightClick(JsonObject selector) {
+        DiscoverySnapshot snapshot = snapshot();
+        Optional<NodeRef> match = resolve(selector, snapshot);
+        if (match.isEmpty()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+        }
+        Object node = match.get().node();
+        String handle = asString(match.get().metadata().get("handle"));
+        String fxId = asString(match.get().metadata().get("fxId"));
+
+        Object contextMenu = safeInvoke(node, "getContextMenu");
+        if (contextMenu == null) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_context_menu", "fxId", fxId));
+        }
+        // Get screen coordinates of the node
+        Object bounds = safeInvoke(node, "localToScreen", 0.0, 0.0);
+        double screenX = 0, screenY = 0;
+        if (bounds != null) {
+            Object sx = safeInvoke(bounds, "getX");
+            Object sy = safeInvoke(bounds, "getY");
+            if (sx instanceof Number nx) screenX = nx.doubleValue();
+            if (sy instanceof Number ny) screenY = ny.doubleValue();
+        }
+        try {
+            ReflectiveJavaFxSupport.invoke(contextMenu, "show", node, screenX, screenY);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"),
+                Map.of("reason", "show_context_menu_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+        }
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult doClickMenuItem(JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String text = payload != null && payload.has("text") ? payload.get("text").getAsString() : null;
+            String id   = payload != null && payload.has("id")   ? payload.get("id").getAsString()   : null;
+            String path = payload != null && payload.has("path") ? payload.get("path").getAsString() : null;
+
+            // MenuItem is NOT a JavaFX Node — look in window.getItems(), not the scene tree.
+            List<Object> windows = getAllWindows();
+            for (Object window : windows) {
+                Object items = safeInvoke(window, "getItems");
+                if (!(items instanceof List<?> itemList)) continue;
+
+                if (path != null && !path.isBlank()) {
+                    Object item = findMenuItemByPath(window, path.split("/"));
+                    if (item != null) {
+                        safeInvoke(item, "fire");
+                        return ActionResult.success("javafx", null, Map.of("path", path), null);
+                    }
+                } else {
+                    Object item = findMenuItemInList(itemList, text, id);
+                    if (item != null) {
+                        safeInvoke(item, "fire");
+                        return ActionResult.success("javafx", null,
+                            Map.of("text", text != null ? text : Objects.toString(id, "")), null);
+                    }
+                }
+            }
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "menu_item_not_found"));
+        });
+    }
+
+    private Object findMenuItemInList(List<?> items, String text, String id) {
+        for (Object item : items) {
+            String itemText = asString(safeInvoke(item, "getText"));
+            String itemId   = asString(safeInvoke(item, "getId"));
+            if ((text != null && text.equals(itemText)) || (id != null && id.equals(itemId))) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private Object findMenuItemByPath(Object contextMenuWindow, String[] segments) {
+        try {
+            Object items = ReflectiveJavaFxSupport.invoke(contextMenuWindow, "getItems");
+            if (!(items instanceof List<?> list)) return null;
+            Object current = null;
+            List<?> currentList = list;
+            for (int i = 0; i < segments.length; i++) {
+                String seg = segments[i];
+                Object found = null;
+                for (Object item : currentList) {
+                    String label = asString(safeInvoke(item, "getText"));
+                    String itemId = asString(safeInvoke(item, "getId"));
+                    if (seg.equals(label) || seg.equals(itemId)) {
+                        found = item;
+                        break;
+                    }
+                }
+                if (found == null) return null;
+                current = found;
+                if (i < segments.length - 1) {
+                    Object subItems = safeInvoke(found, "getItems");
+                    if (!(subItems instanceof List<?> sub)) return null;
+                    currentList = sub;
+                }
+            }
+            return current;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private ActionResult doDismissMenu() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            List<Object> windows = getAllWindows();
+            for (Object window : windows) {
+                String name = window.getClass().getName();
+                if (name.contains("ContextMenu") || name.contains("PopupControl")) {
+                    safeInvoke(window, "hide");
+                }
+            }
+            return ActionResult.success("javafx", null, Map.of(), null);
+        });
+    }
+
+    // ---- MenuBar actions ---------------------------------------------------
+
+    private ActionResult doOpenMenu(JsonObject selector, JsonObject payload) {
+        DiscoverySnapshot snapshot = snapshot();
+        Optional<NodeRef> match = resolve(selector, snapshot);
+        if (match.isEmpty()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+        }
+        Object menuBar = match.get().node();
+        String handle = asString(match.get().metadata().get("handle"));
+        String fxId = asString(match.get().metadata().get("fxId"));
+        String menuName = payload != null && payload.has("menu") ? payload.get("menu").getAsString() : null;
+
+        // SkinBase.getChildren() is protected — walk the public scene graph.
+        // MenuBarSkin uses an inner class (MenuBarButton extends MenuButton),
+        // so match by full class hierarchy, not simple name.
+        List<Object> buttons = findChildrenAssignableTo(menuBar, "javafx.scene.control.MenuButton");
+        for (Object button : buttons) {
+            String btnText = asString(safeInvoke(button, "getText"));
+            if (menuName == null || menuName.equals(btnText)) {
+                try {
+                    ReflectiveJavaFxSupport.invoke(button, "show");
+                } catch (Exception ex) {
+                    return ActionResult.failure(List.of("javafx"),
+                        Map.of("reason", "show_menu_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+                }
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "menu", menuName != null ? menuName : ""), null);
+            }
+        }
+        return ActionResult.failure(List.of("javafx"), Map.of("reason", "menu_not_found",
+            "menu", menuName != null ? menuName : "", "buttonsFound", buttons.size()));
+    }
+
+    private ActionResult doNavigateMenu(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String pathStr = payload != null && payload.has("path") ? payload.get("path").getAsString() : "";
+            if (pathStr.isBlank()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_path"));
+            }
+            String[] segments = pathStr.split("/");
+
+            DiscoverySnapshot snapshot = snapshot();
+            Optional<NodeRef> menuBarRef = snapshot.nodes().stream()
+                .filter(n -> "MenuBar".equals(n.metadata().get("nodeType")))
+                .findFirst();
+
+            if (menuBarRef.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "menubar_not_found"));
+            }
+            Object menuBar = menuBarRef.get().node();
+            Object menus = ReflectiveJavaFxSupport.invoke(menuBar, "getMenus");
+            if (!(menus instanceof List<?> menuList)) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_menus"));
+            }
+
+            // Find top-level menu
+            Object topMenu = null;
+            for (Object m : menuList) {
+                if (segments[0].equals(asString(safeInvoke(m, "getText")))) {
+                    topMenu = m;
+                    break;
+                }
+            }
+            if (topMenu == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "top_menu_not_found", "menu", segments[0]));
+            }
+
+            // Traverse items for middle segments
+            Object currentMenu = topMenu;
+            for (int i = 1; i < segments.length - 1; i++) {
+                Object items = safeInvoke(currentMenu, "getItems");
+                if (!(items instanceof List<?> itemList)) break;
+                Object found = null;
+                for (Object item : itemList) {
+                    if (segments[i].equals(asString(safeInvoke(item, "getText")))) {
+                        found = item;
+                        break;
+                    }
+                }
+                if (found == null) {
+                    return ActionResult.failure(List.of("javafx"), Map.of("reason", "submenu_not_found", "segment", segments[i]));
+                }
+                currentMenu = found;
+            }
+
+            // Fire the final item
+            String lastSeg = segments[segments.length - 1];
+            Object items = safeInvoke(currentMenu, "getItems");
+            if (!(items instanceof List<?> itemList)) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_items_in_menu"));
+            }
+            for (Object item : itemList) {
+                if (lastSeg.equals(asString(safeInvoke(item, "getText")))) {
+                    safeInvoke(item, "fire");
+                    return ActionResult.success("javafx", null, Map.of("path", pathStr), null);
+                }
+            }
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "menu_item_not_found", "item", lastSeg));
+        });
+    }
+
+    // ---- DatePicker actions ------------------------------------------------
+
+    private ActionResult doOpenDatePicker(JsonObject selector) {
+        DiscoverySnapshot snapshot = snapshot();
+        Optional<NodeRef> match = resolve(selector, snapshot);
+        if (match.isEmpty()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+        }
+        Object datePicker = match.get().node();
+        String handle = asString(match.get().metadata().get("handle"));
+        String fxId = asString(match.get().metadata().get("fxId"));
+        try {
+            ReflectiveJavaFxSupport.invoke(datePicker, "show");
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"),
+                Map.of("reason", "open_datepicker_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+        }
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult doNavigateMonth(JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String direction = payload != null && payload.has("direction") ? payload.get("direction").getAsString() : "next";
+            Object dpContent = findDatePickerContent();
+            if (dpContent == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "datepicker_popup_not_found"));
+            }
+            // Get all Button children; first = previous, last = next
+            List<Object> buttons = findChildrenAssignableTo(dpContent, "javafx.scene.control.Button");
+            if (buttons.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "navigation_button_not_found"));
+            }
+            Object button = "next".equalsIgnoreCase(direction)
+                ? buttons.get(buttons.size() - 1)
+                : buttons.get(0);
+            safeInvoke(button, "fire");
+            return ActionResult.success("javafx", null, Map.of("direction", direction), null);
+        });
+    }
+
+    private ActionResult doPickDate(JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String dateStr = payload != null && payload.has("date") ? payload.get("date").getAsString() : null;
+            if (dateStr == null || dateStr.isBlank()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_date"));
+            }
+
+            Object dpContent = findDatePickerContent();
+            if (dpContent == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "datepicker_popup_not_found"));
+            }
+
+            Object targetDate;
+            try {
+                Class<?> localDateClass = ReflectiveJavaFxSupport.loadClass("java.time.LocalDate");
+                targetDate = ReflectiveJavaFxSupport.invokeStatic(localDateClass, "parse", dateStr);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "invalid_date_format", "date", dateStr));
+            }
+
+            for (int attempt = 0; attempt < 48; attempt++) {
+                Object cell = findDateCellForDate(dpContent, targetDate);
+                if (cell != null) {
+                    safeInvoke(cell, "fire");
+                    return ActionResult.success("javafx", null, Map.of("date", dateStr), null);
+                }
+                // Navigate forward or backward toward the target month
+                List<Object> buttons = findChildrenAssignableTo(dpContent, "javafx.scene.control.Button");
+                if (buttons.size() < 2) break;
+                boolean forward = shouldNavigateForward(dpContent, targetDate);
+                safeInvoke(forward ? buttons.get(buttons.size() - 1) : buttons.get(0), "fire");
+            }
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "date_cell_not_found", "date", dateStr));
+        });
+    }
+
+    private boolean shouldNavigateForward(Object dpContent, Object targetDate) {
+        // Compare target against the first visible date cell to determine direction
+        List<Object> cells = findDateCells(dpContent);
+        for (Object cell : cells) {
+            Object cellDate = safeInvoke(cell, "getItem");
+            if (cellDate == null) continue;
+            try {
+                Object cmp = ReflectiveJavaFxSupport.invoke(targetDate, "compareTo", cellDate);
+                if (cmp instanceof Number n) {
+                    return n.intValue() > 0; // target is after this cell → navigate forward
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return true;
+    }
+
+    private List<Object> findDateCells(Object container) {
+        // DateCell is public; concrete cells in DatePickerContent may be subclasses
+        List<Object> cells = findChildrenAssignableTo(container, "javafx.scene.control.DateCell");
+        if (cells.isEmpty()) {
+            cells = findChildrenByType(container, "DateCell");
+        }
+        return cells;
+    }
+
+    private Object findDatePickerContent() {
+        List<Object> windows = getAllWindows();
+        for (Object window : windows) {
+            Object scn = safeInvoke(window, "getScene");
+            if (scn == null) continue;
+            Object root = safeInvoke(scn, "getRoot");
+            if (root == null) continue;
+            if (root.getClass().getName().contains("DatePicker")) return root;
+            // Search children for DatePickerContent
+            Object found = findChildByClassName(root, "DatePickerContent");
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private Object findDateCellForDate(Object container, Object targetDate) {
+        for (Object cell : findDateCells(container)) {
+            Object cellDate = safeInvoke(cell, "getItem");
+            if (cellDate == null) continue;
+            try {
+                Object cmp = ReflectiveJavaFxSupport.invoke(targetDate, "compareTo", cellDate);
+                if (cmp instanceof Number n && n.intValue() == 0) return cell;
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    // ---- Dialog / Alert actions --------------------------------------------
+
+    private ActionResult doGetDialog() {
+        // Poll off-FX-thread: the dialog window may not be in Window.getWindows() yet
+        // if the ActionEvent that opened it was deferred via Platform.runLater.
+        long deadline = System.currentTimeMillis() + OVERLAY_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            ActionResult result = ReflectiveJavaFxSupport.onFxThread(this::tryFindDialog);
+            if (result.ok()) return result;
+            try {
+                Thread.sleep(OVERLAY_POLL_INTERVAL_MS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return ActionResult.failure(List.of("javafx"), Map.of("reason", "dialog_not_found"));
+    }
+
+    private ActionResult tryFindDialog() {
+        List<Object> windows = getAllWindows();
+        for (Object window : windows) {
+            Object scn = safeInvoke(window, "getScene");
+            if (scn == null) continue;
+            Object sceneRoot = safeInvoke(scn, "getRoot");
+            if (sceneRoot == null) continue;
+            // DialogPane may be the root or nested one level inside a wrapper pane
+            Object dialogPane = isDialogPane(sceneRoot)
+                ? sceneRoot
+                : findChildByClassName(sceneRoot, "DialogPane");
+            if (dialogPane == null) continue;
+            Map<String, Object> desc = buildDialogDescriptor(window, dialogPane);
+            return ActionResult.success("javafx", null, desc, null);
+        }
+        return ActionResult.failure(List.of("javafx"), Map.of("reason", "dialog_not_found"));
+    }
+
+    private boolean isDialogPane(Object obj) {
+        String name = obj.getClass().getName();
+        return name.equals("javafx.scene.control.DialogPane") || name.contains("DialogPane");
+    }
+
+    private Map<String, Object> buildDialogDescriptor(Object window, Object dialogPane) {
+        Map<String, Object> desc = new LinkedHashMap<>();
+        desc.put("title", asString(safeInvoke(window, "getTitle")));
+        desc.put("header", asString(safeInvoke(dialogPane, "getHeaderText")));
+        desc.put("content", asString(safeInvoke(dialogPane, "getContentText")));
+
+        // Alert type (if it's an Alert)
+        try {
+            Object dialog = safeInvoke(dialogPane, "getDialog");
+            if (dialog != null) {
+                Object alertType = safeInvoke(dialog, "getAlertType");
+                if (alertType != null) {
+                    desc.put("alertType", alertType.toString());
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Button labels
+        Object buttonBar = findChildByClassName(dialogPane, "ButtonBar");
+        List<String> buttonLabels = new ArrayList<>();
+        if (buttonBar != null) {
+            List<Object> buttons = findChildrenByType(buttonBar, "Button");
+            for (Object btn : buttons) {
+                String label = asString(safeInvoke(btn, "getText"));
+                if (label != null && !label.isBlank()) buttonLabels.add(label);
+            }
+        }
+        desc.put("buttons", buttonLabels);
+        return desc;
+    }
+
+    private ActionResult doDismissDialog(JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String buttonText = payload != null && payload.has("button") ? payload.get("button").getAsString() : null;
+
+            List<Object> windows = getAllWindows();
+            for (Object window : windows) {
+                Object scn = safeInvoke(window, "getScene");
+                if (scn == null) continue;
+                Object sceneRoot = safeInvoke(scn, "getRoot");
+                if (sceneRoot == null) continue;
+                Object root = isDialogPane(sceneRoot) ? sceneRoot : findChildByClassName(sceneRoot, "DialogPane");
+                if (root == null) continue;
+
+                if (buttonText != null && !buttonText.isBlank()) {
+                    // Try exact button match by text
+                    Object buttonBar = findChildByClassName(root, "ButtonBar");
+                    if (buttonBar != null) {
+                        List<Object> buttons = findChildrenByType(buttonBar, "Button");
+                        for (Object btn : buttons) {
+                            String label = asString(safeInvoke(btn, "getText"));
+                            if (buttonText.equalsIgnoreCase(label)) {
+                                safeInvoke(btn, "fire");
+                                return ActionResult.success("javafx", null, Map.of("button", buttonText), null);
+                            }
+                        }
+                    }
+                }
+                // Fallback: click any visible button (OK, Yes, or first available)
+                Object buttonBar = findChildByClassName(root, "ButtonBar");
+                if (buttonBar != null) {
+                    List<Object> buttons = findChildrenByType(buttonBar, "Button");
+                    if (!buttons.isEmpty()) {
+                        safeInvoke(buttons.get(0), "fire");
+                        return ActionResult.success("javafx", null, Map.of(), null);
+                    }
+                }
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "button_not_found"));
+            }
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "dialog_not_found"));
+        });
+    }
+
+    // ---- Node-tree search helpers -----------------------------------------
+
+    private Object findChildByType(Object root, String simpleClassName, String text) {
+        List<Object> all = findChildrenByType(root, simpleClassName);
+        for (Object node : all) {
+            String nodeText = asString(safeInvoke(node, "getText"));
+            if (text == null || text.equals(nodeText)) return node;
+        }
+        return null;
+    }
+
+    private List<Object> findChildrenByType(Object root, String simpleClassName) {
+        List<Object> result = new ArrayList<>();
+        Deque<Object> stack = new ArrayDeque<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            Object node = stack.pop();
+            if (node == null) continue;
+            if (node.getClass().getSimpleName().equals(simpleClassName)) {
+                result.add(node);
+            }
+            List<Object> children = childrenOf(node);
+            for (int i = children.size() - 1; i >= 0; i--) stack.push(children.get(i));
+        }
+        return result;
+    }
+
+    /** Find all nodes whose class is the named class or a subclass of it. */
+    private List<Object> findChildrenAssignableTo(Object root, String className) {
+        Class<?> target;
+        try {
+            target = ReflectiveJavaFxSupport.loadClass(className);
+        } catch (Exception ex) {
+            return List.of();
+        }
+        List<Object> result = new ArrayList<>();
+        Deque<Object> stack = new ArrayDeque<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            Object node = stack.pop();
+            if (node == null) continue;
+            if (target.isAssignableFrom(node.getClass())) {
+                result.add(node);
+            }
+            List<Object> children = childrenOf(node);
+            for (int i = children.size() - 1; i >= 0; i--) stack.push(children.get(i));
+        }
+        return result;
+    }
+
+    private Object findChildByClassName(Object root, String partialClassName) {
+        Deque<Object> stack = new ArrayDeque<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            Object node = stack.pop();
+            if (node == null) continue;
+            if (node.getClass().getName().contains(partialClassName)) return node;
+            List<Object> children = childrenOf(node);
+            for (int i = children.size() - 1; i >= 0; i--) stack.push(children.get(i));
+        }
+        return null;
     }
 
     private record TraversalFrame(Object node, String path) {

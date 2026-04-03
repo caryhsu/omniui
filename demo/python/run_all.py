@@ -2,10 +2,15 @@ from __future__ import annotations
 
 if __package__ in (None, ""):
     import _bootstrap  # type: ignore # noqa: F401
+    import alert_demo  # type: ignore
+    import context_menu_demo  # type: ignore
+    import date_picker_demo  # type: ignore
+    import dialog_demo  # type: ignore
     import discover_advanced_controls  # type: ignore
     import discover_nodes  # type: ignore
     import login_direct  # type: ignore
     import login_with_fallback  # type: ignore
+    import menu_bar_demo  # type: ignore
     import recorder_preview  # type: ignore
     import run_benchmark  # type: ignore
     import select_combo_role  # type: ignore
@@ -15,10 +20,15 @@ if __package__ in (None, ""):
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
+        alert_demo,
+        context_menu_demo,
+        date_picker_demo,
+        dialog_demo,
         discover_advanced_controls,
         discover_nodes,
         login_direct,
         login_with_fallback,
+        menu_bar_demo,
         recorder_preview,
         run_benchmark,
         select_combo_role,
@@ -57,6 +67,21 @@ def main() -> None:
 
     _section("Login With Fallback")
     login_with_fallback.main()
+
+    _section("ContextMenu Demo")
+    context_menu_demo.main()
+
+    _section("MenuBar Demo")
+    menu_bar_demo.main()
+
+    _section("DatePicker Demo")
+    date_picker_demo.main()
+
+    _section("Dialog Demo")
+    dialog_demo.main()
+
+    _section("Alert Demo")
+    alert_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

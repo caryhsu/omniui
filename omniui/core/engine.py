@@ -116,6 +116,75 @@ class OmniUIClient:
             "bounds": match.bounds,
         }
 
+    # ---- ContextMenu -------------------------------------------------------
+
+    def right_click(self, **selector: Any) -> ActionResult:
+        """Show the ContextMenu registered on a node."""
+        return self._perform("right_click", selector)
+
+    def click_menu_item(self, text: str | None = None, *, id: str | None = None, path: str | None = None) -> ActionResult:
+        """Fire a menu item in the currently visible overlay by text, id, or slash-separated path."""
+        payload: dict[str, Any] = {}
+        if text is not None:
+            payload["text"] = text
+        if id is not None:
+            payload["id"] = id
+        if path is not None:
+            payload["path"] = path
+        return self._direct_action("click_menu_item", payload)
+
+    def dismiss_menu(self) -> ActionResult:
+        """Hide all visible popup/context menus."""
+        return self._direct_action("dismiss_menu", {})
+
+    # ---- MenuBar -----------------------------------------------------------
+
+    def open_menu(self, menu: str, **selector: Any) -> ActionResult:
+        """Open a top-level menu in a MenuBar (shows the drop-down)."""
+        return self._perform("open_menu", selector, {"menu": menu})
+
+    def navigate_menu(self, path: str, **selector: Any) -> ActionResult:
+        """Navigate a MenuBar path (e.g. 'File/Save As') and fire the final item."""
+        return self._perform("navigate_menu", selector, {"path": path})
+
+    # ---- DatePicker --------------------------------------------------------
+
+    def open_datepicker(self, **selector: Any) -> ActionResult:
+        """Open a DatePicker popup calendar."""
+        return self._perform("open_datepicker", selector)
+
+    def navigate_month(self, direction: str = "next") -> ActionResult:
+        """Click the forward (next) or backward (prev) button in the DatePicker popup."""
+        return self._direct_action("navigate_month", {"direction": direction})
+
+    def pick_date(self, date: str) -> ActionResult:
+        """Select a date (ISO-8601 'YYYY-MM-DD') in the open DatePicker popup."""
+        return self._direct_action("pick_date", {"date": date})
+
+    # ---- Dialog / Alert ----------------------------------------------------
+
+    def get_dialog(self) -> ActionResult:
+        """Return a descriptor of the currently visible Dialog or Alert."""
+        return self._direct_action("get_dialog", {})
+
+    def dismiss_dialog(self, button: str | None = None) -> ActionResult:
+        """Click a button in the visible Dialog/Alert to close it."""
+        payload: dict[str, Any] = {}
+        if button is not None:
+            payload["button"] = button
+        return self._direct_action("dismiss_dialog", payload)
+
+    def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
+        """Send an action with no selector normalization or OCR/vision fallback."""
+        response = self._request_json(
+            "POST",
+            f"{self.base_url}/sessions/{self.session_id}/actions",
+            {"action": action, "payload": payload},
+        )
+        result = self._action_result({}, response)
+        self._record_action(action, result)
+        return result
+
     def _perform(self, action: str, selector_payload: dict[str, Any], payload: dict[str, Any] | None = None) -> ActionResult:
         selector = self.find(**selector_payload)
         result = self._perform_request(action, selector_payload, selector, payload or {})
