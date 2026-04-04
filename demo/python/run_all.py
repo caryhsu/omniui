@@ -98,6 +98,7 @@ ROOT = Path(__file__).resolve().parents[2]
 _AGENT_JAR = ROOT / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT.jar"
 _M2 = Path.home() / ".m2" / "repository"
 _JAVAFX_VERSION = "21.0.2"
+_GSON_VERSION = "2.11.0"
 
 
 def _javafx_classifier() -> str:
@@ -110,6 +111,10 @@ def _javafx_classifier() -> str:
 def _javafx_jar(artifact: str) -> Path:
     c = _javafx_classifier()
     return _M2 / "org" / "openjfx" / artifact / _JAVAFX_VERSION / f"{artifact}-{_JAVAFX_VERSION}-{c}.jar"
+
+
+def _gson_jar() -> Path:
+    return _M2 / "com" / "google" / "code" / "gson" / "gson" / _GSON_VERSION / f"gson-{_GSON_VERSION}.jar"
 
 
 def _build_launch_cmd(app_dir: Path, launcher: str, module: str, main_class: str, port: int) -> list[str]:
@@ -142,6 +147,8 @@ def _build_launch_cmd(app_dir: Path, launcher: str, module: str, main_class: str
         str(_AGENT_JAR),
         str(_javafx_jar("javafx-controls")),
         str(_javafx_jar("javafx-graphics")),
+        str(_javafx_jar("javafx-base")),
+        str(_gson_jar()),
     ])
     return [
         "java",
