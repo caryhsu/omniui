@@ -11,7 +11,7 @@ from urllib.error import URLError
 from unittest.mock import patch
 
 from omniui import OmniUI
-from omniui.core.engine import retry
+from omniui.core.engine import retry, soft_assert, SoftAssertContext
 from omniui.ocr_module import SimpleOcrEngine
 from omniui.vision_module import SimpleVisionEngine
 
@@ -593,6 +593,67 @@ class RetryHelperTests(unittest.TestCase):
 
         client.retry(flaky, times=5, delay=0)
         self.assertEqual(calls["n"], 2)
+
+
+class SoftAssertTests(unittest.TestCase):
+    """Tests for SoftAssertContext / soft_assert() / client.soft_assert()."""
+
+    def test_no_failures_exits_cleanly(self):
+        """Block with no failures should not raise."""
+        with soft_assert() as sa:
+            sa.check(lambda: None)
+
+    def test_single_failure_raised_at_exit(self):
+        """A single failure collected by check() should raise at block exit."""
+        with self.assertRaises(AssertionError) as cm:
+            with soft_assert() as sa:
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("oops")))
+        self.assertIn("1 assertion(s) failed:", str(cm.exception))
+        self.assertIn("oops", str(cm.exception))
+
+    def test_multiple_failures_all_collected(self):
+        """All check() failures should be collected and combined."""
+        with self.assertRaises(AssertionError) as cm:
+            with soft_assert() as sa:
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("first")))
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("second")))
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("third")))
+        msg = str(cm.exception)
+        self.assertIn("3 assertion(s) failed:", msg)
+        self.assertIn("first", msg)
+        self.assertIn("second", msg)
+        self.assertIn("third", msg)
+
+    def test_non_assertion_error_propagates_immediately(self):
+        """Non-AssertionError inside the block should propagate immediately."""
+        with self.assertRaises(RuntimeError):
+            with soft_assert():
+                raise RuntimeError("hard failure")
+
+    def test_combined_message_format(self):
+        """Message must match 'N assertion(s) failed:\\n  1. A\\n  2. B'."""
+        with self.assertRaises(AssertionError) as cm:
+            with soft_assert() as sa:
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("A")))
+                sa.check(lambda: (_ for _ in ()).throw(AssertionError("B")))
+        msg = str(cm.exception)
+        self.assertTrue(msg.startswith("2 assertion(s) failed:"))
+        self.assertIn("  1. A", msg)
+        self.assertIn("  2. B", msg)
+
+    def test_client_soft_assert_delegates(self):
+        """OmniUIClient.soft_assert() should return a SoftAssertContext."""
+        from omniui.core.engine import OmniUIClient
+
+        client = OmniUIClient.__new__(OmniUIClient)
+        ctx = client.soft_assert()
+        self.assertIsInstance(ctx, SoftAssertContext)
+
+    def test_module_export(self):
+        """soft_assert and SoftAssertContext must be importable from omniui."""
+        import omniui
+        self.assertTrue(hasattr(omniui, "soft_assert"))
+        self.assertTrue(hasattr(omniui, "SoftAssertContext"))
 
 
 class LocatorTests(unittest.TestCase):

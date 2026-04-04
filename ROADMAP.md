@@ -93,7 +93,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Locator object** — `loc = client.locator(id="btn")` returns a reusable handle; call `loc.click()`, `loc.verify_text(...)`, `loc.wait_for_visible()` without repeating the selector
   - Enables Page Object Model and reduces selector duplication
 - [ ] **Page Object Model base class** — `OmniPage` base class with auto-wired `client`; gives test projects a standard structure
-- [ ] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
+- [x] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
 - [x] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
 - [x] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
 - [ ] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`

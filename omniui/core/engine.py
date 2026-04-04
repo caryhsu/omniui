@@ -230,7 +230,20 @@ class OmniUIClient:
         """
         return retry(fn, times=times, delay=delay, exceptions=exceptions)
 
-    def press_key(self, key: str, **selector: Any) -> ActionResult:
+    def soft_assert(self) -> "SoftAssertContext":
+        """Return a :class:`SoftAssertContext` that collects assertion failures.
+
+        Delegates to the module-level ``soft_assert()`` function.
+
+        Example::
+
+            with client.soft_assert() as sa:
+                sa.check(lambda: client.verify_text(id="title", text="Welcome"))
+                sa.check(lambda: client.verify_text(id="status", text="OK"))
+        """
+        return soft_assert()
+
+
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 
         Format: Playwright-style "[Modifier+]*Key" — case-insensitive.
@@ -921,6 +934,62 @@ def retry(
     raise AssertionError(
         f"retry: all {times} attempts returned a failed ActionResult"
     )
+
+
+class SoftAssertContext:
+    """Context manager that accumulates ``AssertionError`` failures.
+
+    Use ``sa.check(fn)`` to wrap each assertion inside the block. All other
+    exception types propagate immediately. At block exit a single combined
+    ``AssertionError`` is raised if any failures were collected.
+
+    Obtain via :func:`soft_assert` or ``client.soft_assert()``.
+
+    Example::
+
+        with client.soft_assert() as sa:
+            sa.check(lambda: client.verify_text(id="title", text="Welcome"))
+            sa.check(lambda: client.verify_text(id="status", text="OK"))
+            # both are checked; all failures reported together at block exit
+    """
+
+    def __init__(self) -> None:
+        self._failures: list[str] = []
+
+    def check(self, fn: Callable) -> None:
+        """Call ``fn()`` and collect any ``AssertionError`` it raises."""
+        try:
+            fn()
+        except AssertionError as exc:
+            self._failures.append(str(exc))
+
+    def __enter__(self) -> "SoftAssertContext":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False  # propagate unexpected exceptions immediately
+        if self._failures:
+            n = len(self._failures)
+            detail = "\n".join(
+                f"  {i + 1}. {msg}" for i, msg in enumerate(self._failures)
+            )
+            raise AssertionError(f"{n} assertion(s) failed:\n{detail}")
+        return False
+
+
+def soft_assert() -> SoftAssertContext:
+    """Return a :class:`SoftAssertContext` that collects assertion failures.
+
+    Usage::
+
+        from omniui import soft_assert
+
+        with soft_assert() as sa:
+            sa.check(lambda: assert_something())
+        # raises a combined AssertionError if any check failed
+    """
+    return SoftAssertContext()
 
 
 class OmniUIProcess(OmniUIClient):

@@ -94,7 +94,7 @@
 - [x] **Locator 物件** — `loc = client.locator(id="btn")` 回傳可重複使用的元素 handle；可呼叫 `loc.click()`、`loc.verify_text(...)`、`loc.wait_for_visible()` 而不需重複寫 selector
   - 支援 Page Object Model，減少 selector 重複
 - [ ] **Page Object Model 基礎類別** — `OmniPage` base class 自動注入 `client`；給測試專案標準化結構
-- [ ] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
+- [x] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
 - [x] **Retry 輔助器** — `@client.retry(times=3, delay=0.5)` 裝飾器，用於不穩定的 assertion 區塊
 - [x] **結構化動作 Trace** — 每個操作自動記錄 timestamp、selector、結果；測試失敗時輸出完整動作時間軸
 - [ ] **平行測試支援** — 說明文件與範例，搭配 `pytest-xdist` 對多個 app 實例執行平行測試
