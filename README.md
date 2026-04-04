@@ -26,7 +26,7 @@ Implemented in this repo today:
 - recorder-lite script generation for stable click selectors
 
 **Actions — basic interaction**
-- `click`, `right_click`, `type`, `get_text`, `verify_text`
+- `click`, `right_click`, `double_click`, `type`, `get_text`, `verify_text`
 - `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
 - `is_visible`, `is_enabled` — query node visibility / enabled state
 - `wait_for_text`, `wait_for_visible`, `wait_for_enabled`, `wait_for_node`, `wait_for_value` — poll-based wait conditions

@@ -136,6 +136,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
         return switch (action) {
             case "click"        -> handleClick(node, fxId, handle);
+            case "double_click" -> handleDoubleClick(node, fxId, handle);
             case "select"       -> handleSelect(node, fxId, handle, payload);
             case "type"         -> handleType(node, fxId, handle, payload);
             case "get_text"     -> ActionResult.success("javafx", handle, Map.of("fxId", fxId), ReflectiveJavaFxSupport.textOf(node));
@@ -241,6 +242,75 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             } catch (IllegalStateException inner) {
                 return ActionResult.failure(List.of("javafx"), Map.of("reason", "click_not_supported", "fxId", fxId));
             }
+        }
+    }
+
+    private ActionResult handleDoubleClick(Object node, String fxId, String handle) {
+        try {
+            // Compute center of node in local coordinates
+            Object bounds = safeInvoke(node, "getBoundsInLocal");
+            double localX = 5, localY = 5;
+            if (bounds != null) {
+                Object w = safeInvoke(bounds, "getWidth");
+                Object h = safeInvoke(bounds, "getHeight");
+                if (w instanceof Number nw && h instanceof Number nh) {
+                    localX = nw.doubleValue() / 2;
+                    localY = nh.doubleValue() / 2;
+                }
+            }
+
+            // Convert to screen coordinates (may be null in headless/off-screen)
+            Object screenPt = safeInvoke(node, "localToScreen", localX, localY);
+            double screenX = 0, screenY = 0;
+            if (screenPt != null) {
+                Object sx = safeInvoke(screenPt, "getX");
+                Object sy = safeInvoke(screenPt, "getY");
+                if (sx instanceof Number nx) screenX = nx.doubleValue();
+                if (sy instanceof Number ny) screenY = ny.doubleValue();
+            }
+
+            // Build MouseEvent.MOUSE_CLICKED with clickCount=2 via reflection
+            Class<?> mouseCls  = Class.forName("javafx.scene.input.MouseEvent");
+            Class<?> btnCls    = Class.forName("javafx.scene.input.MouseButton");
+            Class<?> pickCls   = Class.forName("javafx.scene.input.PickResult");
+            Class<?> etCls     = Class.forName("javafx.event.EventType");
+
+            Object mouseClicked = mouseCls.getField("MOUSE_CLICKED").get(null);
+            Object primary      = btnCls.getField("PRIMARY").get(null);
+
+            java.lang.reflect.Constructor<?> ctor = mouseCls.getConstructor(
+                etCls,
+                double.class, double.class, double.class, double.class,
+                btnCls, int.class,
+                boolean.class, boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                pickCls
+            );
+
+            Object event = ctor.newInstance(
+                mouseClicked,
+                localX, localY, screenX, screenY,
+                primary, 2,
+                false, false, false, false,   // shift/ctrl/alt/meta
+                false, false, false,            // primaryDown/middleDown/secondaryDown
+                true, false, true,              // synthesized=true, popupTrigger=false, stillSincePress=true
+                (Object) null                   // PickResult
+            );
+
+            // Fire via Event.fireEvent(EventTarget target, Event event) [static]
+            Class<?> eventCls  = Class.forName("javafx.event.Event");
+            Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+            java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+            fireMethod.invoke(null, node, event);
+
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of(
+                "reason", "double_click_failed",
+                "fxId", fxId,
+                "message", ex.getMessage() == null ? "" : ex.getMessage()
+            ));
         }
     }
 

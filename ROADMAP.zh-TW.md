@@ -33,7 +33,7 @@
   - ScrollPane、ListView、長 TableView 都需要
 - [ ] **鍵盤快捷鍵** — `press_key("Ctrl+C")`、`press_key("Enter")`、`press_key("Escape")`
   - 補完鍵盤操作缺口，對 Dialog / TextField 流程很重要
-- [ ] **雙擊** — `double_click(id=...)`
+- [x] **雙擊** — `double_click(id=...)`
   - TreeView / TableView 展開節點的常用操作
 - [x] **關閉應用程式** — `close_app()`
   - 從 agent 內呼叫 `Platform.exit()`；適合測試收尾與關閉行為驗證

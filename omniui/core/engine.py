@@ -76,6 +76,14 @@ class OmniUIClient:
     def click(self, **selector: Any) -> ActionResult:
         return self._perform("click", selector)
 
+    def double_click(self, **selector: Any) -> ActionResult:
+        """Fire a double-click (MouseEvent clickCount=2) on the target node.
+
+        Use for interactions such as expanding TreeView items, opening detail
+        views from ListView/TableView rows, or any custom double-click handler.
+        """
+        return self._perform("double_click", selector)
+
     def select(self, value: str, **selector: Any) -> ActionResult:
         payload: dict[str, Any] = {"value": value}
         if "column" in selector:

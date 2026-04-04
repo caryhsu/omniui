@@ -33,7 +33,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Needed for ScrollPane, ListView, and long TableView content
 - [ ] **Keyboard shortcuts** — `press_key("Ctrl+C")`, `press_key("Enter")`, `press_key("Escape")`
   - Fills the keyboard interaction gap; important for Dialog and TextField flows
-- [ ] **Double-click** — `double_click(id=...)`
+- [x] **Double-click** — `double_click(id=...)`
   - Commonly used to expand TreeView / TableView nodes
 - [x] **Close application** — `close_app()`
   - Calls `Platform.exit()` from within the agent; useful for test teardown and shutdown behavior testing

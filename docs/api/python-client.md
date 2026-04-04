@@ -130,6 +130,17 @@ Return semantics:
 
 Right-click a node to open its context menu. Waits for the context menu overlay to appear.
 
+### `client.double_click(**selector) -> ActionResult`
+
+Fire a double-click (synthesized `MouseEvent.MOUSE_CLICKED` with `clickCount=2`) on the target node.
+
+Use for interactions such as expanding TreeView items, opening detail views from ListView/TableView rows, or any custom `setOnMouseClicked` handler that inspects `event.getClickCount() == 2`.
+
+```python
+client.double_click(id="myTreeItem")
+client.double_click(text="Record 1", type="ListCell")
+```
+
 ### `client.open_menu(menu, **selector) -> ActionResult`
 
 Open a top-level menu in a `MenuBar`. Waits for the menu popup to appear.
