@@ -199,6 +199,86 @@ client.click(text="Login", type="Button")
 - `ocr`
 - `vision`
 
+---
+
+## Locator
+
+### `client.locator(**selector) -> Locator`
+
+回傳與此 client 及指定 selector 綁定的可重複使用 `Locator` 物件。
+
+Locator 會儲存 selector，並在後續每次呼叫時自動代入，無需在每個 action 上重複寫 `id=...`。
+
+```python
+btn = client.locator(id="loginBtn")
+btn.wait_for_visible()
+btn.click()
+btn.verify_text("Login")
+```
+
+若未傳入任何 selector 關鍵字，會拋出 `ValueError`。
+
+### Locator 方法
+
+以下所有方法等同於呼叫對應的 `client.*` 方法並自動帶入已儲存的 selector。
+
+**互動操作**
+- `loc.click()`
+- `loc.double_click()`
+- `loc.right_click()`
+- `loc.press_key(key: str)`
+- `loc.type(text: str)`
+
+**文字 / 內容**
+- `loc.get_text() -> ActionResult`
+- `loc.verify_text(expected: str, *, match: str = "exact") -> ActionResult`
+- `loc.get_tooltip() -> ActionResult`
+
+**樣式**
+- `loc.get_style() -> ActionResult`
+- `loc.get_style_class() -> ActionResult`
+
+**狀態查詢**
+- `loc.is_visible() -> bool`
+- `loc.is_enabled() -> bool`
+- `loc.is_visited() -> bool`
+
+**值 / 選取**
+- `loc.get_value() -> ActionResult`
+- `loc.get_progress() -> ActionResult`
+- `loc.get_selected() -> ActionResult`
+- `loc.get_selected_items() -> ActionResult`
+- `loc.select(value: str) -> ActionResult`
+- `loc.select_multiple(values: list[str]) -> ActionResult`
+- `loc.set_selected(value: bool) -> ActionResult`
+- `loc.set_slider(value: float) -> ActionResult`
+- `loc.set_spinner(value: str) -> ActionResult`
+- `loc.step_spinner(steps: int) -> ActionResult`
+
+**Tab 頁籤**
+- `loc.get_tabs() -> ActionResult`
+- `loc.select_tab(tab: str) -> ActionResult`
+
+**捲動**
+- `loc.scroll_to() -> ActionResult`
+- `loc.scroll_by(delta_x: float, delta_y: float) -> ActionResult`
+
+**Accordion / Pane**
+- `loc.expand_pane() -> ActionResult`
+- `loc.collapse_pane() -> ActionResult`
+- `loc.get_expanded() -> ActionResult`
+
+**等待條件** — 需要 Locator 以 `id=` 建立
+
+- `loc.wait_for_visible(timeout: float = 5.0)`
+- `loc.wait_for_enabled(timeout: float = 5.0)`
+- `loc.wait_for_node(timeout: float = 5.0)`
+- `loc.wait_for_text(expected: str, timeout: float = 5.0)`
+- `loc.wait_for_value(expected: str, timeout: float = 5.0)`
+
+若 Locator 未以 `id=` 建立，會拋出 `ValueError`。
+
+
 ## `ActionTrace`
 
 欄位：

@@ -520,6 +520,89 @@ Read whether a tree item is expanded.
 
 `result.value`: `True` or `False`.
 
+---
+
+## Locator
+
+### `client.locator(**selector) -> Locator`
+
+Return a reusable `Locator` bound to this client and the given selector.
+
+The locator stores the selector and re-uses it on every subsequent call,
+removing the need to repeat `id=...` (or any other selector keyword) on
+every action.
+
+```python
+btn = client.locator(id="loginBtn")
+btn.wait_for_visible()
+btn.click()
+btn.verify_text("Login")
+```
+
+Raises `ValueError` if called with no selector keywords.
+
+### Locator methods
+
+All methods below are equivalent to calling the corresponding `client.*`
+method with the stored selector merged in.
+
+**Interaction**
+- `loc.click()`
+- `loc.double_click()`
+- `loc.right_click()`
+- `loc.press_key(key: str)`
+- `loc.type(text: str)`
+
+**Text / content**
+- `loc.get_text() -> ActionResult`
+- `loc.verify_text(expected: str, *, match: str = "exact") -> ActionResult`
+- `loc.get_tooltip() -> ActionResult`
+
+**Style**
+- `loc.get_style() -> ActionResult`
+- `loc.get_style_class() -> ActionResult`
+
+**State queries**
+- `loc.is_visible() -> bool`
+- `loc.is_enabled() -> bool`
+- `loc.is_visited() -> bool`
+
+**Value / selection**
+- `loc.get_value() -> ActionResult`
+- `loc.get_progress() -> ActionResult`
+- `loc.get_selected() -> ActionResult`
+- `loc.get_selected_items() -> ActionResult`
+- `loc.select(value: str) -> ActionResult`
+- `loc.select_multiple(values: list[str]) -> ActionResult`
+- `loc.set_selected(value: bool) -> ActionResult`
+- `loc.set_slider(value: float) -> ActionResult`
+- `loc.set_spinner(value: str) -> ActionResult`
+- `loc.step_spinner(steps: int) -> ActionResult`
+
+**Tabs**
+- `loc.get_tabs() -> ActionResult`
+- `loc.select_tab(tab: str) -> ActionResult`
+
+**Scroll**
+- `loc.scroll_to() -> ActionResult`
+- `loc.scroll_by(delta_x: float, delta_y: float) -> ActionResult`
+
+**Accordion / Pane**
+- `loc.expand_pane() -> ActionResult`
+- `loc.collapse_pane() -> ActionResult`
+- `loc.get_expanded() -> ActionResult`
+
+**Wait conditions** — require the locator to have been created with `id=`
+
+- `loc.wait_for_visible(timeout: float = 5.0)`
+- `loc.wait_for_enabled(timeout: float = 5.0)`
+- `loc.wait_for_node(timeout: float = 5.0)`
+- `loc.wait_for_text(expected: str, timeout: float = 5.0)`
+- `loc.wait_for_value(expected: str, timeout: float = 5.0)`
+
+Raises `ValueError` if the locator was not created with `id=`.
+
+
 Fetch the screenshot payload from the agent.
 
 Current implementation note:

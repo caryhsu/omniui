@@ -35,3 +35,19 @@
 #### Scenario: Use selection-oriented action for advanced control
 - **WHEN** 某個支援中的進階 JavaFX 場景需要較適合用 selection 或 expansion 表達的互動，而不是 raw click
 - **THEN** Python client 會提供可表達該互動的高階 action，而不要求使用者直接操作 transport payload
+
+### Requirement: Python client exposes Locator
+系統 SHALL 提供 `Locator` 類別，可透過 `client.locator(**selector)` 取得。Locator 儲存 node selector 並在每次後續呼叫時自動代入，使 automation script 與 Page Object Model 不需重複寫 selector。
+
+#### Scenario: 取得 Locator 並呼叫方法而不重複 selector
+- **WHEN** script 呼叫 `loc = client.locator(id="loginBtn")`，再呼叫 `loc.click()`、`loc.verify_text("Login")`、`loc.wait_for_visible()`
+- **THEN** 每次呼叫都會自動帶入 `id="loginBtn"` 並轉發至底層 client
+
+#### Scenario: 未傳 selector 時拋出 ValueError
+- **WHEN** script 呼叫 `client.locator()`（未傳任何引數）
+- **THEN** Python client 立即拋出 `ValueError`
+
+#### Scenario: wait_for_* 無 id= 時拋出 ValueError
+- **WHEN** script 以 `text=` 建立 Locator 並呼叫 `loc.wait_for_visible()`
+- **THEN** Python client 拋出 `ValueError`，說明需要 `id=`
+

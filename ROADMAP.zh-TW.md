@@ -91,7 +91,7 @@
 
 - [x] **`verify_text` 彈性比對** — 支援 `match="contains"`、`match="starts_with"`、`match="regex"` 模式
   - 目前只有 exact match，常常過於嚴格
-- [ ] **Locator 物件** — `loc = client.locator(id="btn")` 回傳可重複使用的元素 handle；可呼叫 `loc.click()`、`loc.verify_text(...)`、`loc.wait_for_visible()` 而不需重複寫 selector
+- [x] **Locator 物件** — `loc = client.locator(id="btn")` 回傳可重複使用的元素 handle；可呼叫 `loc.click()`、`loc.verify_text(...)`、`loc.wait_for_visible()` 而不需重複寫 selector
   - 支援 Page Object Model，減少 selector 重複
 - [ ] **Page Object Model 基礎類別** — `OmniPage` base class 自動注入 `client`；給測試專案標準化結構
 - [ ] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
