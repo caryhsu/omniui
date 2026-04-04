@@ -44,11 +44,15 @@ The system SHALL provide low-level Python methods for `find`, `screenshot`, `ocr
 - **THEN** the system returns recognized text results and positional metadata suitable for manual troubleshooting
 
 ### Requirement: Stable selector argument model
-The system SHALL allow high-level Python actions to be invoked with selector fields such as `id`, `text`, and `type` without exposing backend-specific transport or adapter details in the script surface.
+The system SHALL allow high-level Python actions to be invoked with selector fields such as `id`, `text`, `type`, and `index` without exposing backend-specific transport or adapter details in the script surface.
 
 #### Scenario: Use structural selector arguments in click API
 - **WHEN** a user calls `click(text="Login", type="Button")`
 - **THEN** the Python API accepts the selector and delegates backend resolution without requiring explicit OCR or vision flags from the caller
+
+#### Scenario: Use index= to target second matching node
+- **WHEN** an automation script calls `client.click(type="Button", index=1)`
+- **THEN** the Python client passes `{"type": "Button", "index": 1}` as the selector to the Java agent, which resolves the second Button
 
 ### Requirement: is_visible method
 The Python client SHALL expose `is_visible(**selector) -> bool` as a public method, consistent in style with `is_visited()` and `get_expanded()`.
