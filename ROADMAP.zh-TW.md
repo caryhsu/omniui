@@ -48,6 +48,10 @@
   - Agent 的節點探索已包含 `visible` / `enabled`；只需在 Python 端加上便利封裝
 - [ ] **Tooltip 驗證** — `get_tooltip(id=...)`
   - 讀取節點的 Tooltip 文字
+- [ ] **CSS 樣式檢查** — `get_style(id=...)`、`get_style_class(id=...)`
+  - `get_style()` 回傳節點的 inline style 字串（例如 `"-fx-text-fill: red;"`）
+  - `get_style_class()` 回傳節點套用的 CSS class 名稱清單
+  - 可用於驗證狀態測試：紅色/綠色、error/success CSS class，不依賴特定錯誤文字
 - [ ] **多選（Multi-select）** — `select_multiple(id=..., values=[...])`
   - ListView / TableView 多項目選取；目前 `select` 僅支援單選
 - [ ] **TableView 儲存格編輯** — `edit_cell(id=..., row=..., column=..., value=...)`
