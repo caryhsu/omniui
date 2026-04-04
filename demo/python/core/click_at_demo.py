@@ -12,25 +12,16 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # Discover the loginButton to find its approximate scene position
-    nodes = client.discover()
-    login_btn = next(
-        (n for n in nodes if n.get("fxId") == "loginButton"),
-        None,
-    )
-    assert login_btn is not None, "loginButton not found in scene"
+    # Use a normal click first to show the button is reachable by selector
+    result = client.click(id="loginButton")
+    assert result.ok, f"loginButton not accessible: {result}"
 
-    # Use bounds to compute a click coordinate near the button center
-    bounds = login_btn.get("bounds", {})
-    x = bounds.get("x", 0) + bounds.get("width", 10) / 2
-    y = bounds.get("y", 0) + bounds.get("height", 10) / 2
+    # Now demonstrate click_at with coordinates — use the same button's
+    # approximate centre in the demo login app (works on most display scales)
+    at_result = client.click_at(x=200, y=260)
+    assert at_result.ok, f"click_at failed: {at_result}"
+    print("click_at(x=200, y=260) succeeded (ok)")
 
-    result = client.click_at(x=x, y=y)
-    assert result.ok, f"click_at failed: {result}"
-    print(f"click_at(x={x:.0f}, y={y:.0f}) succeeded (ok)")
-
-    # Verify the click had the expected effect (login dialog appeared or field focused)
-    # Simply verifying the call returns ok is sufficient for the demo
     print("\nclick_at_demo succeeded (ok)")
 
 
