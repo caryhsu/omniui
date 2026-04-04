@@ -29,7 +29,8 @@ def main() -> None:
     print("paste() into text field (ok)")
 
     # --- copy: type text, copy from field, verify clipboard ---
-    client.triple_click(id="username")
+    client.click(id="username")
+    client.press_key("Control+A", id="username")
     client.type("copy_source", id="username")
     client.copy(id="username")
     clipboard = client.get_clipboard()
