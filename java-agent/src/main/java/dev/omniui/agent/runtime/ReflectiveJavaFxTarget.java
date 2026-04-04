@@ -66,6 +66,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "dismiss_colorpicker" -> doDismissColorPicker();
             case "get_dialog"      -> doGetDialog();
             case "dismiss_dialog"  -> doDismissDialog(payload);
+            case "close_app"       -> doCloseApp();
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
     }
@@ -1148,6 +1149,19 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 Map.of("reason", "open_colorpicker_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
         }
         return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult doCloseApp() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            try {
+                Object platformClass = ReflectiveJavaFxSupport.loadClass("javafx.application.Platform");
+                ReflectiveJavaFxSupport.invokeStatic(platformClass, "exit");
+                return ActionResult.success("javafx", null, Map.of(), null);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"),
+                        Map.of("reason", "close_app_failed", "error", String.valueOf(ex.getMessage())));
+            }
+        });
     }
 
     private ActionResult doDismissColorPicker() {

@@ -449,6 +449,19 @@ Alias for `wait_for_text`. Provided for readability in value-assertion contexts.
 client.wait_for_value("totalField", "42")
 ```
 
+## Close App
+
+### `client.close_app() -> ActionResult`
+
+Trigger graceful shutdown of the JavaFX application by calling `Platform.exit()` from within the agent.
+
+This should be the **last call** in a session. Subsequent API calls will raise connection errors as the JVM exits.
+
+```python
+# Clean up after test suite
+client.close_app()
+```
+
 ## Selectors
 
 The currently supported selector surface is:

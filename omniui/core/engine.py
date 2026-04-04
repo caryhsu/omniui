@@ -207,6 +207,14 @@ class OmniUIClient:
             payload["button"] = button
         return self._direct_action("dismiss_dialog", payload)
 
+    def close_app(self) -> ActionResult:
+        """Trigger graceful shutdown of the JavaFX application via Platform.exit().
+
+        This should be the last call in a session — subsequent calls will
+        raise connection errors as the JVM exits.
+        """
+        return self._direct_action("close_app", {})
+
     # ---- RadioButton / ToggleButton ----------------------------------------
 
     def get_selected(self, **selector: Any) -> ActionResult:
