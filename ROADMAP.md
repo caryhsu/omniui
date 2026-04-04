@@ -48,6 +48,16 @@ This file tracks planned features and improvements. Check off items as they are 
   - Agent already includes `visible` / `enabled` in discovery metadata; Python-side convenience wrappers only
 - [ ] **Tooltip verification** — `get_tooltip(id=...)`
   - Read the tooltip text of a node
+- [ ] **Multi-select** — `select_multiple(id=..., values=[...])`
+  - Select multiple items in ListView or TableView; currently `select` only supports single selection
+- [ ] **TableView in-cell editing** — `edit_cell(id=..., row=..., column=..., value=...)`
+  - Double-click a cell and type a new value (requires editable TableView)
+- [ ] **TableView column sort** — `sort_column(id=..., column=..., direction="asc")`
+  - Click a column header to trigger sort; read sorted order back
+- [ ] **ToolBar** — `get_toolbar_items(id=...)`, click toolbar buttons via existing `click`
+  - Access and interact with items in a `ToolBar` container
+- [ ] **ScrollBar** — `get_scroll_position(id=...)`, `set_scroll_position(id=..., value=...)`
+  - Fine-grained scroll control for standalone `ScrollBar` nodes
 - [ ] **Pagination** — `get_page()`, `set_page(n)`, `next_page()`, `prev_page()`
   - Automate JavaFX `Pagination` control
 - [ ] **Window / Stage management** — `get_windows()`, `focus_window(title=...)`

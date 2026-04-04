@@ -48,6 +48,16 @@
   - Agent 的節點探索已包含 `visible` / `enabled`；只需在 Python 端加上便利封裝
 - [ ] **Tooltip 驗證** — `get_tooltip(id=...)`
   - 讀取節點的 Tooltip 文字
+- [ ] **多選（Multi-select）** — `select_multiple(id=..., values=[...])`
+  - ListView / TableView 多項目選取；目前 `select` 僅支援單選
+- [ ] **TableView 儲存格編輯** — `edit_cell(id=..., row=..., column=..., value=...)`
+  - 雙擊儲存格並輸入新值（需要 editable TableView）
+- [ ] **TableView 欄位排序** — `sort_column(id=..., column=..., direction="asc")`
+  - 點擊欄位標題觸發排序並讀回結果
+- [ ] **ToolBar** — `get_toolbar_items(id=...)`，透過現有 `click` 操作工具列按鈕
+  - 存取與操作 `ToolBar` 容器中的項目
+- [ ] **ScrollBar** — `get_scroll_position(id=...)`、`set_scroll_position(id=..., value=...)`
+  - 對獨立 `ScrollBar` 節點進行精細捲動控制
 - [ ] **Pagination（分頁）** — `get_page()`、`set_page(n)`、`next_page()`、`prev_page()`
   - 自動化 JavaFX `Pagination` 控件
 - [ ] **Window / Stage 管理** — `get_windows()`、`focus_window(title=...)`
