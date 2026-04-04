@@ -43,22 +43,28 @@ Expected:
 - the JavaFX login window opens
 - the console prints `OmniUI agent listening on http://127.0.0.1:48100`
 
-### 2. Run the Python demo suite
+### 2. Run the full Python demo suite
 
 In another terminal:
 
 ```bash
-python scripts/run_demo.py
+python demo/python/run_all.py
 ```
 
 Expected:
-- node discovery prints JavaFX nodes
-- advanced discovery prints `ComboBox`, `ListView`, `TreeView`, `TableView`, and grid-oriented demo nodes
-- advanced interaction demos succeed for combo-box selection, list selection, tree selection, and table-row selection
-- direct login succeeds
-- fallback login succeeds
-- recorder preview prints script lines
-- benchmark prints JSON output
+- All 20+ component demos print `succeeded` or `succeeded ✓`
+- Exit code 0
+
+Individual demos that are validated:
+- Login (direct + fallback)
+- ComboBox, ListView, TreeView, TableView selection
+- ContextMenu (single-level and submenu)
+- MenuBar navigation (single-level and nested)
+- DatePicker `set_date`
+- Alert dialogs (information, warning, error, confirmation)
+- RadioButton, Slider+Spinner, ProgressBar, TabPane
+- TextArea, PasswordField, Hyperlink
+- CheckBox, ChoiceBox, Accordion, TreeTableView
 
 ### 3. Close the app
 
@@ -105,7 +111,16 @@ Expected:
 
 ### 6. Build the packaged runtime
 
-Run one of:
+> **Important:** The jlink image embeds `dev.omniui.agent` as a module. Always install
+> the agent to the local Maven repository first, or agent changes will not be reflected
+> in the packaged runtime.
+
+```bash
+mvn install -f java-agent/pom.xml
+mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
+```
+
+Or run the helper scripts (which call the same Maven goals):
 
 ```bat
 scripts\build_demo_runtime.bat
@@ -143,16 +158,13 @@ Expected:
 - the JavaFX login window opens
 - the agent listens on `http://127.0.0.1:48100`
 
-### 8. Run a focused Python flow
+### 8. Run the full demo suite against the packaged runtime
 
 ```bash
-python scripts/demo_login_flow.py
+python demo/python/run_all.py
 ```
 
-Expected:
-- login flow succeeds
-- trace history prints
-- recorder output prints stable click lines
+Expected: same as step 2 — all demos succeed, exit code 0.
 
 ## Advanced Control Smoke
 
@@ -169,37 +181,29 @@ Expected:
 - output includes `userTable`
 - output includes `settingsGrid`
 
-### 10. Run the advanced interaction demos
+### 10. Run individual component demos (optional — all are covered by run_all.py)
 
 ```bash
 python demo/python/select_combo_role.py
 python demo/python/select_list_item.py
 python demo/python/select_tree_item.py
 python demo/python/select_table_row.py
+python demo/python/context_menu_demo.py
+python demo/python/menu_bar_demo.py
+python demo/python/date_picker_demo.py
+python demo/python/alert_demo.py
+python demo/python/treetableview_demo.py
 ```
 
 Expected:
-- combo-box demo prints `ComboBox selection succeeded`
-- list-view demo prints `ListView selection succeeded`
-- tree-view demo prints `TreeView selection succeeded`
-- table-view demo prints `TableView selection succeeded`
-- the JavaFX window reflects the corresponding status-label updates
-
-### 11. Record any intentionally unsupported cases
-
-Capture whether any of these cases still need follow-up:
-- off-screen or non-materialized list/tree/table items
-- combo-box popup interaction beyond direct selection-model control
-- tree expand/collapse behavior beyond selecting visible items
-- table row disambiguation when multiple rows share the same value
+- each demo prints `succeeded` or `succeeded ✓`
+- the JavaFX window reflects the corresponding UI updates
 
 ## Record Results
 
 Capture at least:
 - launcher used
 - whether agent startup message appeared
-- whether `run_demo.py` succeeded in with-agent mode
-- whether advanced discovery returned the expected control ids
-- whether advanced interaction demos succeeded
+- whether `run_all.py` succeeded in with-agent mode (exit code 0)
 - whether plain mode failed clearly
 - any console errors or stack traces

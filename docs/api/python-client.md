@@ -122,7 +122,234 @@ Return semantics:
 }
 ```
 
-### `client.screenshot() -> bytes`
+---
+
+## Menu and ContextMenu Actions
+
+### `client.right_click(**selector) -> ActionResult`
+
+Right-click a node to open its context menu. Waits for the context menu overlay to appear.
+
+### `client.open_menu(menu, **selector) -> ActionResult`
+
+Open a top-level menu in a `MenuBar`. Waits for the menu popup to appear.
+
+Parameters:
+- `menu: str` — label of the top-level menu item (e.g. `"File"`)
+- selector fields to identify the MenuBar node
+
+### `client.navigate_menu(path, **selector) -> ActionResult`
+
+Open a `MenuBar` menu and navigate to a nested item.
+
+Parameters:
+- `path: str` — slash-separated path (e.g. `"Edit/Advanced/Reformat"`)
+- selector fields to identify the MenuBar node
+
+### `client.click_menu_item(item) -> ActionResult`
+
+Click a visible menu item by label. Requires a menu or context menu to already be open.
+
+Parameters:
+- `item: str` — exact label text of the menu item
+
+### `client.dismiss_menu() -> ActionResult`
+
+Close the currently open menu or context menu popup.
+
+---
+
+## DatePicker Actions
+
+### `client.set_date(date, **selector) -> ActionResult`
+
+Set a `DatePicker` value directly without opening the popup. Preferred over `open_datepicker` + `pick_date`.
+
+Parameters:
+- `date: str` — ISO-8601 date string, e.g. `"2025-09-15"`
+- selector fields to identify the DatePicker node
+
+### `client.open_datepicker(**selector) -> ActionResult`
+
+Click a `DatePicker` to open its calendar popup. Waits for the popup to appear.
+
+### `client.navigate_month(direction) -> ActionResult`
+
+Navigate the open DatePicker calendar by one month. Requires the calendar popup to be open.
+
+Parameters:
+- `direction: str` — `"forward"` or `"backward"`
+
+### `client.pick_date(date) -> ActionResult`
+
+Click a date cell in the open DatePicker calendar.
+
+Parameters:
+- `date: str` — ISO-8601 date string
+
+---
+
+## Dialog / Alert Actions
+
+### `client.get_dialog() -> ActionResult`
+
+Read the currently visible `Alert` dialog. Returns button labels and content text.
+
+`result.value` shape:
+
+```python
+{
+    "title": "...",
+    "header": "...",
+    "content": "...",
+    "buttons": ["OK", "Cancel", ...]
+}
+```
+
+### `client.dismiss_dialog(button=None) -> ActionResult`
+
+Close the currently visible Alert dialog.
+
+Parameters:
+- `button: str | None` — button label to click (e.g. `"OK"`). If `None`, clicks the default button.
+
+---
+
+## Selection Controls
+
+### `client.select(value, **selector) -> ActionResult`
+
+Select an item by value in a `ComboBox`, `ChoiceBox`, or `ListView`.
+
+Parameters:
+- `value: str` — item label to select
+
+### `client.get_selected(**selector) -> ActionResult`
+
+Read the selected state of a `CheckBox`, `RadioButton`, or `ToggleButton`.
+
+`result.value`: `True` or `False`.
+
+### `client.set_selected(value, **selector) -> ActionResult`
+
+Set the selected state of a `CheckBox`, `RadioButton`, or `ToggleButton`.
+
+Parameters:
+- `value: bool`
+
+---
+
+## Slider, Spinner, Progress
+
+### `client.set_slider(value, **selector) -> ActionResult`
+
+Set the value of a `Slider`.
+
+Parameters:
+- `value: float`
+
+### `client.set_spinner(value, **selector) -> ActionResult`
+
+Set the value of a `Spinner` directly.
+
+Parameters:
+- `value: int | float`
+
+### `client.step_spinner(steps, **selector) -> ActionResult`
+
+Increment or decrement a `Spinner` by a number of steps.
+
+Parameters:
+- `steps: int` — positive to increment, negative to decrement
+
+### `client.get_progress(**selector) -> ActionResult`
+
+Read the current progress of a `ProgressBar` or `ProgressIndicator`.
+
+`result.value`: `float` in range `[0.0, 1.0]`.
+
+### `client.get_value(**selector) -> ActionResult`
+
+Read the current value of a generic value-bearing node (e.g. `Slider`, `DatePicker`).
+
+---
+
+## Tab Actions
+
+### `client.get_tabs(**selector) -> ActionResult`
+
+List the tab labels of a `TabPane`.
+
+`result.value`: `list[str]`.
+
+### `client.select_tab(tab, **selector) -> ActionResult`
+
+Select a tab by label in a `TabPane`.
+
+Parameters:
+- `tab: str` — exact tab label
+
+---
+
+## Accordion Actions
+
+### `client.expand_pane(**selector) -> ActionResult`
+
+Expand a `TitledPane` inside an `Accordion`.
+
+### `client.collapse_pane(**selector) -> ActionResult`
+
+Collapse a `TitledPane` inside an `Accordion`.
+
+### `client.get_expanded(**selector) -> ActionResult`
+
+Read whether a `TitledPane` is expanded.
+
+`result.value`: `True` or `False`.
+
+---
+
+## Hyperlink Actions
+
+### `client.get_visited(**selector) -> ActionResult`
+
+Read whether a `Hyperlink` has been visited.
+
+`result.value`: `True` or `False`.
+
+---
+
+## TreeTableView Actions
+
+### `client.select_tree_table_row(value, column=None, **selector) -> ActionResult`
+
+Select a row in a `TreeTableView` by matching cell content.
+
+Parameters:
+- `value: str` — cell text to match
+- `column: str | None` — optional column name to restrict the match
+
+### `client.get_tree_table_cell(row, column, **selector) -> ActionResult`
+
+Read the text of a specific cell.
+
+Parameters:
+- `row: str` — row identifier (item value)
+- `column: str` — column name
+
+### `client.expand_tree_table_item(value, **selector) -> ActionResult`
+
+Expand a tree item in a `TreeTableView` by matching its cell value.
+
+### `client.collapse_tree_table_item(value, **selector) -> ActionResult`
+
+Collapse a tree item in a `TreeTableView` by matching its cell value.
+
+### `client.get_tree_table_expanded(value, **selector) -> ActionResult`
+
+Read whether a tree item is expanded.
+
+`result.value`: `True` or `False`.
 
 Fetch the screenshot payload from the agent.
 
@@ -270,11 +497,49 @@ client.verify_text(id="status", expected="Success")
 client.click(text="Login")
 ```
 
-### Inspect action history
+### Full demo suite
+
+Run all included component demos end-to-end:
+
+```bash
+python demo/python/run_all.py
+```
+
+All demos connect to the same running JavaFX app with the agent enabled.
+
+### Menu navigation
 
 ```python
-for entry in client.action_history():
-    print(entry.action, entry.result.trace.resolved_tier)
+# MenuBar: File > New
+client.navigate_menu("File/New", id="demoMenuBar")
+
+# ContextMenu: right-click a node then pick an item
+client.right_click(id="someNode")
+client.click_menu_item("Copy")
+```
+
+### DatePicker
+
+```python
+# Direct set (preferred)
+client.set_date("2025-09-15", id="demoPicker")
+```
+
+### Alert dialog
+
+```python
+client.click(id="infoAlertButton")
+result = client.get_dialog()
+print(result.value["content"])
+client.dismiss_dialog("OK")
+```
+
+### TreeTableView
+
+```python
+client.expand_tree_table_item("Engineering", id="demoTreeTable")
+client.select_tree_table_row("Alice", id="demoTreeTable")
+cell = client.get_tree_table_cell("Alice", "Name", id="demoTreeTable")
 ```
 
 ## Current Limitations

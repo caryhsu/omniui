@@ -48,17 +48,23 @@ powershell -ExecutionPolicy Bypass -File .\demo\javafx-login-app\run-dev-with-ag
 在另一個 terminal：
 
 ```bash
-python scripts/run_demo.py
+python demo/python/run_all.py
 ```
 
 預期：
-- node discovery 會列出 JavaFX nodes
-- advanced discovery 會列出 `ComboBox`、`ListView`、`TreeView`、`TableView` 與 grid-oriented demo nodes
-- 進階互動 demo 會成功完成 combo-box、list、tree 與 table row selection
-- direct login 成功
-- fallback login 成功
-- recorder preview 會印出 script lines
-- benchmark 會印出 JSON output
+- 所有 20+ 個元件 demo 印出 `succeeded` 或 `succeeded ✓`
+- exit code 0
+
+涵蓋的 demo：
+- Login（direct + fallback）
+- ComboBox、ListView、TreeView、TableView selection
+- ContextMenu（單層與多層）
+- MenuBar navigation（單層與巢狀）
+- DatePicker `set_date`
+- Alert dialogs（information、warning、error、confirmation）
+- RadioButton、Slider+Spinner、ProgressBar、TabPane
+- TextArea、PasswordField、Hyperlink
+- CheckBox、ChoiceBox、Accordion、TreeTableView
 
 ### 3. 關閉 app
 
@@ -105,7 +111,16 @@ python scripts/run_demo.py
 
 ### 6. 建置 packaged runtime
 
-執行其中一種：
+> **重要：** jlink image 將 `dev.omniui.agent` 內嵌為 module。
+> 建置 jlink image 前務必先安裝 agent 到本機 Maven repo，
+> 否則 agent 的修改不會生效。
+
+```bash
+mvn install -f java-agent/pom.xml
+mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
+```
+
+或執行 helper script（會呼叫相同的 Maven goals）：
 
 ```bat
 scripts\build_demo_runtime.bat
@@ -143,16 +158,13 @@ powershell -ExecutionPolicy Bypass -File .\demo\javafx-login-app\run-with-agent.
 - JavaFX login 視窗開啟
 - agent 在 `http://127.0.0.1:48100` 上監聽
 
-### 8. 執行聚焦的 Python flow
+### 8. 以 packaged runtime 執行完整 demo suite
 
 ```bash
-python scripts/demo_login_flow.py
+python demo/python/run_all.py
 ```
 
-預期：
-- login flow 成功
-- 會印出 trace history
-- 會印出 recorder output
+預期：與步驟 2 相同，所有 demo 成功，exit code 0。
 
 ## 進階控制項驗證
 
@@ -169,37 +181,29 @@ python demo/python/discover_advanced_controls.py
 - 輸出包含 `userTable`
 - 輸出包含 `settingsGrid`
 
-### 10. 執行進階互動 demo
+### 10. 執行個別元件 demo（選用 — run_all.py 已涵蓋所有項目）
 
 ```bash
 python demo/python/select_combo_role.py
 python demo/python/select_list_item.py
 python demo/python/select_tree_item.py
 python demo/python/select_table_row.py
+python demo/python/context_menu_demo.py
+python demo/python/menu_bar_demo.py
+python demo/python/date_picker_demo.py
+python demo/python/alert_demo.py
+python demo/python/treetableview_demo.py
 ```
 
 預期：
-- combo-box demo 印出 `ComboBox selection succeeded`
-- list-view demo 印出 `ListView selection succeeded`
-- tree-view demo 印出 `TreeView selection succeeded`
-- table-view demo 印出 `TableView selection succeeded`
-- JavaFX 視窗上對應的 status label 會跟著更新
-
-### 11. 記錄明確尚未支援的案例
-
-請額外記錄以下情況是否仍需後續處理：
-- list/tree/table 中 off-screen 或尚未 materialized 的 item
-- 超過 direct selection-model control 範圍的 combo-box popup 互動
-- 超過可見項目 selection 範圍的 tree expand/collapse 行為
-- 當多列資料有相同值時，table row 的 disambiguation
+- 每個 demo 印出 `succeeded` 或 `succeeded ✓`
+- JavaFX 視窗上對應的 UI 會跟著更新
 
 ## 記錄結果
 
 至少記錄：
 - 使用的 launcher
 - 是否出現 agent startup message
-- `run_demo.py` 在 with-agent mode 是否成功
-- advanced discovery 是否回傳預期的 control ids
-- 進階互動 demo 是否成功
+- `run_all.py` 在 with-agent mode 是否全部成功（exit code 0）
 - plain mode 是否清楚失敗
 - 任何 console error 或 stack trace

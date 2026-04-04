@@ -18,13 +18,46 @@ The current repo includes:
 ## Status
 
 Implemented in this repo today:
+
+**Core infrastructure**
 - JavaFX node discovery through a live JavaFX runtime reached by the local Java agent
-- direct JavaFX `click`, `type`, and `get_text`
-- Python APIs for `connect`, `get_nodes`, `click`, `type`, `get_text`, `verify_text`
 - selector fallback chain: `javafx -> ocr -> vision`
 - action tracing, retry-after-refresh, and action history
 - recorder-lite script generation for stable click selectors
-- reference login demo app and end-to-end demo script
+
+**Actions — basic interaction**
+- `click`, `right_click`, `type`, `get_text`, `verify_text`
+- `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
+
+**Actions — menus**
+- `open_menu`, `navigate_menu`, `dismiss_menu`, `click_menu_item` (MenuBar + ContextMenu)
+
+**Actions — DatePicker**
+- `open_datepicker`, `navigate_month`, `pick_date`, `set_date`
+
+**Actions — dialogs**
+- `get_dialog`, `dismiss_dialog` (Alert: information / warning / error / confirmation)
+
+**Actions — form controls**
+- `set_slider`, `set_spinner`, `step_spinner`, `get_progress`, `get_value`
+
+**Actions — tabs**
+- `get_tabs`, `select_tab`
+
+**Actions — Accordion**
+- `expand_pane`, `collapse_pane`, `get_expanded`
+
+**Actions — Hyperlink**
+- `get_visited`
+
+**Actions — TreeTableView**
+- `select_tree_table_row`, `get_tree_table_cell`
+- `expand_tree_table_item`, `collapse_tree_table_item`, `get_tree_table_expanded`
+
+**Demo suite** (all passing via `python demo/python/run_all.py`)
+- Login, ComboBox, ListView, TableView, TreeView, ContextMenu, MenuBar, DatePicker, Alert
+- RadioButton, Slider+Spinner, Progress, Tab, TextArea, PasswordField, Hyperlink
+- CheckBox, ChoiceBox, Accordion, TreeTableView
 
 Not implemented yet:
 - dynamic JVM attach to arbitrary third-party JavaFX processes
@@ -158,8 +191,15 @@ python -m unittest tests.test_agent_contracts tests.test_client tests.test_demo_
 Build the Java agent and demo app:
 
 ```bash
-mvn -pl demo/javafx-login-app -am package
+# Install agent module to local Maven repo first
+mvn install -f java-agent/pom.xml
+# Then build the jlink runtime image (which embeds the agent module)
+mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
 ```
+
+> **Note:** The jlink runtime image embeds `dev.omniui.agent` as a module. Always run
+> `mvn install -f java-agent/pom.xml` before rebuilding the jlink image, or agent
+> changes will not be picked up.
 
 Check markdown i18n consistency:
 

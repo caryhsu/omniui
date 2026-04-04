@@ -18,13 +18,46 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 ## 目前狀態
 
 已完成能力：
+
+**核心基礎設施**
 - 透過本機 Java agent 連到 live JavaFX runtime 做 node discovery
-- 直接執行 JavaFX `click`、`type`、`get_text`
-- Python API: `connect`、`get_nodes`、`click`、`type`、`get_text`、`verify_text`
 - selector fallback chain: `javafx -> ocr -> vision`
 - action tracing、refresh 後 retry、action history
 - recorder-lite 穩定 click script 產生
-- JavaFX login demo app 與 end-to-end demo script
+
+**Actions — 基本互動**
+- `click`、`right_click`、`type`、`get_text`、`verify_text`
+- `select`（ComboBox / ChoiceBox / ListView）、`get_selected`、`set_selected`（CheckBox / RadioButton / ToggleButton）
+
+**Actions — 選單**
+- `open_menu`、`navigate_menu`、`dismiss_menu`、`click_menu_item`（MenuBar + ContextMenu）
+
+**Actions — DatePicker**
+- `open_datepicker`、`navigate_month`、`pick_date`、`set_date`
+
+**Actions — 對話框**
+- `get_dialog`、`dismiss_dialog`（Alert: information / warning / error / confirmation）
+
+**Actions — 表單控制項**
+- `set_slider`、`set_spinner`、`step_spinner`、`get_progress`、`get_value`
+
+**Actions — Tab**
+- `get_tabs`、`select_tab`
+
+**Actions — Accordion**
+- `expand_pane`、`collapse_pane`、`get_expanded`
+
+**Actions — Hyperlink**
+- `get_visited`
+
+**Actions — TreeTableView**
+- `select_tree_table_row`、`get_tree_table_cell`
+- `expand_tree_table_item`、`collapse_tree_table_item`、`get_tree_table_expanded`
+
+**Demo suite**（全部通過，執行 `python demo/python/run_all.py`）
+- Login、ComboBox、ListView、TableView、TreeView、ContextMenu、MenuBar、DatePicker、Alert
+- RadioButton、Slider+Spinner、Progress、Tab、TextArea、PasswordField、Hyperlink
+- CheckBox、ChoiceBox、Accordion、TreeTableView
 
 尚未完成：
 - 對任意第三方 JavaFX process 的動態 JVM attach
@@ -158,8 +191,15 @@ python -m unittest tests.test_agent_contracts tests.test_client tests.test_demo_
 建置 Java agent 與 demo app：
 
 ```bash
-mvn -pl demo/javafx-login-app -am package
+# 先將 agent module 安裝到本機 Maven repo
+mvn install -f java-agent/pom.xml
+# 再建置 jlink runtime image（會內嵌 agent module）
+mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
 ```
+
+> **注意：** jlink runtime image 將 `dev.omniui.agent` 內嵌為 module。
+> 重建 jlink image 前務必先執行 `mvn install -f java-agent/pom.xml`，
+> 否則 agent 的修改不會生效。
 
 檢查 Markdown 國際化一致性：
 
