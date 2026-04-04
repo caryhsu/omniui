@@ -37,6 +37,6 @@
 
 ## 6. Validation
 
-- [ ] 6.1 執行 `mvn package -f java-agent/pom.xml`，確認編譯無誤
-- [ ] 6.2 執行 `treetableview_demo.py`，確認輸出 `treetableview_demo succeeded ✓`
-- [ ] 6.3 git commit + push
+- [x] 6.1 執行 `mvn package -f java-agent/pom.xml`，確認編譯無誤
+- [x] 6.2 執行 `treetableview_demo.py`，確認輸出 `treetableview_demo succeeded ✓`
+- [x] 6.3 git commit + push
