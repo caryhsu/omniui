@@ -10,6 +10,8 @@
 
   <modules>
     <module>java-agent</module>
-    <module>demo/javafx-login-app</module>
+    <module>demo/java/core-app</module>
+    <module>demo/java/input-app</module>
+    <module>demo/java/advanced-app</module>
   </modules>
 </project>

@@ -4,14 +4,12 @@ from omniui import OmniUI
 
 
 WITH_AGENT_HINT = (
-    "OmniUI demo scripts require the JavaFX login app to be running in with-agent mode.\n"
-    "Start one of these first:\n"
-    "- demo\\javafx-login-app\\run-dev-with-agent.bat\n"
-    "- demo\\javafx-login-app\\run-with-agent.bat\n"
-    "- powershell -ExecutionPolicy Bypass -File .\\demo\\javafx-login-app\\run-dev-with-agent.ps1\n"
-    "- powershell -ExecutionPolicy Bypass -File .\\demo\\javafx-login-app\\run-with-agent.ps1\n"
-    "- ./demo/javafx-login-app/run-dev-with-agent.sh\n"
-    "- ./demo/javafx-login-app/run-with-agent.sh"
+    "OmniUI demo scripts require a demo app to be running in with-agent mode.\n"
+    "Start one of the apps from demo/java/core-app/, input-app/, or advanced-app/.\n"
+    "For example:\n"
+    "- demo\\java\\core-app\\run-dev-with-agent.bat\n"
+    "- demo\\java\\input-app\\run-dev-with-agent.bat\n"
+    "- demo\\java\\advanced-app\\run-dev-with-agent.bat"
 )
 
 

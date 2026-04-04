@@ -15,7 +15,7 @@ This is the main documentation entry point for OmniUI Phase 1.
 ## Components
 
 - [Java Agent](../java-agent/README.md)
-- [JavaFX Login Demo](../demo/javafx-login-app/README.md)
+- [JavaFX Demo Apps](../demo/java/) — core-app (48100), input-app (48101), advanced-app (48102)
 
 ## Workflow Artifacts
 

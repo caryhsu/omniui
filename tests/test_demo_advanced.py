@@ -3,13 +3,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from demo.python.discover_advanced_controls import filter_advanced_nodes
+from demo.python.advanced.discover_advanced_controls import filter_advanced_nodes
 from omniui.core.models import ActionResult, ActionTrace, Selector
 
-import demo.python.select_combo_role as select_combo_role
-import demo.python.select_list_item as select_list_item
-import demo.python.select_table_row as select_table_row
-import demo.python.select_tree_item as select_tree_item
+import demo.python.core.select_combo_role as select_combo_role
+import demo.python.core.select_list_item as select_list_item
+import demo.python.core.select_table_row as select_table_row
+import demo.python.core.select_tree_item as select_tree_item
 
 
 class _FakeAdvancedClient:
@@ -73,10 +73,10 @@ class AdvancedDemoTests(unittest.TestCase):
         self.assertEqual(result[0]["fxId"], "selectionSection")
         self.assertEqual(result[1]["text"], "Hierarchy Controls")
 
-    @patch("demo.python.select_combo_role.connect_or_exit")
-    @patch("demo.python.select_list_item.connect_or_exit")
-    @patch("demo.python.select_tree_item.connect_or_exit")
-    @patch("demo.python.select_table_row.connect_or_exit")
+    @patch("demo.python.core.select_combo_role.connect_or_exit")
+    @patch("demo.python.core.select_list_item.connect_or_exit")
+    @patch("demo.python.core.select_tree_item.connect_or_exit")
+    @patch("demo.python.core.select_table_row.connect_or_exit")
     def test_advanced_interaction_scripts_run(self, mock_table, mock_tree, mock_list, mock_combo) -> None:
         combo_client = _FakeAdvancedClient()
         list_client = _FakeAdvancedClient()

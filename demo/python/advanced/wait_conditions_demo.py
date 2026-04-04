@@ -12,8 +12,6 @@ def main() -> None:
     client = connect_or_exit()
 
     # ── wait_for_visible: hide then immediately show ──────────────────────────
-    # The node starts visible; hide it then restore — wait_for_visible must
-    # succeed immediately because we restore before calling it.
     client.set_visible(False, id="nodeStateTarget")
     client.set_visible(True, id="nodeStateTarget")
     client.wait_for_visible("nodeStateTarget", timeout=3.0)
@@ -23,14 +21,14 @@ def main() -> None:
     client.set_disabled(False, id="nodeStateTarget")
     client.wait_for_enabled("nodeStateTarget", timeout=3.0)
 
-    # ── wait_for_text: loginButton should show "Login" ────────────────────────
-    client.wait_for_text("loginButton", "Login", timeout=3.0)
+    # ── wait_for_text: tooltipBtn should show "Hover Me" ─────────────────────
+    client.wait_for_text("tooltipBtn", "Hover Me", timeout=3.0)
 
     # ── wait_for_value: alias — same check ────────────────────────────────────
-    client.wait_for_value("loginButton", "Login", timeout=3.0)
+    client.wait_for_value("tooltipBtn", "Hover Me", timeout=3.0)
 
     # ── wait_for_node: a known node should be found ───────────────────────────
-    client.wait_for_node("loginButton", timeout=3.0)
+    client.wait_for_node("tooltipBtn", timeout=3.0)
 
     # ── timeout is respected: non-existent node should raise TimeoutError ─────
     raised = False

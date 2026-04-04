@@ -2,39 +2,43 @@
 
 This directory collects runnable demos for OmniUI Phase 1.
 
-## Available Demos
+## JavaFX target apps
 
-### JavaFX target app
+Three focused demo apps are available under `demo/java/`:
 
-- [javafx-login-app](javafx-login-app/README.md)
+| App | Port | Contents |
+|-----|------|---------|
+| [core-app](java/core-app/) | 48100 | Login flow, ComboBox, ListView, TreeView, TableView, GridPane |
+| [input-app](java/input-app/) | 48101 | TextArea, PasswordField, Hyperlink, CheckBox, ChoiceBox, RadioButton, Slider, Spinner, ColorPicker, DatePicker |
+| [advanced-app](java/advanced-app/) | 48102 | ContextMenu, MenuBar, Dialog, Alert, TabPane, Accordion, TreeTableView, SplitPane, ProgressBar, NodeState, ScrollPane, Tooltip |
 
-This is the reference JavaFX application used by the Python demos below.
-
-The current demo app includes:
-- the original login flow
-- visible advanced controls including `ComboBox`, `ListView`, `TreeView`, `TableView`, and a grid layout section
-
-Start it first:
+Start the app you want to test:
 
 ```bash
-demo/javafx-login-app/run-dev-with-agent.bat
+demo/java/core-app/run-dev-with-agent.bat
+demo/java/input-app/run-dev-with-agent.bat
+demo/java/advanced-app/run-dev-with-agent.bat
 ```
 
-Or build a runtime image with `jlink` and run `run-with-agent.*` as documented in [javafx-login-app/README.md](javafx-login-app/README.md).
+Each app supports four launch modes: `run-dev-with-agent`, `run-dev-plain`, `run-with-agent` (jlink), `run-plain` (jlink).
 
-Helper scripts are available in [scripts](../scripts):
+Helper build scripts are available in [scripts](../scripts):
 - `build_demo_runtime.ps1`
 - `build_demo_runtime.bat`
 - `build_demo_runtime.sh`
 
-Those build helpers now print the exact `run-with-agent.*` and `run-plain.*` launchers to use next.
-
 Note:
-- The `.sh` helper currently targets Git Bash on Windows. The demo app and packaged launcher flow are still documented and validated primarily on Windows.
+- The `.sh` helper currently targets Git Bash on Windows.
 
 ## Python demos
 
-All Python demos assume the JavaFX login app is already running in `with-agent` mode on `http://127.0.0.1:48100`.
+Python demos are organized under `demo/python/` to match the 3 apps:
+
+| Subfolder | Targets | Port |
+|-----------|---------|------|
+| `demo/python/core/` | core-app | 48100 |
+| `demo/python/input/` | input-app | 48101 |
+| `demo/python/advanced/` | advanced-app | 48102 |
 
 ### Run everything
 
@@ -42,8 +46,7 @@ All Python demos assume the JavaFX login app is already running in `with-agent` 
 python demo/python/run_all.py
 ```
 
-Runs discovery, direct login, fallback login, recorder preview, and benchmark in sequence.
-It now also prints the visible advanced-control nodes before running the interaction demos.
+Starts each demo group in sequence. Requires all 3 apps to be running in with-agent mode.
 
 You can also run:
 
@@ -52,56 +55,22 @@ python -m demo.python.run_all
 python scripts/run_demo.py
 ```
 
-### Discover nodes
+### Run a specific group
 
 ```bash
-python demo/python/discover_nodes.py
+# Core demos (requires core-app on port 48100)
+python demo/python/core/login_direct.py
+python demo/python/core/select_combo_role.py
+python demo/python/core/discover_nodes.py
+
+# Input demos (requires input-app on port 48101)
+python demo/python/input/text_area_demo.py
+python demo/python/input/date_picker_demo.py
+
+# Advanced demos (requires advanced-app on port 48102)
+python demo/python/advanced/context_menu_demo.py
+python demo/python/advanced/discover_advanced_controls.py
 ```
-
-Lists the current JavaFX node snapshot returned by the agent.
-
-### Discover advanced controls
-
-```bash
-python demo/python/discover_advanced_controls.py
-```
-
-Prints the currently visible advanced-control nodes from the JavaFX demo screen.
-
-### Advanced control interactions
-
-```bash
-python demo/python/select_combo_role.py
-python demo/python/select_list_item.py
-python demo/python/select_tree_item.py
-python demo/python/select_table_row.py
-```
-
-Runs direct JavaFX selection demos for `ComboBox`, `ListView`, `TreeView`, and `TableView`, then verifies each status label.
-
-### Direct login flow
-
-```bash
-python demo/python/login_direct.py
-```
-
-Runs the login flow using direct JavaFX selectors such as `id="loginButton"`.
-
-### Login flow with OCR fallback
-
-```bash
-python demo/python/login_with_fallback.py
-```
-
-Runs the login flow with the final click expressed as `text="Login"` so the trace can show fallback behavior when applicable.
-
-### Recorder preview
-
-```bash
-python demo/python/recorder_preview.py
-```
-
-Runs a small flow and prints the recorder-lite output generated from action history.
 
 ### Benchmark
 

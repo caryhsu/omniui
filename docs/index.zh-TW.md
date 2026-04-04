@@ -15,7 +15,7 @@
 ## 元件文件
 
 - [Java Agent](../java-agent/README.zh-TW.md)
-- [JavaFX Login Demo](../demo/javafx-login-app/README.zh-TW.md)
+- [JavaFX Demo 應用](../demo/java/) — core-app (48100)、input-app (48101)、advanced-app (48102)
 
 ## Workflow Artifact
 

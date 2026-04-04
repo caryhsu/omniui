@@ -2,86 +2,89 @@ from __future__ import annotations
 
 if __package__ in (None, ""):
     import _bootstrap  # type: ignore # noqa: F401
-    import alert_demo  # type: ignore
-    import context_menu_demo  # type: ignore
-    import date_picker_demo  # type: ignore
-    import dialog_demo  # type: ignore
-    import discover_advanced_controls  # type: ignore
-    import discover_nodes  # type: ignore
-    import login_direct  # type: ignore
-    import login_with_fallback  # type: ignore
-    import menu_bar_demo  # type: ignore
-    import progress_demo  # type: ignore
-    import radio_toggle_demo  # type: ignore
-    import recorder_preview  # type: ignore
+    # Core app demos
+    import core.login_direct as login_direct  # type: ignore
+    import core.login_with_fallback as login_with_fallback  # type: ignore
+    import core.select_combo_role as select_combo_role  # type: ignore
+    import core.select_list_item as select_list_item  # type: ignore
+    import core.select_tree_item as select_tree_item  # type: ignore
+    import core.select_table_row as select_table_row  # type: ignore
+    import core.multi_select_demo as multi_select_demo  # type: ignore
+    import core.discover_nodes as discover_nodes  # type: ignore
+    import core.index_selector_demo as index_selector_demo  # type: ignore
+    import core.keyboard_shortcuts_demo as keyboard_shortcuts_demo  # type: ignore
+    import core.double_click_demo as double_click_demo  # type: ignore
+    import core.flexible_verify_text_demo as flexible_verify_text_demo  # type: ignore
+    import core.css_style_demo as css_style_demo  # type: ignore
+    # Input app demos
+    import input.text_area_demo as text_area_demo  # type: ignore
+    import input.password_field_demo as password_field_demo  # type: ignore
+    import input.hyperlink_demo as hyperlink_demo  # type: ignore
+    import input.checkbox_demo as checkbox_demo  # type: ignore
+    import input.choicebox_demo as choicebox_demo  # type: ignore
+    import input.radio_toggle_demo as radio_toggle_demo  # type: ignore
+    import input.slider_spinner_demo as slider_spinner_demo  # type: ignore
+    import input.color_picker_demo as color_picker_demo  # type: ignore
+    import input.date_picker_demo as date_picker_demo  # type: ignore
+    # Advanced app demos
+    import advanced.context_menu_demo as context_menu_demo  # type: ignore
+    import advanced.menu_bar_demo as menu_bar_demo  # type: ignore
+    import advanced.dialog_demo as dialog_demo  # type: ignore
+    import advanced.alert_demo as alert_demo  # type: ignore
+    import advanced.tab_demo as tab_demo  # type: ignore
+    import advanced.accordion_demo as accordion_demo  # type: ignore
+    import advanced.treetableview_demo as treetableview_demo  # type: ignore
+    import advanced.split_pane_demo as split_pane_demo  # type: ignore
+    import advanced.progress_demo as progress_demo  # type: ignore
+    import advanced.node_state_demo as node_state_demo  # type: ignore
+    import advanced.scroll_demo as scroll_demo  # type: ignore
+    import advanced.tooltip_demo as tooltip_demo  # type: ignore
+    import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
     import run_benchmark  # type: ignore
-    import select_combo_role  # type: ignore
-    import select_list_item  # type: ignore
-    import select_table_row  # type: ignore
-    import select_tree_item  # type: ignore
-    import slider_spinner_demo  # type: ignore
-    import checkbox_demo  # type: ignore
-    import choicebox_demo  # type: ignore
-    import accordion_demo  # type: ignore
-    import treetableview_demo  # type: ignore
-    import hyperlink_demo  # type: ignore
-    import password_field_demo  # type: ignore
-    import tab_demo  # type: ignore
-    import text_area_demo  # type: ignore
-    import color_picker_demo  # type: ignore
-    import split_pane_demo  # type: ignore
-    import node_state_demo  # type: ignore
-    import wait_conditions_demo  # type: ignore
-    import double_click_demo  # type: ignore
-    import keyboard_shortcuts_demo  # type: ignore
-    import index_selector_demo  # type: ignore
-    import tooltip_demo  # type: ignore
-    import css_style_demo  # type: ignore
-    import flexible_verify_text_demo  # type: ignore
-    import scroll_demo  # type: ignore
-    import multi_select_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
-    from . import (
-        alert_demo,
-        context_menu_demo,
-        date_picker_demo,
-        dialog_demo,
-        discover_advanced_controls,
-        discover_nodes,
+    from .core import (
         login_direct,
         login_with_fallback,
-        menu_bar_demo,
-        progress_demo,
-        radio_toggle_demo,
-        recorder_preview,
-        run_benchmark,
         select_combo_role,
         select_list_item,
-        select_table_row,
         select_tree_item,
-        slider_spinner_demo,
+        select_table_row,
+        multi_select_demo,
+        discover_nodes,
+        index_selector_demo,
+        keyboard_shortcuts_demo,
+        double_click_demo,
+        flexible_verify_text_demo,
+        css_style_demo,
+    )
+    from .input import (
+        text_area_demo,
+        password_field_demo,
+        hyperlink_demo,
         checkbox_demo,
         choicebox_demo,
+        radio_toggle_demo,
+        slider_spinner_demo,
+        color_picker_demo,
+        date_picker_demo,
+    )
+    from .advanced import (
+        context_menu_demo,
+        menu_bar_demo,
+        dialog_demo,
+        alert_demo,
+        tab_demo,
         accordion_demo,
         treetableview_demo,
-        hyperlink_demo,
-        password_field_demo,
-        tab_demo,
-        text_area_demo,
-        color_picker_demo,
         split_pane_demo,
+        progress_demo,
         node_state_demo,
-        wait_conditions_demo,
-        double_click_demo,
-        keyboard_shortcuts_demo,
-        index_selector_demo,
-        tooltip_demo,
-        css_style_demo,
-        flexible_verify_text_demo,
         scroll_demo,
-        multi_select_demo,
+        tooltip_demo,
+        discover_advanced_controls,
     )
+    from . import run_benchmark
 
 
 def _section(title: str) -> None:
@@ -90,11 +93,10 @@ def _section(title: str) -> None:
 
 
 def main() -> None:
+    _section("Core App demos (port 48100)")
+
     _section("Discover Nodes")
     discover_nodes.main()
-
-    _section("Discover Advanced Controls")
-    discover_advanced_controls.main()
 
     _section("Select ComboBox Role")
     select_combo_role.main()
@@ -114,32 +116,25 @@ def main() -> None:
     _section("Login With Fallback")
     login_with_fallback.main()
 
-    _section("ContextMenu Demo")
-    context_menu_demo.main()
+    _section("Double-Click Demo")
+    double_click_demo.main()
 
-    _section("MenuBar Demo")
-    menu_bar_demo.main()
+    _section("Keyboard Shortcuts Demo")
+    keyboard_shortcuts_demo.main()
 
-    _section("DatePicker Demo")
-    date_picker_demo.main()
+    _section("Index Selector Demo")
+    index_selector_demo.main()
 
-    _section("Dialog Demo")
-    dialog_demo.main()
+    _section("CSS Style Demo")
+    css_style_demo.main()
 
-    _section("Alert Demo")
-    alert_demo.main()
+    _section("Flexible verify_text Demo")
+    flexible_verify_text_demo.main()
 
-    _section("RadioButton / ToggleButton Demo")
-    radio_toggle_demo.main()
+    _section("Multi-select Demo")
+    multi_select_demo.main()
 
-    _section("Slider / Spinner Demo")
-    slider_spinner_demo.main()
-
-    _section("ProgressBar Demo")
-    progress_demo.main()
-
-    _section("TabPane Demo")
-    tab_demo.main()
+    _section("Input App demos (port 48101)")
 
     _section("TextArea Demo")
     text_area_demo.main()
@@ -156,50 +151,58 @@ def main() -> None:
     _section("ChoiceBox Demo")
     choicebox_demo.main()
 
+    _section("RadioButton / ToggleButton Demo")
+    radio_toggle_demo.main()
+
+    _section("Slider / Spinner Demo")
+    slider_spinner_demo.main()
+
+    _section("ColorPicker Demo")
+    color_picker_demo.main()
+
+    _section("DatePicker Demo")
+    date_picker_demo.main()
+
+    _section("Advanced App demos (port 48102)")
+
+    _section("Discover Advanced Controls")
+    discover_advanced_controls.main()
+
+    _section("ContextMenu Demo")
+    context_menu_demo.main()
+
+    _section("MenuBar Demo")
+    menu_bar_demo.main()
+
+    _section("Dialog Demo")
+    dialog_demo.main()
+
+    _section("Alert Demo")
+    alert_demo.main()
+
+    _section("TabPane Demo")
+    tab_demo.main()
+
     _section("Accordion Demo")
     accordion_demo.main()
 
     _section("TreeTableView Demo")
     treetableview_demo.main()
 
-    _section("ColorPicker Demo")
-    color_picker_demo.main()
-
     _section("SplitPane Demo")
     split_pane_demo.main()
+
+    _section("ProgressBar Demo")
+    progress_demo.main()
 
     _section("Node State Demo")
     node_state_demo.main()
 
-    _section("Wait Conditions Demo")
-    wait_conditions_demo.main()
-
-    _section("Double-Click Demo")
-    double_click_demo.main()
-
-    _section("Keyboard Shortcuts Demo")
-    keyboard_shortcuts_demo.main()
-
-    _section("Index Selector Demo")
-    index_selector_demo.main()
-
-    _section("Tooltip Demo")
-    tooltip_demo.main()
-
-    _section("CSS Style Demo")
-    css_style_demo.main()
-
-    _section("Flexible verify_text Demo")
-    flexible_verify_text_demo.main()
-
     _section("Scroll Demo")
     scroll_demo.main()
 
-    _section("Multi-select Demo")
-    multi_select_demo.main()
-
-    _section("Recorder Preview")
-    recorder_preview.main()
+    _section("Tooltip Demo")
+    tooltip_demo.main()
 
     _section("Benchmark")
     run_benchmark.main()

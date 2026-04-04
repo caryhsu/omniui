@@ -12,7 +12,7 @@ Phase 1 focuses on local JavaFX automation with this priority order:
 The current repo includes:
 - a Python client in [omniui](omniui)
 - a local HTTP Java agent in [java-agent](java-agent)
-- a reference JavaFX login app in [demo/javafx-login-app](demo/javafx-login-app)
+- reference JavaFX demo apps in [demo/java](demo/java) (`core-app`, `input-app`, `advanced-app`)
 - demo and benchmark scripts in [scripts](scripts)
 
 ## Status
@@ -91,7 +91,15 @@ omniui/
   vision_module/
   recorder_lite/
 java-agent/
-demo/javafx-login-app/
+demo/
+  java/
+    core-app/    ← Login, ComboBox, ListView, TreeView, TableView, GridPane  (port 48100)
+    input-app/   ← TextArea, Checkboxes, Sliders, ColorPicker, DatePicker …  (port 48101)
+    advanced-app/← ContextMenu, MenuBar, Dialogs, TabPane, Accordion …       (port 48102)
+  python/
+    core/        ← demo scripts for core-app
+    input/       ← demo scripts for input-app
+    advanced/    ← demo scripts for advanced-app
 scripts/
 openspec/
 ```
@@ -105,13 +113,13 @@ openspec/
 
 ## Quick Start
 
-1. Start the JavaFX demo app:
+1. Start the JavaFX demo app (core-app, port 48100):
 
 ```bash
-demo\javafx-login-app\run-dev-with-agent.bat
+demo\java\core-app\run-dev-with-agent.bat
 ```
 
-This launches the sample login window with the OmniUI Java agent enabled on `http://127.0.0.1:48100`.
+This launches the core demo window with the OmniUI Java agent enabled on `http://127.0.0.1:48100`.
 
 2. In another terminal, run the Python demo flow:
 
@@ -203,16 +211,18 @@ Unsupported interactions are intentionally skipped instead of falling back to ra
 Run the Python test suite:
 
 ```bash
-python -m unittest tests.test_agent_contracts tests.test_client tests.test_demo_script tests.test_recorder tests.test_benchmark tests.test_markdown_i18n
+python -m pytest tests/
 ```
 
-Build the Java agent and demo app:
+Build the Java agent and demo apps:
 
 ```bash
 # Install agent module to local Maven repo first
 mvn install -f java-agent/pom.xml
-# Then build the jlink runtime image (which embeds the agent module)
-mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
+# Then build the jlink runtime images for each demo app
+mvn package javafx:jlink -f demo/java/core-app/pom.xml
+mvn package javafx:jlink -f demo/java/input-app/pom.xml
+mvn package javafx:jlink -f demo/java/advanced-app/pom.xml
 ```
 
 > **Note:** The jlink runtime image embeds `dev.omniui.agent` as a module. Always run

@@ -7,7 +7,7 @@
 ## 範圍
 
 這份 checklist 主要驗證：
-- JavaFX login demo app
+- 三個 JavaFX demo app（`core-app`、`input-app`、`advanced-app`）
 - 標準 Java agent 啟動
 - Python demo flows
 - plain-mode isolation
@@ -23,24 +23,24 @@
 
 ## 開發期模式驗證
 
-### 1. 以 with-agent mode 啟動 app
+### 1. 以 with-agent mode 啟動 core-app
 
 執行其中一種：
 
 ```bat
-demo\javafx-login-app\run-dev-with-agent.bat
+demo\java\core-app\run-dev-with-agent.bat
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\demo\javafx-login-app\run-dev-with-agent.ps1
+powershell -ExecutionPolicy Bypass -File .\demo\java\core-app\run-dev-with-agent.ps1
 ```
 
 ```bash
-./demo/javafx-login-app/run-dev-with-agent.sh
+./demo/java/core-app/run-dev-with-agent.sh
 ```
 
 預期：
-- JavaFX login 視窗開啟
+- JavaFX core demo 視窗開啟
 - console 顯示 `OmniUI agent listening on http://127.0.0.1:48100`
 
 ### 2. 執行 Python demo suite
@@ -56,15 +56,13 @@ python demo/python/run_all.py
 - exit code 0
 
 涵蓋的 demo：
-- Login（direct + fallback）
-- ComboBox、ListView、TreeView、TableView selection
-- ContextMenu（單層與多層）
-- MenuBar navigation（單層與巢狀）
-- DatePicker `set_date`
-- Alert dialogs（information、warning、error、confirmation）
-- RadioButton、Slider+Spinner、ProgressBar、TabPane
-- TextArea、PasswordField、Hyperlink
-- CheckBox、ChoiceBox、Accordion、TreeTableView
+- Login（direct + fallback）、keyboard shortcuts、double-click、flexible verify
+- ComboBox、ListView、TreeView、TableView selection、multi-select
+- CSS style 檢查、recorder preview
+- （Input）TextArea、PasswordField、Hyperlink、CheckBox、ChoiceBox
+- （Input）RadioButton、Slider+Spinner、ColorPicker、DatePicker
+- （Advanced）ContextMenu、MenuBar、Dialog、Alert、TabPane
+- （Advanced）Accordion、TreeTableView、SplitPane、ProgressBar、NodeState、ScrollPane、Tooltip
 
 ### 3. 關閉 app
 
@@ -74,24 +72,24 @@ python demo/python/run_all.py
 
 ## Plain Mode Isolation 驗證
 
-### 4. 以 plain mode 啟動 app
+### 4. 以 plain mode 啟動 core-app
 
 執行其中一種：
 
 ```bat
-demo\javafx-login-app\run-dev-plain.bat
+demo\java\core-app\run-dev-plain.bat
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\demo\javafx-login-app\run-dev-plain.ps1
+powershell -ExecutionPolicy Bypass -File .\demo\java\core-app\run-dev-plain.ps1
 ```
 
 ```bash
-./demo/javafx-login-app/run-dev-plain.sh
+./demo/java/core-app/run-dev-plain.sh
 ```
 
 預期：
-- JavaFX login 視窗開啟
+- JavaFX core demo 視窗開啟
 - console 不應顯示 OmniUI agent startup message
 
 ### 5. 對 plain mode 嘗試執行 Python demo
@@ -109,7 +107,7 @@ python scripts/run_demo.py
 
 ## Packaged Runtime 驗證
 
-### 6. 建置 packaged runtime
+### 6. 建置 packaged runtimes
 
 > **重要：** jlink image 將 `dev.omniui.agent` 內嵌為 module。
 > 建置 jlink image 前務必先安裝 agent 到本機 Maven repo，
@@ -117,7 +115,9 @@ python scripts/run_demo.py
 
 ```bash
 mvn install -f java-agent/pom.xml
-mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
+mvn package javafx:jlink -f demo/java/core-app/pom.xml
+mvn package javafx:jlink -f demo/java/input-app/pom.xml
+mvn package javafx:jlink -f demo/java/advanced-app/pom.xml
 ```
 
 或執行 helper script（會呼叫相同的 Maven goals）：
@@ -138,24 +138,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_demo_runtime.ps1
 - build 成功
 - script 會列出下一步可用的 `run-with-agent.*` 與 `run-plain.*` launcher
 
-### 7. 以 with-agent mode 啟動 packaged app
+### 7. 以 with-agent mode 啟動 packaged core-app
 
 執行其中一種：
 
 ```bat
-demo\javafx-login-app\run-with-agent.bat
+demo\java\core-app\run-with-agent.bat
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\demo\javafx-login-app\run-with-agent.ps1
+powershell -ExecutionPolicy Bypass -File .\demo\java\core-app\run-with-agent.ps1
 ```
 
 ```bash
-./demo/javafx-login-app/run-with-agent.sh
+./demo/java/core-app/run-with-agent.sh
 ```
 
 預期：
-- JavaFX login 視窗開啟
+- JavaFX core demo 視窗開啟
 - agent 在 `http://127.0.0.1:48100` 上監聽
 
 ### 8. 以 packaged runtime 執行完整 demo suite
@@ -170,29 +170,27 @@ python demo/python/run_all.py
 
 ### 9. 執行進階元件 discovery script
 
+先啟動 advanced-app（`demo\java\advanced-app\run-dev-with-agent.bat`，port 48102），再執行：
+
 ```bash
-python demo/python/discover_advanced_controls.py
+python demo/python/advanced/discover_advanced_controls.py
 ```
 
 預期：
-- 輸出包含 `roleCombo`
-- 輸出包含 `serverList`
-- 輸出包含 `assetTree`
-- 輸出包含 `userTable`
-- 輸出包含 `settingsGrid`
+- 輸出包含進階控制項的 node ID
 
 ### 10. 執行個別元件 demo（選用 — run_all.py 已涵蓋所有項目）
 
 ```bash
-python demo/python/select_combo_role.py
-python demo/python/select_list_item.py
-python demo/python/select_tree_item.py
-python demo/python/select_table_row.py
-python demo/python/context_menu_demo.py
-python demo/python/menu_bar_demo.py
-python demo/python/date_picker_demo.py
-python demo/python/alert_demo.py
-python demo/python/treetableview_demo.py
+python demo/python/core/select_combo_role.py
+python demo/python/core/select_list_item.py
+python demo/python/core/select_tree_item.py
+python demo/python/core/select_table_row.py
+python demo/python/advanced/context_menu_demo.py
+python demo/python/advanced/menu_bar_demo.py
+python demo/python/input/date_picker_demo.py
+python demo/python/advanced/alert_demo.py
+python demo/python/advanced/treetableview_demo.py
 ```
 
 預期：
