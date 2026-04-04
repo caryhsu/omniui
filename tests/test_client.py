@@ -323,3 +323,74 @@ class LaunchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LocatorTests(unittest.TestCase):
+    """Tests for OmniUIClient.locator() and the Locator class."""
+
+    def _make_client(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+        ]
+        return OmniUI.connect()
+
+    @patch("urllib.request.urlopen")
+    def test_locator_repr(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        loc = client.locator(id="loginBtn")
+        self.assertIn("loginBtn", repr(loc))
+
+    @patch("urllib.request.urlopen")
+    def test_locator_requires_selector(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        with self.assertRaises(ValueError):
+            client.locator()
+
+    @patch("urllib.request.urlopen")
+    def test_locator_click_delegates_to_client(self, mock_urlopen) -> None:
+        click_resp = _FakeResponse({
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": "btn", "matchedAttributes": {"fxId": "loginBtn"}, "confidence": None},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": None,
+        })
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            click_resp,
+        ]
+        client = OmniUI.connect()
+        loc = client.locator(id="loginBtn")
+        result = loc.click()
+        self.assertTrue(result.ok)
+
+    @patch("urllib.request.urlopen")
+    def test_locator_verify_text_delegates_to_client(self, mock_urlopen) -> None:
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            _FakeResponse({
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "lbl", "matchedAttributes": {"fxId": "label"}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": "Hello",
+            }),
+        ]
+        client = OmniUI.connect()
+        loc = client.locator(id="label")
+        result = loc.verify_text("Hello")
+        self.assertTrue(result.ok)
+        self.assertTrue(result.value["matches"])
+
+    @patch("urllib.request.urlopen")
+    def test_locator_wait_for_visible_requires_id(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        loc = client.locator(text="Submit")
+        with self.assertRaises(ValueError) as ctx:
+            loc.wait_for_visible()
+        self.assertIn("id=", str(ctx.exception))
+
+    def test_locator_exported_from_package(self) -> None:
+        from omniui import Locator
+        self.assertIsNotNone(Locator)

@@ -123,6 +123,20 @@ class OmniUIClient:
         """
         self.session_id = ""
 
+    def locator(self, **selector: Any) -> "Locator":
+        """Return a :class:`~omniui.locator.Locator` bound to this client and *selector*.
+
+        The locator stores the selector and re-uses it on every subsequent
+        call, removing the need to repeat ``id=...`` on every action::
+
+            btn = client.locator(id="loginBtn")
+            btn.wait_for_visible()
+            btn.click()
+            btn.verify_text("Login")
+        """
+        from omniui.locator import Locator
+        return Locator(self, **selector)
+
     def find(self, **selector: Any) -> dict[str, Any]:
         normalized = normalize_selector(
             id=selector.get("id"),

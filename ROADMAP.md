@@ -39,7 +39,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Calls `Platform.exit()` from within the agent; useful for test teardown and shutdown behavior testing
 - [x] **Wait conditions** — `wait_for_text(id, expected, timeout)`, `wait_for_visible(id, timeout)`, `wait_for_enabled(id, timeout)`, `wait_for_node(id, timeout)`, `wait_for_value(id, expected, timeout)`
   - Poll-based (Python-side) or agent-side blocking; essential for async UI state changes
-- [ ] **App launch API** — `launch_app(jar=..., port=...)` start a JavaFX app (with embedded agent) directly from Python
+- [x] **App launch API** — `launch_app(jar=..., port=...)` start a JavaFX app (with embedded agent) directly from Python
   - Currently the agent must be started manually before any test; this bridges the gap vs Playwright / WinAppDriver
 
 ---
@@ -95,11 +95,11 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **Page Object Model base class** — `OmniPage` base class with auto-wired `client`; gives test projects a standard structure
 - [ ] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
 - [ ] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
-- [ ] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
+- [x] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
 - [ ] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`
-- [ ] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
-- [ ] **Auto-screenshot on failure** — automatically capture and save a screenshot when any action raises an exception
-- [ ] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
+- [x] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
+- [x] **Auto-screenshot on failure** — automatically capture and save a screenshot when any action raises an exception
+- [x] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
 - [ ] **Headless mode** — document and support JavaFX Monocle headless mode for running tests in CI without a display
 - [ ] **CI/CD examples** — GitHub Actions workflow template (headless + agent startup + pytest)
 - [ ] **HTML test report** — pytest-html or Allure integration guide

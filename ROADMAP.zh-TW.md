@@ -39,7 +39,7 @@
   - 從 agent 內呼叫 `Platform.exit()`；適合測試收尾與關閉行為驗證
 - [x] **等待條件（waitFor）** — `wait_for_text(id, expected, timeout)`、`wait_for_visible(id, timeout)`、`wait_for_enabled(id, timeout)`、`wait_for_node(id, timeout)`、`wait_for_value(id, expected, timeout)`
   - Python 端輪詢或 agent 端阻塞；非同步 UI 狀態變更不可或缺
-- [ ] **App 啟動 API** — `launch_app(jar=..., port=...)` 從 Python 直接啟動含 agent 的 JavaFX app
+- [x] **App 啟動 API** — `launch_app(jar=..., port=...)` 從 Python 直接啟動含 agent 的 JavaFX app
   - 目前每次測試前需手動啟動 agent；補齊與 Playwright / WinAppDriver 的落差
 
 ---
@@ -96,11 +96,11 @@
 - [ ] **Page Object Model 基礎類別** — `OmniPage` base class 自動注入 `client`；給測試專案標準化結構
 - [ ] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
 - [ ] **Retry 輔助器** — `@client.retry(times=3, delay=0.5)` 裝飾器，用於不穩定的 assertion 區塊
-- [ ] **結構化動作 Trace** — 每個操作自動記錄 timestamp、selector、結果；測試失敗時輸出完整動作時間軸
+- [x] **結構化動作 Trace** — 每個操作自動記錄 timestamp、selector、結果；測試失敗時輸出完整動作時間軸
 - [ ] **平行測試支援** — 說明文件與範例，搭配 `pytest-xdist` 對多個 app 實例執行平行測試
-- [ ] **pytest fixture 整合** — `@pytest.fixture` 自動 connect/disconnect，減少測試樣板程式碼
-- [ ] **失敗自動截圖** — 任何操作拋出例外時自動擷取並儲存截圖
-- [ ] **自訂 wait 條件** — `wait_until(fn, timeout)` 接受自訂 lambda，支援任意輪詢邏輯
+- [x] **pytest fixture 整合** — `@pytest.fixture` 自動 connect/disconnect，減少測試樣板程式碼
+- [x] **失敗自動截圖** — 任何操作拋出例外時自動擷取並儲存截圖
+- [x] **自訂 wait 條件** — `wait_until(fn, timeout)` 接受自訂 lambda，支援任意輪詢邏輯
 - [ ] **Headless 模式** — 說明並支援 JavaFX Monocle headless 模式，讓 CI 不需要顯示器
 - [ ] **CI/CD 範例** — GitHub Actions workflow 範本（headless + agent 啟動 + pytest）
 - [ ] **HTML 測試報告** — pytest-html 或 Allure 整合說明
