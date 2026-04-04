@@ -27,6 +27,7 @@ Implemented in this repo today:
 
 **Actions — basic interaction**
 - `click`, `right_click`, `double_click`, `type`, `get_text`, `verify_text`
+- `press_key(key, **selector)` — keyboard shortcuts; format: `"Ctrl+C"`, `"Shift+Tab"`, `"Escape"`, `"Control+Shift+Z"`
 - `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
 - `is_visible`, `is_enabled` — query node visibility / enabled state
 - `wait_for_text`, `wait_for_visible`, `wait_for_enabled`, `wait_for_node`, `wait_for_value` — poll-based wait conditions

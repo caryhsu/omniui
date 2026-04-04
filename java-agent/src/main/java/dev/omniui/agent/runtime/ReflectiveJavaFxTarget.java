@@ -67,6 +67,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "get_dialog"      -> doGetDialog();
             case "dismiss_dialog"  -> doDismissDialog(payload);
             case "close_app"       -> doCloseApp();
+            case "press_key"       -> doPressKey(selector, payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
     }
@@ -1233,6 +1234,129 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         shutdownThread.setDaemon(true);
         shutdownThread.start();
         return ActionResult.success("javafx", null, Map.of(), null);
+    }
+
+    /**
+     * Parse a Playwright-style key string (e.g. "Control+Shift+Z", "ctrl+c", "Enter")
+     * into an array where [0..n-2] are modifier names and [n-1] is the key name.
+     * All parts are uppercased; CTRL→CONTROL, WIN→META aliases are applied.
+     */
+    private String[] parseKeyString(String key) {
+        String[] parts = key.trim().split("\\+");
+        for (int i = 0; i < parts.length; i++) {
+            String p = parts[i].trim().toUpperCase();
+            if (p.equals("CTRL"))  p = "CONTROL";
+            if (p.equals("WIN"))   p = "META";
+            parts[i] = p;
+        }
+        return parts;
+    }
+
+    private ActionResult doPressKey(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String key = payload != null && payload.has("key") ? payload.get("key").getAsString() : "";
+            if (key.isBlank()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_key"));
+            }
+
+            // Parse key string
+            String[] parts = parseKeyString(key);
+            String keyName = parts[parts.length - 1];
+            boolean shiftDown   = false;
+            boolean controlDown = false;
+            boolean altDown     = false;
+            boolean metaDown    = false;
+            for (int i = 0; i < parts.length - 1; i++) {
+                switch (parts[i]) {
+                    case "SHIFT"   -> shiftDown   = true;
+                    case "CONTROL" -> controlDown = true;
+                    case "ALT"     -> altDown     = true;
+                    case "META"    -> metaDown    = true;
+                }
+            }
+
+            // Resolve KeyCode
+            Class<?> keyCodeCls;
+            Object keyCode;
+            try {
+                keyCodeCls = Class.forName("javafx.scene.input.KeyCode");
+                keyCode = Enum.valueOf((Class<Enum>) keyCodeCls, keyName);
+            } catch (IllegalArgumentException ex) {
+                return ActionResult.failure(List.of("javafx"),
+                    Map.of("reason", "unknown_key", "key", keyName));
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"),
+                    Map.of("reason", "press_key_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+            }
+
+            // Resolve target node: selector → matched node; no selector → scene focus owner or root
+            Object target;
+            String fxId = "";
+            String handle = null;
+            boolean hasSelector = selector != null && !selector.entrySet().isEmpty();
+            if (hasSelector) {
+                DiscoverySnapshot snapshot = snapshot();
+                Optional<NodeRef> match = resolve(selector, snapshot);
+                if (match.isEmpty()) {
+                    return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+                }
+                target  = match.get().node();
+                fxId    = asString(match.get().metadata().get("fxId"));
+                handle  = asString(match.get().metadata().get("handle"));
+            } else {
+                Object scene = sceneSupplier.get();
+                if (scene == null) {
+                    return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scene"));
+                }
+                Object focusOwner = safeInvoke(scene, "getFocusOwner");
+                if (focusOwner != null) {
+                    target = focusOwner;
+                } else {
+                    target = safeInvoke(scene, "getRoot");
+                }
+                if (target == null) {
+                    return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_target_node"));
+                }
+            }
+
+            // Build and fire KEY_PRESSED + KEY_RELEASED
+            try {
+                Class<?> keyEventCls = Class.forName("javafx.scene.input.KeyEvent");
+                Class<?> etCls       = Class.forName("javafx.event.EventType");
+
+                Object keyPressed  = keyEventCls.getField("KEY_PRESSED").get(null);
+                Object keyReleased = keyEventCls.getField("KEY_RELEASED").get(null);
+                String charUndef   = (String) keyEventCls.getField("CHAR_UNDEFINED").get(null);
+                String keyText     = (String) safeInvoke(keyCode, "getName");
+                if (keyText == null) keyText = keyName;
+
+                // KeyEvent(EventType, String character, String text, KeyCode,
+                //          boolean shift, boolean control, boolean alt, boolean meta)
+                java.lang.reflect.Constructor<?> ctor = keyEventCls.getConstructor(
+                    etCls, String.class, String.class, keyCodeCls,
+                    boolean.class, boolean.class, boolean.class, boolean.class
+                );
+
+                Object pressedEvent  = ctor.newInstance(keyPressed,  charUndef, keyText, keyCode,
+                                                         shiftDown, controlDown, altDown, metaDown);
+                Object releasedEvent = ctor.newInstance(keyReleased, charUndef, keyText, keyCode,
+                                                         shiftDown, controlDown, altDown, metaDown);
+
+                Class<?> eventCls  = Class.forName("javafx.event.Event");
+                Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+                java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+                fireMethod.invoke(null, target, pressedEvent);
+                fireMethod.invoke(null, target, releasedEvent);
+
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "key", key), null);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of(
+                    "reason", "press_key_failed",
+                    "key", key,
+                    "message", ex.getMessage() == null ? "" : ex.getMessage()
+                ));
+            }
+        });
     }
 
     private ActionResult doDismissColorPicker() {

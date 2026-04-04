@@ -31,7 +31,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 - [ ] **Scroll** — `scroll_to(id=...)`, `scroll_by(amount, direction)`
   - Needed for ScrollPane, ListView, and long TableView content
-- [ ] **Keyboard shortcuts** — `press_key("Ctrl+C")`, `press_key("Enter")`, `press_key("Escape")`
+- [x] **Keyboard shortcuts** — `press_key("Ctrl+C")`, `press_key("Enter")`, `press_key("Escape")`
   - Fills the keyboard interaction gap; important for Dialog and TextField flows
 - [x] **Double-click** — `double_click(id=...)`
   - Commonly used to expand TreeView / TableView nodes

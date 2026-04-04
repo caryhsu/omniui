@@ -141,6 +141,31 @@ client.double_click(id="myTreeItem")
 client.double_click(text="Record 1", type="ListCell")
 ```
 
+### `client.press_key(key, **selector) -> ActionResult`
+
+Fire `KEY_PRESSED` + `KEY_RELEASED` for the given key string.
+
+**Format:** `"[Modifier+]*Key"` — case-insensitive. Aliases: `Ctrl` = `Control`, `Win` = `Meta`.
+
+| Example | Meaning |
+|---------|---------|
+| `"Escape"` | Press Escape key |
+| `"Enter"` | Press Enter key |
+| `"Tab"` | Press Tab key |
+| `"Control+C"` | Ctrl+C |
+| `"ctrl+z"` | Ctrl+Z (alias, lowercase OK) |
+| `"Shift+Tab"` | Shift+Tab |
+| `"Control+Shift+Z"` | Ctrl+Shift+Z |
+
+If **selector** is provided, the event fires on that node. If omitted, it fires on the scene's current focus owner.
+
+```python
+client.press_key("Escape")                    # global, no selector
+client.press_key("Tab", id="username")        # on specific node
+client.press_key("Control+A", id="username")  # select all
+client.press_key("ctrl+z")                    # alias accepted
+```
+
 ### `client.open_menu(menu, **selector) -> ActionResult`
 
 Open a top-level menu in a `MenuBar`. Waits for the menu popup to appear.

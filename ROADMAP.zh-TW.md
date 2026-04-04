@@ -31,7 +31,7 @@
 
 - [ ] **捲動控制** — `scroll_to(id=...)`、`scroll_by(amount, direction)`
   - ScrollPane、ListView、長 TableView 都需要
-- [ ] **鍵盤快捷鍵** — `press_key("Ctrl+C")`、`press_key("Enter")`、`press_key("Escape")`
+- [x] **鍵盤快捷鍵** — `press_key("Ctrl+C")`、`press_key("Enter")`、`press_key("Escape")`
   - 補完鍵盤操作缺口，對 Dialog / TextField 流程很重要
 - [x] **雙擊** — `double_click(id=...)`
   - TreeView / TableView 展開節點的常用操作

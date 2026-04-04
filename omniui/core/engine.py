@@ -84,6 +84,19 @@ class OmniUIClient:
         """
         return self._perform("double_click", selector)
 
+    def press_key(self, key: str, **selector: Any) -> ActionResult:
+        """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
+
+        Format: Playwright-style "[Modifier+]*Key" — case-insensitive.
+        Modifiers: Control (or Ctrl), Shift, Alt, Meta (or Win).
+        Examples: "Escape", "Enter", "Tab", "Control+C", "Shift+Tab",
+                  "ctrl+z", "Control+Shift+Z".
+
+        If selector is provided, fire on that node.
+        If omitted, fire on the scene's current focus owner.
+        """
+        return self._perform("press_key", selector, {"key": key})
+
     def select(self, value: str, **selector: Any) -> ActionResult:
         payload: dict[str, Any] = {"value": value}
         if "column" in selector:

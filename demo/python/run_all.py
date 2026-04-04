@@ -33,6 +33,7 @@ if __package__ in (None, ""):
     import node_state_demo  # type: ignore
     import wait_conditions_demo  # type: ignore
     import double_click_demo  # type: ignore
+    import keyboard_shortcuts_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -67,6 +68,7 @@ else:
         node_state_demo,
         wait_conditions_demo,
         double_click_demo,
+        keyboard_shortcuts_demo,
     )
 
 
@@ -162,6 +164,9 @@ def main() -> None:
 
     _section("Double-Click Demo")
     double_click_demo.main()
+
+    _section("Keyboard Shortcuts Demo")
+    keyboard_shortcuts_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

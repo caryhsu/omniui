@@ -27,6 +27,7 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 
 **Actions — 基本互動**
 - `click`、`right_click`、`double_click`、`type`、`get_text`、`verify_text`
+- `press_key(key, **selector)` — 鍵盤快捷鍵，格式：`"Ctrl+C"`、`"Shift+Tab"`、`"Escape"`、`"Control+Shift+Z"`
 - `select`（ComboBox / ChoiceBox / ListView）、`get_selected`、`set_selected`（CheckBox / RadioButton / ToggleButton）
 - `is_visible`、`is_enabled` — 查詢節點可見性 / 啟用狀態
 - `wait_for_text`、`wait_for_visible`、`wait_for_enabled`、`wait_for_node`、`wait_for_value` — poll-based 等待條件
