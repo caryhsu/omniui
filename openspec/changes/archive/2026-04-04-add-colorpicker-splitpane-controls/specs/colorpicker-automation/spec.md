@@ -2,7 +2,7 @@
 
 Define the automation behavior for JavaFX `ColorPicker` controls in OmniUI.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Direct color set
 The system SHALL support a `set_color` action that sets the value of a `ColorPicker` node directly via `setValue(Color)` without opening the popup, accepting a CSS-compatible hex color string.

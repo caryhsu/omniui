@@ -2,7 +2,7 @@
 
 Define the automation behavior for JavaFX `SplitPane` controls in OmniUI.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Read divider positions
 The system SHALL support a `get_divider_positions` action that reads all divider positions of a `SplitPane` node and returns them as a list of floats in range `[0.0, 1.0]`.
