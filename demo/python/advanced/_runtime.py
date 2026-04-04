@@ -14,9 +14,16 @@ WITH_AGENT_HINT = (
     "- ./demo/java/advanced-app/run-with-agent.sh"
 )
 
+_PREFERRED_PORT = 48102
+
 
 def connect_or_exit() -> OmniUI:
+    first_err: RuntimeError | None = None
     try:
-        return OmniUI.connect(base_url="http://127.0.0.1:48102")
-    except Exception as exc:
-        raise SystemExit(f"{WITH_AGENT_HINT}\n\nConnection error: {exc}") from exc
+        return OmniUI.connect(port=_PREFERRED_PORT)
+    except RuntimeError as exc:
+        first_err = exc
+    try:
+        return OmniUI.connect()
+    except RuntimeError:
+        raise SystemExit(f"{WITH_AGENT_HINT}\n\nConnection error: {first_err}") from first_err

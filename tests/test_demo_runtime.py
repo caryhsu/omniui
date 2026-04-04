@@ -34,7 +34,7 @@ class DemoRuntimeTests(unittest.TestCase):
         mock_connect.return_value = client
 
         self.assertIs(core_runtime.connect_or_exit(), client)
-        mock_connect.assert_called_once_with(base_url="http://127.0.0.1:48100")
+        mock_connect.assert_called_once_with(port=48100)
 
     @patch("demo.python.core._runtime.OmniUI.connect")
     def test_core_connect_or_exit_raises_clear_hint(self, mock_connect) -> None:

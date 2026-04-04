@@ -167,13 +167,14 @@ def main(auto_launch: bool = True) -> None:
     java_dir = ROOT / "demo" / "java"
 
     # ── Core App ──────────────────────────────────────────────────────────────
-    _section("Core App demos (port 48100)")
+    _section("Core App demos (port 48100+)")
     if auto_launch:
+        core_port = OmniUI.find_free_port(48100, 48999)
         core_cmd = _build_launch_cmd(
             java_dir / "core-app", "omniui-core-demo",
-            "dev.omniui.demo.core", "dev.omniui.demo.core.CoreDemoApp", 48100,
+            "dev.omniui.demo.core", "dev.omniui.demo.core.CoreDemoApp", core_port,
         )
-        core_ctx = OmniUI.launch(cmd=core_cmd, port=48100, timeout=30.0)
+        core_ctx = OmniUI.launch(cmd=core_cmd, port=core_port, timeout=30.0)
     else:
         core_ctx = nullcontext()
 
@@ -221,13 +222,14 @@ def main(auto_launch: bool = True) -> None:
         recorder_preview.main()
 
     # ── Input App ─────────────────────────────────────────────────────────────
-    _section("Input App demos (port 48101)")
+    _section("Input App demos (port 48101+)")
     if auto_launch:
+        input_port = OmniUI.find_free_port(48100, 48999)
         input_cmd = _build_launch_cmd(
             java_dir / "input-app", "omniui-input-demo",
-            "dev.omniui.demo.input", "dev.omniui.demo.input.InputDemoApp", 48101,
+            "dev.omniui.demo.input", "dev.omniui.demo.input.InputDemoApp", input_port,
         )
-        input_ctx = OmniUI.launch(cmd=input_cmd, port=48101, timeout=30.0)
+        input_ctx = OmniUI.launch(cmd=input_cmd, port=input_port, timeout=30.0)
     else:
         input_ctx = nullcontext()
 
@@ -260,13 +262,14 @@ def main(auto_launch: bool = True) -> None:
         date_picker_demo.main()
 
     # ── Advanced App ──────────────────────────────────────────────────────────
-    _section("Advanced App demos (port 48102)")
+    _section("Advanced App demos (port 48102+)")
     if auto_launch:
+        adv_port = OmniUI.find_free_port(48100, 48999)
         adv_cmd = _build_launch_cmd(
             java_dir / "advanced-app", "omniui-advanced-demo",
-            "dev.omniui.demo.advanced", "dev.omniui.demo.advanced.AdvancedDemoApp", 48102,
+            "dev.omniui.demo.advanced", "dev.omniui.demo.advanced.AdvancedDemoApp", adv_port,
         )
-        adv_ctx = OmniUI.launch(cmd=adv_cmd, port=48102, timeout=30.0)
+        adv_ctx = OmniUI.launch(cmd=adv_cmd, port=adv_port, timeout=30.0)
     else:
         adv_ctx = nullcontext()
 

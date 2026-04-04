@@ -49,7 +49,7 @@ class OmniUiClientTests(unittest.TestCase):
         ]
 
         with self.assertRaises(RuntimeError) as context:
-            OmniUI.connect()
+            OmniUI.connect(port=48100)
 
         self.assertIn("Target app not available", str(context.exception))
 
@@ -58,7 +58,7 @@ class OmniUiClientTests(unittest.TestCase):
         mock_urlopen.side_effect = URLError("Connection refused")
 
         with self.assertRaises(RuntimeError) as context:
-            OmniUI.connect()
+            OmniUI.connect(port=48100)
 
         self.assertIn("Connection refused", str(context.exception))
 
@@ -71,7 +71,7 @@ class OmniUiClientTests(unittest.TestCase):
             _FakeResponse({"ok": True, "resolved": {"tier": "javafx", "targetRef": "node-login", "matchedAttributes": {"fxId": "loginButton"}, "confidence": None}, "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"}, "value": None}),
         ]
 
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         nodes = client.get_nodes()
         result = client.click(id="loginButton")
 
@@ -90,7 +90,7 @@ class OmniUiClientTests(unittest.TestCase):
             _FakeResponse({"ok": True, "resolved": {"tier": "javafx", "targetRef": "node-status", "matchedAttributes": {"fxId": "status"}, "confidence": None}, "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"}, "value": "Success"}),
         ]
 
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         result = client.verify_text(id="status", expected="Success")
 
         self.assertTrue(result.ok)
@@ -119,7 +119,7 @@ class OmniUiClientTests(unittest.TestCase):
 
         mock_urlopen.side_effect = fake_urlopen
 
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         result = client.select("Operator", id="roleCombo")
 
         self.assertTrue(result.ok)
@@ -138,7 +138,7 @@ class OmniUiClientTests(unittest.TestCase):
             _FakeResponse({"contentType": "image/png", "encoding": "base64", "data": "TG9naW58MC45OHwxMHwyMHw5MHwzMA=="}),
         ]
 
-        client = OmniUI.connect(ocr_engine=SimpleOcrEngine())
+        client = OmniUI.connect(port=48100, ocr_engine=SimpleOcrEngine())
         result = client.click(text="Login")
 
         self.assertTrue(result.ok)
@@ -157,7 +157,7 @@ class OmniUiClientTests(unittest.TestCase):
             _FakeResponse({"contentType": "image/png", "encoding": "base64", "data": "WFhYTE9HSU5fQlVUVE9OX1RFTVBMQVRFWVlZ"}),
         ]
 
-        client = OmniUI.connect(ocr_engine=SimpleOcrEngine(), vision_engine=SimpleVisionEngine())
+        client = OmniUI.connect(port=48100, ocr_engine=SimpleOcrEngine(), vision_engine=SimpleVisionEngine())
         result = client.click(text="Missing", template=b"LOGIN_BUTTON_TEMPLATE")
 
         self.assertTrue(result.ok)
@@ -175,7 +175,7 @@ class OmniUiClientTests(unittest.TestCase):
             _FakeResponse({"ok": True, "resolved": {"tier": "javafx", "targetRef": "node-login", "matchedAttributes": {"fxId": "loginButton"}, "confidence": None}, "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"}, "value": None}),
         ]
 
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         result = client.click(id="loginButton")
 
         self.assertTrue(result.ok)
@@ -190,7 +190,7 @@ class WaitUntilTests(unittest.TestCase):
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
         ]
-        return OmniUI.connect()
+        return OmniUI.connect(port=48100)
 
     def test_wait_until_returns_when_condition_becomes_true(self) -> None:
         client = self._make_client()
@@ -232,7 +232,7 @@ class FormatTraceTests(unittest.TestCase):
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
         ]
-        return OmniUI.connect()
+        return OmniUI.connect(port=48100)
 
     def test_format_trace_empty(self) -> None:
         client = self._make_client()
@@ -333,7 +333,7 @@ class LocatorTests(unittest.TestCase):
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
         ]
-        return OmniUI.connect()
+        return OmniUI.connect(port=48100)
 
     @patch("urllib.request.urlopen")
     def test_locator_repr(self, mock_urlopen) -> None:
@@ -360,7 +360,7 @@ class LocatorTests(unittest.TestCase):
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
             click_resp,
         ]
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         loc = client.locator(id="loginBtn")
         result = loc.click()
         self.assertTrue(result.ok)
@@ -377,7 +377,7 @@ class LocatorTests(unittest.TestCase):
                 "value": "Hello",
             }),
         ]
-        client = OmniUI.connect()
+        client = OmniUI.connect(port=48100)
         loc = client.locator(id="label")
         result = loc.verify_text("Hello")
         self.assertTrue(result.ok)
