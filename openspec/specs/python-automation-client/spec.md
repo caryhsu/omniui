@@ -117,3 +117,33 @@ The system SHALL add `get_style(**selector) -> ActionResult` and `get_style_clas
 #### Scenario: Read CSS class list from Python
 - **WHEN** an automation script calls `client.get_style_class(id="errorField")`
 - **THEN** the Python client returns an `ActionResult` whose `value` is a list of CSS class name strings
+
+### Requirement: verify_text supports flexible match modes
+The system SHALL accept an optional `match` parameter in `verify_text(expected, *, match="exact", **selector)` supporting the following modes:
+
+- `"exact"` (default) — `actual == expected`; preserves all existing behaviour
+- `"contains"` — `expected in actual`
+- `"starts_with"` — `actual.startswith(expected)`
+- `"regex"` — `re.search(expected, actual) is not None`
+
+An unknown `match` value SHALL raise `ValueError`.
+
+#### Scenario: Default exact match unchanged
+- **WHEN** a script calls `client.verify_text("Success", id="status")`
+- **THEN** the result behaves identically to before — `ok=True` only when the text equals `"Success"` exactly
+
+#### Scenario: contains match
+- **WHEN** a script calls `client.verify_text("Success", match="contains", id="status")` and the actual text is `"Login Success (2026-04-04)"`
+- **THEN** `result.ok = True` because `"Success"` is found within the actual text
+
+#### Scenario: starts_with match
+- **WHEN** a script calls `client.verify_text("Error:", match="starts_with", id="errorLabel")` and the actual text is `"Error: invalid input"`
+- **THEN** `result.ok = True`
+
+#### Scenario: regex match
+- **WHEN** a script calls `client.verify_text(r"\d+ items", match="regex", id="countLabel")` and the actual text is `"42 items"`
+- **THEN** `result.ok = True` because `re.search(r"\d+ items", "42 items")` matches
+
+#### Scenario: unknown match mode raises ValueError
+- **WHEN** a script calls `client.verify_text("x", match="fuzzy", id="label")`
+- **THEN** the Python client raises `ValueError` immediately
