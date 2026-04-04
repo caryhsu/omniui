@@ -35,6 +35,8 @@
   - 補完鍵盤操作缺口，對 Dialog / TextField 流程很重要
 - [ ] **雙擊** — `double_click(id=...)`
   - TreeView / TableView 展開節點的常用操作
+- [ ] **關閉應用程式** — `close_app()`
+  - 從 agent 內呼叫 `Platform.exit()`；適合測試收尾與關閉行為驗證
 
 ---
 
