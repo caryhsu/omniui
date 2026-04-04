@@ -105,7 +105,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **HTML test report** — pytest-html or Allure integration guide
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
-- [ ] **Hover** — `hover(id=...)` to trigger tooltips or hover states
+- [x] **Hover** — `hover(id=...)` to trigger tooltips or hover states
 - [ ] **Clipboard operations** — `copy()`, `paste()`, `get_clipboard()`
 
 ---

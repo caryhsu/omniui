@@ -164,6 +164,15 @@ class OmniUIClient:
         """
         return self._perform("double_click", selector)
 
+    def hover(self, **selector: Any) -> ActionResult:
+        """Simulate mouse hover by firing MOUSE_ENTERED + MOUSE_MOVED on the target node.
+
+        Triggers tooltip display and :hover CSS pseudo-class changes.
+        Note: JavaFX tooltips have a default show delay (~1s); pair with
+        wait_for_visible or a short sleep before reading tooltip text.
+        """
+        return self._perform("hover", selector)
+
     def press_key(self, key: str, **selector: Any) -> ActionResult:
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 

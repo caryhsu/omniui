@@ -141,6 +141,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         return switch (action) {
             case "click"        -> handleClick(node, fxId, handle, payload);
             case "double_click" -> handleDoubleClick(node, fxId, handle);
+            case "hover"        -> doHover(node, fxId, handle);
             case "select"       -> handleSelect(node, fxId, handle, payload);
             case "type"         -> handleType(node, fxId, handle, payload);
             case "get_text"     -> ActionResult.success("javafx", handle, Map.of("fxId", fxId), ReflectiveJavaFxSupport.textOf(node));
@@ -410,6 +411,73 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ex) {
             return ActionResult.failure(List.of("javafx"), Map.of(
                 "reason", "modifier_click_failed",
+                "fxId", fxId,
+                "message", ex.getMessage() == null ? "" : ex.getMessage()
+            ));
+        }
+    }
+
+    private ActionResult doHover(Object node, String fxId, String handle) {
+        try {
+            Object bounds = safeInvoke(node, "getBoundsInLocal");
+            double localX = 5, localY = 5;
+            if (bounds != null) {
+                Object w = safeInvoke(bounds, "getWidth");
+                Object h = safeInvoke(bounds, "getHeight");
+                if (w instanceof Number nw && h instanceof Number nh) {
+                    localX = nw.doubleValue() / 2;
+                    localY = nh.doubleValue() / 2;
+                }
+            }
+            Object screenPt = safeInvoke(node, "localToScreen", localX, localY);
+            double screenX = 0, screenY = 0;
+            if (screenPt != null) {
+                Object sx = safeInvoke(screenPt, "getX");
+                Object sy = safeInvoke(screenPt, "getY");
+                if (sx instanceof Number nx) screenX = nx.doubleValue();
+                if (sy instanceof Number ny) screenY = ny.doubleValue();
+            }
+
+            Class<?> mouseCls  = Class.forName("javafx.scene.input.MouseEvent");
+            Class<?> btnCls    = Class.forName("javafx.scene.input.MouseButton");
+            Class<?> pickCls   = Class.forName("javafx.scene.input.PickResult");
+            Class<?> etCls     = Class.forName("javafx.event.EventType");
+            Object none        = btnCls.getField("NONE").get(null);
+
+            java.lang.reflect.Constructor<?> ctor = mouseCls.getConstructor(
+                etCls,
+                double.class, double.class, double.class, double.class,
+                btnCls, int.class,
+                boolean.class, boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                pickCls
+            );
+
+            Class<?> eventCls  = Class.forName("javafx.event.Event");
+            Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+            java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+
+            // Fire MOUSE_ENTERED to trigger tooltip timer
+            Object entered = mouseCls.getField("MOUSE_ENTERED").get(null);
+            Object evEntered = ctor.newInstance(entered,
+                localX, localY, screenX, screenY, none, 0,
+                false, false, false, false, false, false, false,
+                true, false, true, (Object) null);
+            fireMethod.invoke(null, node, evEntered);
+
+            // Fire MOUSE_MOVED to apply :hover CSS pseudo-class
+            Object moved = mouseCls.getField("MOUSE_MOVED").get(null);
+            Object evMoved = ctor.newInstance(moved,
+                localX, localY, screenX, screenY, none, 0,
+                false, false, false, false, false, false, false,
+                true, false, true, (Object) null);
+            fireMethod.invoke(null, node, evMoved);
+
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of(
+                "reason", "hover_failed",
                 "fxId", fxId,
                 "message", ex.getMessage() == null ? "" : ex.getMessage()
             ));

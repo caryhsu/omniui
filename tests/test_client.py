@@ -367,7 +367,36 @@ class ModifierClickTests(unittest.TestCase):
         self.assertNotIn("modifiers", captured[0].get("payload", {}))
 
 
+class HoverTests(unittest.TestCase):
+    """Tests for hover() action."""
 
+    @patch("urllib.request.urlopen")
+    def test_hover_sends_correct_action(self, mock_urlopen) -> None:
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "btn", "matchedAttributes": {"fxId": "tooltipBtn"}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": None,
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        result = client.hover(id="tooltipBtn")
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "hover")
+        self.assertEqual(captured[0]["selector"], {"id": "tooltipBtn"})
+
+
+class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 
     def _make_client(self, mock_urlopen):
