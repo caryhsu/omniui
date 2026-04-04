@@ -73,6 +73,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "press_key"       -> doPressKey(selector, payload);
             case "get_clipboard"   -> doGetClipboard();
             case "set_clipboard"   -> doSetClipboard(payload);
+            case "click_at"        -> doClickAt(payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
     }
@@ -539,6 +540,73 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
         });
     }
+
+    private ActionResult doClickAt(JsonObject payload) {
+        double x = payload != null && payload.has("x") ? payload.get("x").getAsDouble() : 0;
+        double y = payload != null && payload.has("y") ? payload.get("y").getAsDouble() : 0;
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            Object scene = sceneSupplier.get();
+            if (scene == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scene"));
+            }
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_root"));
+            }
+            try {
+                // Convert scene coordinates to screen coordinates for the MouseEvent
+                Object scenePt = safeInvoke(scene, "localToScreen", x, y);
+                double screenX = x, screenY = y;
+                if (scenePt != null) {
+                    Object sx = safeInvoke(scenePt, "getX");
+                    Object sy = safeInvoke(scenePt, "getY");
+                    if (sx instanceof Number nx) screenX = nx.doubleValue();
+                    if (sy instanceof Number ny) screenY = ny.doubleValue();
+                }
+
+                Class<?> mouseCls  = Class.forName("javafx.scene.input.MouseEvent");
+                Class<?> btnCls    = Class.forName("javafx.scene.input.MouseButton");
+                Class<?> pickCls   = Class.forName("javafx.scene.input.PickResult");
+                Class<?> etCls     = Class.forName("javafx.event.EventType");
+
+                Object mouseClicked = mouseCls.getField("MOUSE_CLICKED").get(null);
+                Object primary      = btnCls.getField("PRIMARY").get(null);
+
+                java.lang.reflect.Constructor<?> ctor = mouseCls.getConstructor(
+                    etCls,
+                    double.class, double.class, double.class, double.class,
+                    btnCls, int.class,
+                    boolean.class, boolean.class, boolean.class, boolean.class,
+                    boolean.class, boolean.class, boolean.class,
+                    boolean.class, boolean.class, boolean.class,
+                    pickCls
+                );
+
+                Object event = ctor.newInstance(
+                    mouseClicked,
+                    x, y, screenX, screenY,
+                    primary, 1,
+                    false, false, false, false,
+                    false, false, false,
+                    true, false, true,
+                    (Object) null
+                );
+
+                Class<?> eventCls  = Class.forName("javafx.event.Event");
+                Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+                java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+                fireMethod.invoke(null, root, event);
+
+                return ActionResult.success("javafx", null, Map.of(), Map.of("x", x, "y", y));
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of(
+                    "reason", "click_at_failed",
+                    "message", ex.getMessage() == null ? "" : ex.getMessage()
+                ));
+            }
+        });
+    }
+
 
     private ActionResult handleDoubleClick(Object node, String fxId, String handle) {
         try {

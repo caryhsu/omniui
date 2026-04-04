@@ -203,6 +203,19 @@ class OmniUIClient:
         """
         return self._perform("get_focused", {})
 
+    def verify_focused(self, **selector: Any) -> None:
+        """Assert that the node matching *selector* currently holds focus.
+
+        Raises ``AssertionError`` if the focused node does not match.
+        """
+        result = self.get_focused()
+        focused_id = (result.value or {}).get("fxId") if result.ok else None
+        expected_id = selector.get("id")
+        if expected_id is not None and focused_id != expected_id:
+            raise AssertionError(
+                f"Expected focused node id={expected_id!r}, got {focused_id!r}"
+            )
+
     def get_clipboard(self) -> ActionResult:
         """Return the current system clipboard text content.
 
@@ -233,7 +246,19 @@ class OmniUIClient:
         """
         return self.press_key("Control+V", **selector)
 
-    def verify_focused(self, id: str) -> ActionResult:
+    def click_at(self, *, x: float, y: float) -> ActionResult:
+        """Fire a single primary mouse click at scene-relative coordinates (x, y).
+
+        Bypasses node resolution — useful for elements without a stable selector.
+        Coordinates are relative to the top-left of the JavaFX scene content area.
+
+        Example::
+
+            client.click_at(x=120, y=45)
+        """
+        return self._perform("click_at", {}, {"x": x, "y": y})
+
+
         """Assert that the node with the given fx:id is currently focused.
 
         Raises AssertionError if the focused node's fxId does not match.

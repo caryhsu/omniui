@@ -78,7 +78,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - `set_window_size(width, height)`, `set_window_position(x, y)`
   - `is_maximized()`, `is_minimized()`, `get_window_size()`, `get_window_position()`
   - Implemented via JavaFX `Stage` reflective calls (`setMaximized`, `setIconified`, `setX/Y`, etc.)
-- [ ] **Absolute coordinate click** — `click_at(x=100, y=200)`
+- [x] **Absolute coordinate click** — `click_at(x=100, y=200)`
   - Fallback for Canvas-rendered or custom-drawn UI elements that have no scene graph node
 - [ ] **Scoped selector (`within`)** — `with client.within(id="panel"): client.click(id="btn")`
   - Restrict node search to a subtree; avoids conflicts when multiple panels share the same child IDs

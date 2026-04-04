@@ -735,6 +735,54 @@ class ClipboardTests(unittest.TestCase):
                             f"Missing method: {method_name}")
 
 
+class ClickAtTests(unittest.TestCase):
+    """Tests for OmniUIClient.click_at()."""
+
+    def _make_client_and_capture(self, mock_urlopen):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": {"x": 100, "y": 200},
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_click_at_sends_correct_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.click_at(x=100, y=200)
+        self.assertTrue(result.ok)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "click_at")
+        self.assertEqual(captured[0]["payload"]["x"], 100)
+        self.assertEqual(captured[0]["payload"]["y"], 200)
+
+    @patch("urllib.request.urlopen")
+    def test_click_at_float_coordinates(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.click_at(x=12.5, y=34.7)
+        self.assertAlmostEqual(captured[0]["payload"]["x"], 12.5)
+        self.assertAlmostEqual(captured[0]["payload"]["y"], 34.7)
+
+    @patch("urllib.request.urlopen")
+    def test_click_at_method_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        self.assertTrue(callable(getattr(client, "click_at", None)))
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 
