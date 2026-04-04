@@ -37,7 +37,7 @@
   - TreeView / TableView 展開節點的常用操作
 - [ ] **關閉應用程式** — `close_app()`
   - 從 agent 內呼叫 `Platform.exit()`；適合測試收尾與關閉行為驗證
-- [ ] **等待條件（waitFor）** — `wait_for_text(id, expected, timeout)`、`wait_for_visible(id, timeout)`、`wait_for_enabled(id, timeout)`、`wait_for_node(id, timeout)`、`wait_for_value(id, expected, timeout)`
+- [x] **等待條件（waitFor）** — `wait_for_text(id, expected, timeout)`、`wait_for_visible(id, timeout)`、`wait_for_enabled(id, timeout)`、`wait_for_node(id, timeout)`、`wait_for_value(id, expected, timeout)`
   - Python 端輪詢或 agent 端阻塞；非同步 UI 狀態變更不可或缺
 
 ---

@@ -29,6 +29,7 @@ Implemented in this repo today:
 - `click`, `right_click`, `type`, `get_text`, `verify_text`
 - `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
 - `is_visible`, `is_enabled` — query node visibility / enabled state
+- `wait_for_text`, `wait_for_visible`, `wait_for_enabled`, `wait_for_node`, `wait_for_value` — poll-based wait conditions
 
 **Actions — menus**
 - `open_menu`, `navigate_menu`, `dismiss_menu`, `click_menu_item` (MenuBar + ContextMenu)
@@ -64,7 +65,7 @@ Implemented in this repo today:
 **Demo suite** (all passing via `python demo/python/run_all.py`)
 - Login, ComboBox, ListView, TableView, TreeView, ContextMenu, MenuBar, DatePicker, Alert
 - RadioButton, Slider+Spinner, Progress, Tab, TextArea, PasswordField, Hyperlink
-- CheckBox, ChoiceBox, Accordion, TreeTableView, ColorPicker, SplitPane
+- CheckBox, ChoiceBox, Accordion, TreeTableView, ColorPicker, SplitPane, Node State, Wait Conditions
 
 Not implemented yet:
 - dynamic JVM attach to arbitrary third-party JavaFX processes

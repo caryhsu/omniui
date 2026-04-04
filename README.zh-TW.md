@@ -29,6 +29,7 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 - `click`、`right_click`、`type`、`get_text`、`verify_text`
 - `select`（ComboBox / ChoiceBox / ListView）、`get_selected`、`set_selected`（CheckBox / RadioButton / ToggleButton）
 - `is_visible`、`is_enabled` — 查詢節點可見性 / 啟用狀態
+- `wait_for_text`、`wait_for_visible`、`wait_for_enabled`、`wait_for_node`、`wait_for_value` — poll-based 等待條件
 
 **Actions — 選單**
 - `open_menu`、`navigate_menu`、`dismiss_menu`、`click_menu_item`（MenuBar + ContextMenu）
@@ -64,7 +65,7 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 **Demo suite**（全部通過，執行 `python demo/python/run_all.py`）
 - Login、ComboBox、ListView、TableView、TreeView、ContextMenu、MenuBar、DatePicker、Alert
 - RadioButton、Slider+Spinner、Progress、Tab、TextArea、PasswordField、Hyperlink
-- CheckBox、ChoiceBox、Accordion、TreeTableView、ColorPicker、SplitPane
+- CheckBox、ChoiceBox、Accordion、TreeTableView、ColorPicker、SplitPane、Node State、Wait Conditions
 
 尚未完成：
 - 對任意第三方 JavaFX process 的動態 JVM attach

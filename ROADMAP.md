@@ -37,7 +37,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Commonly used to expand TreeView / TableView nodes
 - [ ] **Close application** — `close_app()`
   - Calls `Platform.exit()` from within the agent; useful for test teardown and shutdown behavior testing
-- [ ] **Wait conditions** — `wait_for_text(id, expected, timeout)`, `wait_for_visible(id, timeout)`, `wait_for_enabled(id, timeout)`, `wait_for_node(id, timeout)`, `wait_for_value(id, expected, timeout)`
+- [x] **Wait conditions** — `wait_for_text(id, expected, timeout)`, `wait_for_visible(id, timeout)`, `wait_for_enabled(id, timeout)`, `wait_for_node(id, timeout)`, `wait_for_value(id, expected, timeout)`
   - Poll-based (Python-side) or agent-side blocking; essential for async UI state changes
 
 ---

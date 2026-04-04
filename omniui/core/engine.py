@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import time
 from dataclasses import asdict
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -313,6 +314,81 @@ class OmniUIClient:
         ``disabled=True`` disables the node; ``False`` re-enables it.
         """
         return self._perform("set_disabled", selector, {"disabled": disabled})
+
+    # ---- Wait conditions ---------------------------------------------------
+
+    def wait_for_text(self, id: str, expected: str, timeout: float = 5.0, interval: float = 0.2) -> None:
+        """Block until the text of node ``id`` equals ``expected``.
+
+        Polls every ``interval`` seconds. Raises ``TimeoutError`` if the
+        condition is not met within ``timeout`` seconds.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                result = self.get_text(id=id)
+                if result.ok and result.value == expected:
+                    return
+            except Exception:
+                pass
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"wait_for_text: node '{id}' text did not become {expected!r} within {timeout}s"
+                )
+            time.sleep(interval)
+
+    def wait_for_visible(self, id: str, timeout: float = 5.0, interval: float = 0.2) -> None:
+        """Block until node ``id`` is visible.
+
+        Raises ``TimeoutError`` if the condition is not met within ``timeout`` seconds.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            if self.is_visible(id=id):
+                return
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"wait_for_visible: node '{id}' did not become visible within {timeout}s"
+                )
+            time.sleep(interval)
+
+    def wait_for_enabled(self, id: str, timeout: float = 5.0, interval: float = 0.2) -> None:
+        """Block until node ``id`` is enabled.
+
+        Raises ``TimeoutError`` if the condition is not met within ``timeout`` seconds.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            if self.is_enabled(id=id):
+                return
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"wait_for_enabled: node '{id}' did not become enabled within {timeout}s"
+                )
+            time.sleep(interval)
+
+    def wait_for_node(self, id: str, timeout: float = 5.0, interval: float = 0.2) -> None:
+        """Block until a node with ``fxId == id`` appears in discovery.
+
+        Raises ``TimeoutError`` if the node does not appear within ``timeout`` seconds.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                nodes = self.get_nodes()
+                if any(n.get("fxId") == id for n in nodes):
+                    return
+            except Exception:
+                pass
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"wait_for_node: node '{id}' did not appear within {timeout}s"
+                )
+            time.sleep(interval)
+
+    def wait_for_value(self, id: str, expected: str, timeout: float = 5.0, interval: float = 0.2) -> None:
+        """Alias for :meth:`wait_for_text`."""
+        self.wait_for_text(id=id, expected=expected, timeout=timeout, interval=interval)
 
     # ---- Accordion / TitledPane --------------------------------------------
 

@@ -404,6 +404,51 @@ assert client.is_enabled(id="loginButton"), "Login button should be enabled"
 assert not client.is_enabled(id="__no_such_node__")  # always False
 ```
 
+## Wait Conditions
+
+Poll-based helpers that block until a UI state condition is met or raise `TimeoutError` if the timeout expires. All methods accept `timeout` (seconds, default `5.0`) and `interval` (poll period in seconds, default `0.2`).
+
+### `client.wait_for_text(id, expected, timeout=5.0, interval=0.2) -> None`
+
+Block until the text of node `id` equals `expected`.
+
+```python
+client.click(id="loadButton")
+client.wait_for_text("statusLabel", "Done", timeout=10.0)
+```
+
+### `client.wait_for_visible(id, timeout=5.0, interval=0.2) -> None`
+
+Block until node `id` is visible (`is_visible` returns `True`).
+
+```python
+client.wait_for_visible("resultPanel")
+```
+
+### `client.wait_for_enabled(id, timeout=5.0, interval=0.2) -> None`
+
+Block until node `id` is enabled (`is_enabled` returns `True`).
+
+```python
+client.wait_for_enabled("submitButton")
+```
+
+### `client.wait_for_node(id, timeout=5.0, interval=0.2) -> None`
+
+Block until a node with `fxId == id` appears in node discovery.
+
+```python
+client.wait_for_node("dynamicWidget", timeout=3.0)
+```
+
+### `client.wait_for_value(id, expected, timeout=5.0, interval=0.2) -> None`
+
+Alias for `wait_for_text`. Provided for readability in value-assertion contexts.
+
+```python
+client.wait_for_value("totalField", "42")
+```
+
 ## Selectors
 
 The currently supported selector surface is:

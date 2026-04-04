@@ -31,6 +31,7 @@ if __package__ in (None, ""):
     import color_picker_demo  # type: ignore
     import split_pane_demo  # type: ignore
     import node_state_demo  # type: ignore
+    import wait_conditions_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -63,6 +64,7 @@ else:
         color_picker_demo,
         split_pane_demo,
         node_state_demo,
+        wait_conditions_demo,
     )
 
 
@@ -152,6 +154,9 @@ def main() -> None:
 
     _section("Node State Demo")
     node_state_demo.main()
+
+    _section("Wait Conditions Demo")
+    wait_conditions_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()
