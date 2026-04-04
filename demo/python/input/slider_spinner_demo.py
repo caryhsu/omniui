@@ -49,8 +49,9 @@ def main() -> None:
         raise SystemExit(f"step_spinner (-5) failed: {result.trace.details}")
     print("Spinner decremented by 5 → should be 48")
 
-    print("\nslider_spinner_demo succeeded ✓")
+    print("\nslider_spinner_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

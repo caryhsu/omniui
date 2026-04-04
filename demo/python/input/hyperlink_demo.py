@@ -14,21 +14,22 @@ def main() -> None:
     # ---- 點擊前 visited 應為 False ------------------------------------------
     visited_before = client.is_visited(id="demoHyperlink")
     assert not visited_before, f"Expected visited=False before click, got {visited_before}"
-    print(f"Before click: visited={visited_before} ✓")
+    print(f"Before click: visited={visited_before} (ok)")
 
     # ---- 點擊 Hyperlink -----------------------------------------------------
     result = client.click(id="demoHyperlink")
     if not result.ok:
         raise SystemExit(f"click failed: {result.trace.details}")
-    print("Clicked Hyperlink ✓")
+    print("Clicked Hyperlink (ok)")
 
     # ---- 點擊後 visited 應為 True -------------------------------------------
     visited_after = client.is_visited(id="demoHyperlink")
     assert visited_after, f"Expected visited=True after click, got {visited_after}"
-    print(f"After click: visited={visited_after} ✓")
+    print(f"After click: visited={visited_after} (ok)")
 
-    print("\nhyperlink_demo succeeded ✓")
+    print("\nhyperlink_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

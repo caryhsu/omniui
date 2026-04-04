@@ -26,7 +26,7 @@ def main() -> None:
         raise SystemExit(
             f"Tooltip mismatch: expected {expected!r}, got {result.value!r}"
         )
-    print(f"  tooltipBtn tooltip = {result.value!r}  ✓")
+    print(f"  tooltipBtn tooltip = {result.value!r}  (ok)")
 
     # showDialogButton has no tooltip — should return ""
     result2 = client.get_tooltip(id="showDialogButton")
@@ -36,10 +36,11 @@ def main() -> None:
         raise SystemExit(
             f"Expected empty tooltip for 'showDialogButton', got {result2.value!r}"
         )
-    print(f"  showDialogButton tooltip = {result2.value!r} (empty, as expected)  ✓")
+    print(f"  showDialogButton tooltip = {result2.value!r} (empty, as expected)  (ok)")
 
     print("get_tooltip tests passed")
 
 
 if __name__ == "__main__":
     main()
+

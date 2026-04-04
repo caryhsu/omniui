@@ -45,8 +45,9 @@ def main() -> None:
 
     assert app_gone, "App was still reachable 5s after close_app() — expected ConnectionRefusedError"
 
-    print("close_app_demo succeeded — app shut down gracefully after close_app() ✓")
+    print("close_app_demo succeeded — app shut down gracefully after close_app() (ok)")
 
 
 if __name__ == "__main__":
     main()
+

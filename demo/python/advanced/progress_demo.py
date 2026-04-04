@@ -27,8 +27,9 @@ def main() -> None:
     print(f"ProgressIndicator value: {progress:.2f}")
     assert abs(progress - 0.7) < 0.01, f"Expected ~0.7, got {progress}"
 
-    print("\nprogress_demo succeeded ✓")
+    print("\nprogress_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

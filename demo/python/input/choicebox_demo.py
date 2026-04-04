@@ -26,7 +26,7 @@ def main() -> None:
         if not result.ok:
             raise SystemExit(f"get_value after select('{item}') failed: {result.trace.details}")
         assert result.value == item, f"Expected '{item}', got '{result.value}'"
-        print(f"Selected '{item}' → value: {result.value} ✓")
+        print(f"Selected '{item}' → value: {result.value} (ok)")
 
     # ---- Verify item_not_found error ----------------------------------------
     result = client.select("Dragonfruit", id="demoChoiceBox")
@@ -36,8 +36,9 @@ def main() -> None:
     assert reason == "item_not_found", f"Expected item_not_found reason, got: {reason}"
     print(f"select('Dragonfruit') correctly rejected: {reason}")
 
-    print("\nchoicebox_demo succeeded ✓")
+    print("\nchoicebox_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

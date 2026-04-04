@@ -22,16 +22,17 @@ def main() -> None:
         raise SystemExit(f"get_text failed: {result.trace.details}")
     actual = result.value
     assert actual == text, f"Expected {text!r}, got {actual!r}"
-    print(f"Read back: {actual!r} ✓")
+    print(f"Read back: {actual!r} (ok)")
 
     # ---- 清空 ----------------------------------------------------------------
     client.type("", id="demoTextArea")
     result = client.get_text(id="demoTextArea")
     assert result.value == "" or result.value is None, f"Expected empty, got {result.value!r}"
-    print("Cleared text ✓")
+    print("Cleared text (ok)")
 
-    print("\ntext_area_demo succeeded ✓")
+    print("\ntext_area_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

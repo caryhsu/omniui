@@ -131,7 +131,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - API design TBD: `client.use("app1").click(...)` and/or multiple `OmniUI` instances
   - Cross-app workflows: e.g. fill form in app A, verify result in app B
 - [ ] **Visual regression** — screenshot baseline comparison for detecting unintended UI changes
-- [ ] **Focus management** — `tab_focus()`, `verify_focused(id=...)`
+- [x] **Focus management** — `tab_focus()`, `verify_focused(id=...)`
 - [ ] **Accessibility checks** — verify ARIA roles / labels
 - [ ] **WebView** automation (JavaScript execution)
 - [ ] **Performance metrics** — action timing, frame rate

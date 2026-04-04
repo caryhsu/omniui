@@ -54,8 +54,9 @@ def main() -> None:
     assert result.value is not initial, "ToggleButton state should have changed"
     print(f"toggleButton toggled to: {result.value}")
 
-    print("\nradio_toggle_demo succeeded ✓")
+    print("\nradio_toggle_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

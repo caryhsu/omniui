@@ -19,7 +19,7 @@ def _check(result, label: str) -> None:
         raise SystemExit(
             f"{label} FAILED — result={result!r}"
         )
-    print(f"  {label}  ✓")
+    print(f"  {label}  (ok)")
 
 
 def main() -> None:
@@ -48,3 +48,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

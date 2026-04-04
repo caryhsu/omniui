@@ -12,7 +12,7 @@ else:
 def _check(result, label: str) -> None:
     if not result.ok:
         raise SystemExit(f"{label} FAILED — {result!r}")
-    print(f"  {label}  ✓")
+    print(f"  {label}  (ok)")
 
 
 def main() -> None:
@@ -30,7 +30,7 @@ def main() -> None:
     selected = sorted(result.value)
     assert selected == ["alpha-node", "gamma-node"], \
         f"Expected ['alpha-node', 'gamma-node'] but got {selected}"
-    print(f"  selected items = {selected}  ✓")
+    print(f"  selected items = {selected}  (ok)")
 
     # Select a single item (clears previous)
     _check(
@@ -41,10 +41,11 @@ def main() -> None:
     _check(result2, "get_selected_items after single select")
     assert result2.value == ["beta-node"], \
         f"Expected ['beta-node'] but got {result2.value}"
-    print(f"  selected items = {result2.value}  ✓")
+    print(f"  selected items = {result2.value}  (ok)")
 
     print("multi_select tests passed")
 
 
 if __name__ == "__main__":
     main()
+

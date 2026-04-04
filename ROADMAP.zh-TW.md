@@ -132,7 +132,7 @@
   - API 設計待定：`client.use("app1").click(...)` 或多個 `OmniUI` 實例，或兩者皆支援
   - 跨 App 工作流：例如在 app A 填寫表單，在 app B 驗證結果
 - [ ] **視覺回歸測試** — 截圖 baseline 比對，偵測非預期的 UI 變更
-- [ ] **焦點管理** — `tab_focus()`、`verify_focused(id=...)`
+- [x] **焦點管理** — `tab_focus()`、`verify_focused(id=...)`
 - [ ] **無障礙檢查** — 驗證 ARIA 角色與標籤
 - [ ] **WebView** 自動化（執行 JavaScript）
 - [ ] **效能指標** — 操作計時、畫面更新頻率

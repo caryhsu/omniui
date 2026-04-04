@@ -22,7 +22,7 @@ def _check(result, label: str) -> None:
             f"{label} FAILED — actual={result.value.get('actual')!r}, "
             f"expected={result.value.get('expected')!r}, mode={result.value.get('match')!r}"
         )
-    print(f"  {label}  ✓")
+    print(f"  {label}  (ok)")
 
 
 def main() -> None:
@@ -51,10 +51,11 @@ def main() -> None:
         client.verify_text("x", match="fuzzy", id="loginSectionTitle")
         raise SystemExit("Expected ValueError for unknown match mode but none raised")
     except ValueError:
-        print("  ValueError on unknown match mode  ✓")
+        print("  ValueError on unknown match mode  (ok)")
 
     print("flexible verify_text tests passed")
 
 
 if __name__ == "__main__":
     main()
+

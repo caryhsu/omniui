@@ -15,21 +15,21 @@ def main() -> None:
     # Initially Engineering and Sales depts are collapsed
     assert not client.get_tree_table_expanded("Engineering", id="demoTreeTable"), \
         "Engineering should be collapsed initially"
-    print("Engineering initially collapsed ✓")
+    print("Engineering initially collapsed (ok)")
 
     result = client.expand_tree_table_item("Engineering", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"expand_tree_table_item(Engineering) failed: {result.trace.details}")
     assert client.get_tree_table_expanded("Engineering", id="demoTreeTable"), \
         "Engineering should be expanded"
-    print("Expanded Engineering ✓")
+    print("Expanded Engineering (ok)")
 
     result = client.collapse_tree_table_item("Engineering", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"collapse_tree_table_item(Engineering) failed: {result.trace.details}")
     assert not client.get_tree_table_expanded("Engineering", id="demoTreeTable"), \
         "Engineering should be collapsed again"
-    print("Collapsed Engineering ✓")
+    print("Collapsed Engineering (ok)")
 
     # ---- Row selection by cell value ----------------------------------------
     # Expand both departments so rows are reachable
@@ -39,33 +39,34 @@ def main() -> None:
     result = client.select_tree_table_row("Alice", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"select_tree_table_row(Alice) failed: {result.trace.details}")
-    print("Selected row 'Alice' ✓")
+    print("Selected row 'Alice' (ok)")
 
     result = client.select_tree_table_row("Carol", column="Name", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"select_tree_table_row(Carol, column=Name) failed: {result.trace.details}")
-    print("Selected row 'Carol' with column hint ✓")
+    print("Selected row 'Carol' with column hint (ok)")
 
     # ---- Cell value read ----------------------------------------------------
     result = client.get_tree_table_cell("Bob", "Department", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"get_tree_table_cell(Bob, Department) failed: {result.trace.details}")
     assert result.value == "Engineer", f"Expected 'Engineer', got '{result.value}'"
-    print(f"Cell Bob/Department = '{result.value}' ✓")
+    print(f"Cell Bob/Department = '{result.value}' (ok)")
 
     result = client.get_tree_table_cell("Dave", "Department", id="demoTreeTable")
     if not result.ok:
         raise SystemExit(f"get_tree_table_cell(Dave, Department) failed: {result.trace.details}")
     assert result.value == "Sales Rep", f"Expected 'Sales Rep', got '{result.value}'"
-    print(f"Cell Dave/Department = '{result.value}' ✓")
+    print(f"Cell Dave/Department = '{result.value}' (ok)")
 
     # ---- Non-existent row fails gracefully ----------------------------------
     result = client.select_tree_table_row("NoSuchPerson", id="demoTreeTable")
     assert not result.ok, "Expected failure for non-existent row"
-    print("Non-existent row correctly rejected ✓")
+    print("Non-existent row correctly rejected (ok)")
 
-    print("\ntreetableview_demo succeeded ✓")
+    print("\ntreetableview_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

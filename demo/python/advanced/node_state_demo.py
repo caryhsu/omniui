@@ -39,8 +39,9 @@ def main() -> None:
     client.set_disabled(False, id="nodeStateTarget")
     assert client.is_enabled(id="nodeStateTarget"), "nodeStateTarget should be enabled after set_disabled(False)"
 
-    print("node_state_demo succeeded — is_visible, is_enabled, set_visible, set_disabled all verified ✓")
+    print("node_state_demo succeeded — is_visible, is_enabled, set_visible, set_disabled all verified (ok)")
 
 
 if __name__ == "__main__":
     main()
+

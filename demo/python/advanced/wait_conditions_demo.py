@@ -38,8 +38,9 @@ def main() -> None:
         raised = True
     assert raised, "wait_for_node should raise TimeoutError for non-existent node"
 
-    print("wait_conditions_demo succeeded — wait_for_text, wait_for_visible, wait_for_enabled, wait_for_node, wait_for_value all verified ✓")
+    print("wait_conditions_demo succeeded — wait_for_text, wait_for_visible, wait_for_enabled, wait_for_node, wait_for_value all verified (ok)")
 
 
 if __name__ == "__main__":
     main()
+

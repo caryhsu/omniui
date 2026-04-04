@@ -396,6 +396,100 @@ class HoverTests(unittest.TestCase):
         self.assertEqual(captured[0]["selector"], {"id": "tooltipBtn"})
 
 
+class FocusManagementTests(unittest.TestCase):
+    """Tests for focus(), tab_focus(), get_focused(), verify_focused()."""
+
+    def _make_client_and_capture(self, mock_urlopen, action_response=None):
+        captured: list[dict] = []
+        if action_response is None:
+            action_response = {
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "n1", "matchedAttributes": {"fxId": "username"}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": None,
+            }
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []})
+            return _FakeResponse(action_response)
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_focus_sends_correct_action(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.focus(id="username")
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "focus")
+        self.assertEqual(captured[0]["selector"], {"id": "username"})
+
+    @patch("urllib.request.urlopen")
+    def test_tab_focus_sends_tab_key(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.tab_focus()
+        self.assertEqual(captured[0]["action"], "press_key")
+        self.assertEqual(captured[0]["payload"]["key"], "Tab")
+
+    @patch("urllib.request.urlopen")
+    def test_tab_focus_reverse_sends_shift_tab(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.tab_focus(reverse=True)
+        self.assertEqual(captured[0]["payload"]["key"], "Shift+Tab")
+
+    @patch("urllib.request.urlopen")
+    def test_tab_focus_times_sends_multiple_presses(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.tab_focus(times=3)
+        self.assertEqual(len(captured), 3)
+        for req in captured:
+            self.assertEqual(req["payload"]["key"], "Tab")
+
+    @patch("urllib.request.urlopen")
+    def test_get_focused_returns_fxid_and_nodetype(self, mock_urlopen) -> None:
+        action_response = {
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": None, "matchedAttributes": {}, "confidence": None},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": {"fxId": "username", "nodeType": "TextField"},
+        }
+        client, captured = self._make_client_and_capture(mock_urlopen, action_response)
+        result = client.get_focused()
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "get_focused")
+        self.assertEqual(result.value["fxId"], "username")
+        self.assertEqual(result.value["nodeType"], "TextField")
+
+    @patch("urllib.request.urlopen")
+    def test_verify_focused_passes_when_match(self, mock_urlopen) -> None:
+        action_response = {
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": None, "matchedAttributes": {}, "confidence": None},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": {"fxId": "username", "nodeType": "TextField"},
+        }
+        client, _ = self._make_client_and_capture(mock_urlopen, action_response)
+        client.verify_focused(id="username")  # should not raise
+
+    @patch("urllib.request.urlopen")
+    def test_verify_focused_raises_on_mismatch(self, mock_urlopen) -> None:
+        action_response = {
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": None, "matchedAttributes": {}, "confidence": None},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": {"fxId": "password", "nodeType": "PasswordField"},
+        }
+        client, _ = self._make_client_and_capture(mock_urlopen, action_response)
+        with self.assertRaises(AssertionError):
+            client.verify_focused(id="username")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

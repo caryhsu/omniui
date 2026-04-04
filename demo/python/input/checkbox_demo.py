@@ -57,8 +57,9 @@ def main() -> None:
     client.set_selected(True, id="checkA")
     client.set_selected(False, id="checkB")
 
-    print("\ncheckbox_demo succeeded ✓")
+    print("\ncheckbox_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

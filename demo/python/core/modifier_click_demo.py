@@ -24,22 +24,23 @@ def main() -> None:
     result = client.click(id="serverList", modifiers=["Ctrl"])
     if not result.ok:
         raise SystemExit(f"Ctrl+click failed: {result.trace.details}")
-    print("Ctrl+click succeeded ✓")
+    print("Ctrl+click succeeded (ok)")
 
     # Shift+click: range selection
     result = client.click(id="serverList", modifiers=["Shift"])
     if not result.ok:
         raise SystemExit(f"Shift+click failed: {result.trace.details}")
-    print("Shift+click succeeded ✓")
+    print("Shift+click succeeded (ok)")
 
     # Ctrl+Shift combination
     result = client.click(id="serverList", modifiers=["Ctrl", "Shift"])
     if not result.ok:
         raise SystemExit(f"Ctrl+Shift+click failed: {result.trace.details}")
-    print("Ctrl+Shift+click succeeded ✓")
+    print("Ctrl+Shift+click succeeded (ok)")
 
-    print("\nmodifier_click_demo succeeded ✓")
+    print("\nmodifier_click_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+

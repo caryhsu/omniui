@@ -69,6 +69,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "get_dialog"      -> doGetDialog();
             case "dismiss_dialog"  -> doDismissDialog(payload);
             case "close_app"       -> doCloseApp();
+            case "get_focused"     -> doGetFocused();
             case "press_key"       -> doPressKey(selector, payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
@@ -142,6 +143,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "click"        -> handleClick(node, fxId, handle, payload);
             case "double_click" -> handleDoubleClick(node, fxId, handle);
             case "hover"        -> doHover(node, fxId, handle);
+            case "focus"        -> doFocus(node, fxId, handle);
             case "select"       -> handleSelect(node, fxId, handle, payload);
             case "type"         -> handleType(node, fxId, handle, payload);
             case "get_text"     -> ActionResult.success("javafx", handle, Map.of("fxId", fxId), ReflectiveJavaFxSupport.textOf(node));
@@ -482,6 +484,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 "message", ex.getMessage() == null ? "" : ex.getMessage()
             ));
         }
+    }
+
+    private ActionResult doFocus(Object node, String fxId, String handle) {
+        safeInvoke(node, "requestFocus");
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult doGetFocused() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            Object scene = sceneSupplier.get();
+            if (scene == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scene"));
+            }
+            Object focusOwner = safeInvoke(scene, "getFocusOwner");
+            String focusFxId    = focusOwner != null ? safeString(focusOwner, "getId") : null;
+            String focusType    = focusOwner != null ? focusOwner.getClass().getSimpleName() : null;
+            Map<String, Object> data = new java.util.HashMap<>();
+            data.put("fxId",     focusFxId);
+            data.put("nodeType", focusType);
+            return ActionResult.success("javafx", null, Map.of(), data);
+        });
     }
 
     private ActionResult handleDoubleClick(Object node, String fxId, String handle) {

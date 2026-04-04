@@ -173,6 +173,49 @@ class OmniUIClient:
         """
         return self._perform("hover", selector)
 
+    def focus(self, **selector: Any) -> ActionResult:
+        """Move keyboard focus to the target node by calling requestFocus().
+
+        Note: requestFocus() is a no-op for non-focusable nodes.
+        Use verify_focused() afterwards to confirm focus was accepted.
+        """
+        return self._perform("focus", selector)
+
+    def tab_focus(self, times: int = 1, reverse: bool = False) -> ActionResult:
+        """Navigate focus using Tab (or Shift+Tab if reverse=True).
+
+        times: number of Tab key presses (default 1)
+        reverse: if True, presses Shift+Tab instead
+        """
+        key = "Shift+Tab" if reverse else "Tab"
+        result = self._perform("press_key", {}, {"key": key})
+        for _ in range(times - 1):
+            if not result.ok:
+                break
+            result = self._perform("press_key", {}, {"key": key})
+        return result
+
+    def get_focused(self) -> ActionResult:
+        """Return info about the currently focused node.
+
+        Returns a dict with 'fxId' and 'nodeType' keys.
+        Both are None if no node currently holds focus.
+        """
+        return self._perform("get_focused", {})
+
+    def verify_focused(self, id: str) -> ActionResult:
+        """Assert that the node with the given fx:id is currently focused.
+
+        Raises AssertionError if the focused node's fxId does not match.
+        """
+        result = self.get_focused()
+        actual = result.value.get("fxId") if result.ok and isinstance(result.value, dict) else None
+        if actual != id:
+            raise AssertionError(
+                f"Expected focused node to be '{id}', but got '{actual}'"
+            )
+        return result
+
     def press_key(self, key: str, **selector: Any) -> ActionResult:
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 

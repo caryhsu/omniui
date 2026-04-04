@@ -24,7 +24,7 @@ def main() -> None:
         raise SystemExit(f"get_style(regionLabel) failed: {result.trace.details}")
     if "-fx-text-fill: green" not in result.value:
         raise SystemExit(f"Expected green style, got: {result.value!r}")
-    print(f"  regionLabel style = {result.value!r}  ✓")
+    print(f"  regionLabel style = {result.value!r}  (ok)")
 
     # status Label has no inline style
     result2 = client.get_style(id="status")
@@ -32,7 +32,7 @@ def main() -> None:
         raise SystemExit(f"get_style(status) failed: {result2.trace.details}")
     if result2.value != "":
         raise SystemExit(f"Expected empty style for 'status', got: {result2.value!r}")
-    print(f"  status style = {result2.value!r} (empty, as expected)  ✓")
+    print(f"  status style = {result2.value!r} (empty, as expected)  (ok)")
 
     # loginButton should have CSS class "button"
     result3 = client.get_style_class(id="loginButton")
@@ -43,7 +43,7 @@ def main() -> None:
         raise SystemExit(f"Expected list, got: {type(classes)}")
     if "button" not in classes:
         raise SystemExit(f"Expected 'button' in classes, got: {classes}")
-    print(f"  loginButton classes = {classes}  ✓")
+    print(f"  loginButton classes = {classes}  (ok)")
 
     print("CSS style inspection tests passed")
 

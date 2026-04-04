@@ -33,8 +33,9 @@ def main() -> None:
         raise SystemExit("Expected select_tab('NonExistent') to fail")
     print(f"select_tab('NonExistent') correctly rejected: {result.trace.details.get('reason')}")
 
-    print("\ntab_demo succeeded ✓")
+    print("\ntab_demo succeeded (ok)")
 
 
 if __name__ == "__main__":
     main()
+
