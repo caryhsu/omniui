@@ -39,6 +39,8 @@
   - 從 agent 內呼叫 `Platform.exit()`；適合測試收尾與關閉行為驗證
 - [x] **等待條件（waitFor）** — `wait_for_text(id, expected, timeout)`、`wait_for_visible(id, timeout)`、`wait_for_enabled(id, timeout)`、`wait_for_node(id, timeout)`、`wait_for_value(id, expected, timeout)`
   - Python 端輪詢或 agent 端阻塞；非同步 UI 狀態變更不可或缺
+- [ ] **App 啟動 API** — `launch_app(jar=..., port=...)` 從 Python 直接啟動含 agent 的 JavaFX app
+  - 目前每次測試前需手動啟動 agent；補齊與 Playwright / WinAppDriver 的落差
 
 ---
 
@@ -72,6 +74,16 @@
   - 自動化 JavaFX `Pagination` 控件
 - [ ] **Window / Stage 管理** — `get_windows()`、`focus_window(title=...)`
   - 多視窗測試場景
+  - `maximize_window()`、`minimize_window()`、`restore_window()`
+  - `set_window_size(width, height)`、`set_window_position(x, y)`
+  - `is_maximized()`、`is_minimized()`、`get_window_size()`、`get_window_position()`
+  - 透過 JavaFX `Stage` reflective call 實作（`setMaximized`、`setIconified`、`setX/Y` 等）
+- [ ] **絕對座標點擊** — `click_at(x=100, y=200)`
+  - Canvas 自繪或無 scene graph 節點的 UI 元素的 fallback 操作方式
+- [ ] **範圍限定選擇器（`within`）** — `with client.within(id="panel"): client.click(id="btn")`
+  - 將節點搜尋限定在子樹範圍；避免多個 panel 共用相同子節點 ID 時發生衝突
+- [ ] **Scene graph 快照 / 差異比對** — `client.snapshot()` 擷取完整 UI 狀態；`client.diff(before, after)` 顯示哪些節點發生變化
+  - 比 `verify_text` 更全面；適合驗證單一操作的所有副作用
 
 ---
 
@@ -79,6 +91,19 @@
 
 - [x] **`verify_text` 彈性比對** — 支援 `match="contains"`、`match="starts_with"`、`match="regex"` 模式
   - 目前只有 exact match，常常過於嚴格
+- [ ] **Locator 物件** — `loc = client.locator(id="btn")` 回傳可重複使用的元素 handle；可呼叫 `loc.click()`、`loc.verify_text(...)`、`loc.wait_for_visible()` 而不需重複寫 selector
+  - 支援 Page Object Model，減少 selector 重複
+- [ ] **Page Object Model 基礎類別** — `OmniPage` base class 自動注入 `client`；給測試專案標準化結構
+- [ ] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
+- [ ] **Retry 輔助器** — `@client.retry(times=3, delay=0.5)` 裝飾器，用於不穩定的 assertion 區塊
+- [ ] **結構化動作 Trace** — 每個操作自動記錄 timestamp、selector、結果；測試失敗時輸出完整動作時間軸
+- [ ] **平行測試支援** — 說明文件與範例，搭配 `pytest-xdist` 對多個 app 實例執行平行測試
+- [ ] **pytest fixture 整合** — `@pytest.fixture` 自動 connect/disconnect，減少測試樣板程式碼
+- [ ] **失敗自動截圖** — 任何操作拋出例外時自動擷取並儲存截圖
+- [ ] **自訂 wait 條件** — `wait_until(fn, timeout)` 接受自訂 lambda，支援任意輪詢邏輯
+- [ ] **Headless 模式** — 說明並支援 JavaFX Monocle headless 模式，讓 CI 不需要顯示器
+- [ ] **CI/CD 範例** — GitHub Actions workflow 範本（headless + agent 啟動 + pytest）
+- [ ] **HTML 測試報告** — pytest-html 或 Allure 整合說明
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [ ] **拖放（Drag & Drop）** — `drag(source_id, target_id)`
 - [ ] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
@@ -86,9 +111,27 @@
 
 ---
 
+## 🎬 完整錄製器（Full Recorder）
+
+- [ ] **事件捕捉** — Java agent 在 Scene 上掛 `EventFilter`，攔截滑鼠點擊、雙擊、按鍵與文字輸入
+- [ ] **Selector 推導** — 從被點擊的節點自動選出最佳 selector：`fx:id` → `text` → `type + index`
+- [ ] **腳本生成** — Python 端將錄製事件序列化為可執行的測試腳本
+  - 輸出 `click`、`type`、`press_key`、`verify_text` 等指令
+  - 敏感欄位（如 `PasswordField`）自動遮罩，替換為佔位符
+- [ ] **Wait 自動插入** — 啟發式判斷哪些操作後需要等待非同步 UI 變更，自動插入 `wait_for_*`
+- [ ] **錄製 Session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+
+---
+
 ## 💡 構想 / 未來規劃
 
-- [ ] **FileChooser / DirectoryChooser** 自動化
+- [ ] **多 App 自動化（Multi-app automation）** — 在單一測試流程中協調多個 JavaFX app
+  - Python 端管理多條 agent 連線（每個 JavaFX app 各自嵌入一個 agent）
+  - App 生命週期管理：啟動、連線、切換、斷線、關閉
+  - App 識別方式：port、PID 或具名 alias
+  - API 設計待定：`client.use("app1").click(...)` 或多個 `OmniUI` 實例，或兩者皆支援
+  - 跨 App 工作流：例如在 app A 填寫表單，在 app B 驗證結果
+- [ ] **視覺回歸測試** — 截圖 baseline 比對，偵測非預期的 UI 變更
 - [ ] **焦點管理** — `tab_focus()`、`verify_focused(id=...)`
 - [ ] **無障礙檢查** — 驗證 ARIA 角色與標籤
 - [ ] **WebView** 自動化（執行 JavaScript）

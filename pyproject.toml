@@ -5,9 +5,16 @@ description = "Multi-modal UI automation framework with JavaFX-first resolution.
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+dev = ["pytest>=9"]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+omniui_url = "http://127.0.0.1:48100"
+omniui_app = "LoginDemo"
 
 [tool.setuptools]
 include-package-data = true

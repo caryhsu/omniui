@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 import json
 import time
+import base64
+import subprocess
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib import request
 
@@ -64,6 +66,62 @@ class OmniUIClient:
 
     def action_history(self) -> list[ActionLogEntry]:
         return list(self._action_log)
+
+    def format_trace(self) -> str:
+        """Return the action history as a human-readable timeline string.
+
+        Example output::
+
+            ─── OmniUI Action Trace ──────────────────────────────
+              +0.00s  click        id=loginBtn          ✓  javafx
+              +0.13s  type         id=username           ✓  javafx
+              +0.31s  verify_text  id=status             ✗  javafx
+            ──────────────────────────────────────────────────────
+        """
+        if not self._action_log:
+            return "─── OmniUI Action Trace (empty) ───"
+
+        width = 54
+        bar = "─" * width
+        lines = [f"─── OmniUI Action Trace {'─' * (width - 23)}"]
+
+        t0 = self._action_log[0].timestamp
+        for entry in self._action_log:
+            elapsed = (entry.timestamp - t0).total_seconds()
+            trace = entry.result.trace
+
+            # Build compact selector string
+            sel_parts = []
+            if trace.selector.id:
+                sel_parts.append(f"id={trace.selector.id}")
+            if trace.selector.text:
+                sel_parts.append(f"text={trace.selector.text!r}")
+            if trace.selector.type:
+                sel_parts.append(f"type={trace.selector.type}")
+            sel_str = ", ".join(sel_parts) if sel_parts else "–"
+
+            tier = trace.resolved_tier or "–"
+            status = "✓" if entry.result.ok else "✗"
+
+            lines.append(
+                f"  +{elapsed:5.2f}s  {entry.action:<14} {sel_str:<24} {status}  {tier}"
+            )
+
+        lines.append(bar)
+        return "\n".join(lines)
+
+    def print_trace(self) -> None:
+        """Print the action trace timeline to stdout."""
+        print(self.format_trace())
+
+    def disconnect(self) -> None:
+        """Release this client session.
+
+        The agent has no DELETE /sessions endpoint yet, so this is a
+        client-side marker only.  Call it in test teardown so code is
+        forward-compatible when server-side cleanup is added.
+        """
+        self.session_id = ""
 
     def find(self, **selector: Any) -> dict[str, Any]:
         normalized = normalize_selector(
@@ -469,6 +527,34 @@ class OmniUIClient:
         """Alias for :meth:`wait_for_text`."""
         self.wait_for_text(id=id, expected=expected, timeout=timeout, interval=interval)
 
+    def wait_until(
+        self,
+        condition: Callable[[], bool],
+        timeout: float = 5.0,
+        interval: float = 0.2,
+        message: str = "condition not met",
+    ) -> None:
+        """Block until ``condition()`` returns truthy.
+
+        Polls every ``interval`` seconds. Raises ``TimeoutError`` if the
+        condition is not met within ``timeout`` seconds.
+
+        Examples::
+
+            client.wait_until(lambda: client.get_text(id="status").value == "Done")
+            client.wait_until(lambda: len(client.get_nodes()) > 5, timeout=10)
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                if condition():
+                    return
+            except Exception:
+                pass
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"wait_until: {message} (timeout={timeout}s)")
+            time.sleep(interval)
+
     # ---- Accordion / TitledPane --------------------------------------------
 
     def expand_pane(self, **selector: Any) -> ActionResult:
@@ -698,3 +784,35 @@ class OmniUIClient:
             raise RuntimeError(f"OmniUI request failed: {exc.code} {message}") from exc
         except URLError as exc:
             raise RuntimeError(f"OmniUI request failed: {exc.reason}") from exc
+
+
+class OmniUIProcess(OmniUIClient):
+    """An ``OmniUIClient`` that owns the underlying JavaFX app process.
+
+    Obtained via :meth:`OmniUI.launch` — do not instantiate directly.
+    Supports use as a context manager::
+
+        with OmniUI.launch(jar="app.jar", agent_jar="agent.jar") as ui:
+            ui.click(id="loginBtn")
+    """
+
+    def __init__(self, process: subprocess.Popen, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._process = process
+
+    def disconnect(self) -> None:
+        """Disconnect the client session and terminate the app process."""
+        super().disconnect()
+        if self._process.poll() is None:
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+
+    def __enter__(self) -> "OmniUIProcess":
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        self.disconnect()
+

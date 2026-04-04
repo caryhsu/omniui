@@ -183,5 +183,143 @@ class OmniUiClientTests(unittest.TestCase):
         self.assertTrue(result.trace.details["retried_after_refresh"])
 
 
+class WaitUntilTests(unittest.TestCase):
+    @patch("urllib.request.urlopen")
+    def _make_client(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+        ]
+        return OmniUI.connect()
+
+    def test_wait_until_returns_when_condition_becomes_true(self) -> None:
+        client = self._make_client()
+        counter = {"n": 0}
+
+        def condition():
+            counter["n"] += 1
+            return counter["n"] >= 3
+
+        client.wait_until(condition, timeout=2.0, interval=0.01)
+        self.assertGreaterEqual(counter["n"], 3)
+
+    def test_wait_until_raises_timeout_error_when_condition_never_true(self) -> None:
+        client = self._make_client()
+
+        with self.assertRaises(TimeoutError) as ctx:
+            client.wait_until(lambda: False, timeout=0.05, interval=0.01, message="never true")
+
+        self.assertIn("never true", str(ctx.exception))
+
+    def test_wait_until_tolerates_exceptions_from_condition(self) -> None:
+        client = self._make_client()
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise RuntimeError("not ready")
+            return True
+
+        client.wait_until(flaky, timeout=2.0, interval=0.01)
+        self.assertGreaterEqual(calls["n"], 3)
+
+
+class FormatTraceTests(unittest.TestCase):
+    @patch("urllib.request.urlopen")
+    def _make_client(self, mock_urlopen):
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+        ]
+        return OmniUI.connect()
+
+    def test_format_trace_empty(self) -> None:
+        client = self._make_client()
+        output = client.format_trace()
+        self.assertIn("empty", output)
+
+    @patch("urllib.request.urlopen")
+    def test_format_trace_shows_action_and_status(self, mock_urlopen) -> None:
+        from omniui.core.models import ActionResult, ActionTrace, Selector
+
+        client = self._make_client()
+        # Manually inject a log entry
+        from omniui.core.models import ActionLogEntry
+        entry = ActionLogEntry.from_result(
+            "click",
+            ActionResult(
+                ok=True,
+                trace=ActionTrace(
+                    selector=Selector(id="loginBtn"),
+                    attempted_tiers=["javafx"],
+                    resolved_tier="javafx",
+                ),
+            ),
+        )
+        client._action_log.append(entry)
+
+        output = client.format_trace()
+        self.assertIn("click", output)
+        self.assertIn("loginBtn", output)
+        self.assertIn("✓", output)
+        self.assertIn("javafx", output)
+
+
+class LaunchTests(unittest.TestCase):
+    def test_launch_raises_value_error_without_cmd_or_jar(self) -> None:
+        with self.assertRaises(ValueError):
+            OmniUI.launch(app_name="App")
+
+    @patch("subprocess.Popen")
+    @patch("urllib.request.urlopen")
+    def test_launch_starts_process_and_connects(
+        self, mock_urlopen, mock_popen
+    ) -> None:
+        import json as _json
+
+        fake_proc = mock_popen.return_value
+        fake_proc.poll.return_value = None
+
+        health_resp = _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+        session_resp = _FakeResponse({"sessionId": "s-launch", "appName": "App", "platform": "javafx", "capabilities": []})
+        # 1st call: health poll inside launch(); 2nd: health in connect(); 3rd: session in connect()
+        mock_urlopen.side_effect = [health_resp, health_resp, session_resp]
+
+        proc = OmniUI.launch(jar="app.jar", agent_jar="agent.jar", app_name="App")
+        self.assertEqual(proc.session_id, "s-launch")
+        mock_popen.assert_called_once()
+        cmd = mock_popen.call_args[0][0]
+        self.assertIn("-javaagent:agent.jar=port=48100", cmd)
+
+    @patch("subprocess.Popen")
+    @patch("omniui.client.request.urlopen")
+    def test_launch_raises_when_process_exits_early(
+        self, mock_urlopen, mock_popen
+    ) -> None:
+        fake_proc = mock_popen.return_value
+        fake_proc.poll.return_value = 1  # already exited
+
+        with self.assertRaises(RuntimeError, msg="exited unexpectedly"):
+            OmniUI.launch(jar="app.jar", agent_jar="agent.jar", timeout=0.1)
+
+    def test_launch_context_manager_terminates_process(self) -> None:
+        from unittest.mock import MagicMock
+        from omniui.core.engine import OmniUIProcess
+
+        fake_proc = MagicMock()
+        fake_proc.poll.return_value = None
+
+        proc = OmniUIProcess(
+            process=fake_proc,
+            base_url="http://127.0.0.1:48100",
+            session_id="s1",
+        )
+        with proc:
+            pass
+
+        fake_proc.terminate.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

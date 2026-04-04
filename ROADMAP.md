@@ -39,6 +39,8 @@ This file tracks planned features and improvements. Check off items as they are 
   - Calls `Platform.exit()` from within the agent; useful for test teardown and shutdown behavior testing
 - [x] **Wait conditions** — `wait_for_text(id, expected, timeout)`, `wait_for_visible(id, timeout)`, `wait_for_enabled(id, timeout)`, `wait_for_node(id, timeout)`, `wait_for_value(id, expected, timeout)`
   - Poll-based (Python-side) or agent-side blocking; essential for async UI state changes
+- [ ] **App launch API** — `launch_app(jar=..., port=...)` start a JavaFX app (with embedded agent) directly from Python
+  - Currently the agent must be started manually before any test; this bridges the gap vs Playwright / WinAppDriver
 
 ---
 
@@ -72,12 +74,35 @@ This file tracks planned features and improvements. Check off items as they are 
   - Automate JavaFX `Pagination` control
 - [ ] **Window / Stage management** — `get_windows()`, `focus_window(title=...)`
   - Multi-window test scenarios
+  - `maximize_window()`, `minimize_window()`, `restore_window()`
+  - `set_window_size(width, height)`, `set_window_position(x, y)`
+  - `is_maximized()`, `is_minimized()`, `get_window_size()`, `get_window_position()`
+  - Implemented via JavaFX `Stage` reflective calls (`setMaximized`, `setIconified`, `setX/Y`, etc.)
+- [ ] **Absolute coordinate click** — `click_at(x=100, y=200)`
+  - Fallback for Canvas-rendered or custom-drawn UI elements that have no scene graph node
+- [ ] **Scoped selector (`within`)** — `with client.within(id="panel"): client.click(id="btn")`
+  - Restrict node search to a subtree; avoids conflicts when multiple panels share the same child IDs
+- [ ] **Scene graph snapshot / diff** — `client.snapshot()` captures full UI state; `client.diff(before, after)` shows which nodes changed
+  - More thorough than `verify_text`; useful for verifying the side-effects of a single action
 
 ---
 
 ## 🏗️ Infrastructure / DX
 
 - [x] **Flexible `verify_text`** — support `match="contains"`, `match="starts_with"`, `match="regex"` modes
+- [ ] **Locator object** — `loc = client.locator(id="btn")` returns a reusable handle; call `loc.click()`, `loc.verify_text(...)`, `loc.wait_for_visible()` without repeating the selector
+  - Enables Page Object Model and reduces selector duplication
+- [ ] **Page Object Model base class** — `OmniPage` base class with auto-wired `client`; gives test projects a standard structure
+- [ ] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
+- [ ] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
+- [ ] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
+- [ ] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`
+- [ ] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
+- [ ] **Auto-screenshot on failure** — automatically capture and save a screenshot when any action raises an exception
+- [ ] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
+- [ ] **Headless mode** — document and support JavaFX Monocle headless mode for running tests in CI without a display
+- [ ] **CI/CD examples** — GitHub Actions workflow template (headless + agent startup + pytest)
+- [ ] **HTML test report** — pytest-html or Allure integration guide
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
 - [ ] **Hover** — `hover(id=...)` to trigger tooltips or hover states
@@ -85,9 +110,27 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ---
 
+## 🎬 Full Recorder
+
+- [ ] **Event capture** — Java agent attaches `EventFilter` to the Scene to intercept mouse clicks, double-clicks, key presses, and text input
+- [ ] **Selector inference** — derive the best selector from the clicked node: `fx:id` → `text` → `type + index`
+- [ ] **Script generation** — Python-side generator serialises recorded events into a runnable test script
+  - Outputs `click`, `type`, `press_key`, `verify_text`, etc.
+  - Sensitive fields (e.g. `PasswordField`) are masked with a placeholder
+- [ ] **Wait injection** — heuristically insert `wait_for_*` calls after actions that trigger async UI changes
+- [ ] **Record session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+
+---
+
 ## 💡 Ideas / Future
 
-- [ ] **FileChooser / DirectoryChooser** automation
+- [ ] **Multi-app automation** — orchestrate multiple JavaFX apps in a single test flow
+  - Multiple agent connections managed from Python (each JavaFX app embeds its own agent)
+  - App lifecycle: launch, connect, switch, disconnect, close
+  - App identification by port, PID, or named alias
+  - API design TBD: `client.use("app1").click(...)` and/or multiple `OmniUI` instances
+  - Cross-app workflows: e.g. fill form in app A, verify result in app B
+- [ ] **Visual regression** — screenshot baseline comparison for detecting unintended UI changes
 - [ ] **Focus management** — `tab_focus()`, `verify_focused(id=...)`
 - [ ] **Accessibility checks** — verify ARIA roles / labels
 - [ ] **WebView** automation (JavaScript execution)
