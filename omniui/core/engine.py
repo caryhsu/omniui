@@ -958,9 +958,19 @@ class SoftAssertContext:
         self._failures: list[str] = []
 
     def check(self, fn: Callable) -> None:
-        """Call ``fn()`` and collect any ``AssertionError`` it raises."""
+        """Call ``fn()`` and collect any ``AssertionError`` or failed ``ActionResult``."""
         try:
-            fn()
+            result = fn()
+            if isinstance(result, ActionResult) and not result.ok:
+                actual = ""
+                if isinstance(result.value, dict):
+                    actual = result.value.get("actual", "")
+                    expected = result.value.get("expected", "")
+                    self._failures.append(
+                        f"expected {expected!r} but got {actual!r}"
+                    )
+                else:
+                    self._failures.append("ActionResult ok=False")
         except AssertionError as exc:
             self._failures.append(str(exc))
 
