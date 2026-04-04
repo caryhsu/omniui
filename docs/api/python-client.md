@@ -453,7 +453,9 @@ client.wait_for_value("totalField", "42")
 
 ### `client.close_app() -> ActionResult`
 
-Trigger graceful shutdown of the JavaFX application by calling `Platform.exit()` from within the agent.
+Trigger graceful shutdown of the JavaFX application and the agent HTTP server.
+
+Internally schedules `System.exit(0)` after a 200 ms delay (to allow the HTTP response to flush), then terminates the full JVM. The agent also installs an `omniui-exit-monitor` daemon thread at startup that automatically calls `System.exit(0)` when the JavaFX Application Thread exits — so closing the window via the OS [x] button also terminates the process cleanly.
 
 This should be the **last call** in a session. Subsequent API calls will raise connection errors as the JVM exits.
 
