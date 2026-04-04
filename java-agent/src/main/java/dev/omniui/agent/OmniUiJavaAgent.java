@@ -29,6 +29,37 @@ public final class OmniUiJavaAgent {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to start OmniUI Java agent on port " + port, ex);
         }
+        startJvmExitMonitor();
+    }
+
+    /**
+     * Monitors the JavaFX Application Thread. When it exits (user closes window,
+     * Platform.exit(), etc.) the JDK HttpServer's internal Dispatcher thread —
+     * which is always non-daemon — would keep the JVM alive indefinitely.
+     * This monitor calls System.exit(0) as soon as JavaFX stops, ensuring a
+     * clean process exit regardless of how the application was closed.
+     */
+    private static void startJvmExitMonitor() {
+        Thread monitor = new Thread(() -> {
+            // Wait for the JavaFX Application Thread to appear (app may not have
+            // fully initialised yet when the agent premain runs).
+            while (!isFxThreadAlive()) {
+                try { Thread.sleep(200); } catch (InterruptedException e) { return; }
+            }
+            // Now wait for it to finish.
+            while (isFxThreadAlive()) {
+                try { Thread.sleep(200); } catch (InterruptedException e) { return; }
+            }
+            // JavaFX has exited — shut the JVM down cleanly.
+            System.exit(0);
+        }, "omniui-exit-monitor");
+        monitor.setDaemon(true);
+        monitor.start();
+    }
+
+    private static boolean isFxThreadAlive() {
+        return Thread.getAllStackTraces().keySet().stream()
+                .anyMatch(t -> "JavaFX Application Thread".equals(t.getName()) && t.isAlive());
     }
 
     public static synchronized void stopServer() {
