@@ -29,8 +29,8 @@
 
 ## 🔥 高優先 — 常見測試痛點
 
-- [ ] **捲動控制** — `scroll_to(id=...)`、`scroll_by(amount, direction)`
-  - ScrollPane、ListView、長 TableView 都需要
+- [x] **捲動控制** — `scroll_to(id=...)`、`scroll_by(delta_x, delta_y, id=...)`
+  - 支援 ScrollPane；`scroll_to` 向上走 parent chain；`scroll_by` 使用 0–1 正規化偏移量
 - [x] **鍵盤快捷鍵** — `press_key("Ctrl+C")`、`press_key("Enter")`、`press_key("Escape")`
   - 補完鍵盤操作缺口，對 Dialog / TextField 流程很重要
 - [x] **雙擊** — `double_click(id=...)`

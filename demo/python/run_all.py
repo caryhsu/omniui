@@ -38,6 +38,7 @@ if __package__ in (None, ""):
     import tooltip_demo  # type: ignore
     import css_style_demo  # type: ignore
     import flexible_verify_text_demo  # type: ignore
+    import scroll_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -77,6 +78,7 @@ else:
         tooltip_demo,
         css_style_demo,
         flexible_verify_text_demo,
+        scroll_demo,
     )
 
 
@@ -187,6 +189,9 @@ def main() -> None:
 
     _section("Flexible verify_text Demo")
     flexible_verify_text_demo.main()
+
+    _section("Scroll Demo")
+    scroll_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

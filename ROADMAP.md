@@ -29,8 +29,8 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ## 🔥 High Priority — Common Test Pain Points
 
-- [ ] **Scroll** — `scroll_to(id=...)`, `scroll_by(amount, direction)`
-  - Needed for ScrollPane, ListView, and long TableView content
+- [x] **Scroll** — `scroll_to(id=...)`, `scroll_by(delta_x, delta_y, id=...)`
+  - Supports ScrollPane; `scroll_to` walks parent chain; `scroll_by` uses normalised 0–1 offset
 - [x] **Keyboard shortcuts** — `press_key("Ctrl+C")`, `press_key("Enter")`, `press_key("Escape")`
   - Fills the keyboard interaction gap; important for Dialog and TextField flows
 - [x] **Double-click** — `double_click(id=...)`

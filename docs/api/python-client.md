@@ -191,6 +191,43 @@ client.verify_text(r"^Login \w+$", match="regex", id="loginSectionTitle")  # reg
 
 ---
 
+## Scroll Actions
+
+### `client.scroll_to(**selector) -> ActionResult`
+
+Find the nearest `ScrollPane` ancestor of the resolved node and adjust its `vvalue` so the node is visible in the viewport.
+
+The `vvalue` is computed from the node's position within the scroll content:
+
+```
+vvalue = nodeTop / (contentHeight - viewportHeight)   # clamped 0–1
+```
+
+**Example**
+
+```python
+client.scroll_to(id="scrollRow29")   # bring row 29 into view
+```
+
+---
+
+### `client.scroll_by(delta_x, delta_y, **selector) -> ActionResult`
+
+Adjust the `hvalue` / `vvalue` of the resolved `ScrollPane` by a relative offset. Both `delta_x` and `delta_y` are in the 0.0–1.0 normalised range.
+
+- Positive `delta_y` → scroll down; negative → scroll up
+- If no selector is given the first `ScrollPane` found in the scene is used
+
+**Examples**
+
+```python
+client.scroll_by(0.0,  0.2, id="myScrollPane")   # scroll down 20%
+client.scroll_by(0.0, -1.0, id="myScrollPane")   # scroll back to top
+client.scroll_by(0.0,  0.5)                       # first ScrollPane in scene
+```
+
+---
+
 ## Menu and ContextMenu Actions
 
 ### `client.right_click(**selector) -> ActionResult`

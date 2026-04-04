@@ -118,6 +118,22 @@ class OmniUIClient:
     def get_style_class(self, **selector: Any) -> ActionResult:
         return self._perform("get_style_class", selector)
 
+    # ---- Scroll ------------------------------------------------------------
+
+    def scroll_to(self, **selector: Any) -> ActionResult:
+        """Scroll the nearest enclosing ScrollPane so the target node is visible."""
+        return self._perform("scroll_to", selector)
+
+    def scroll_by(self, delta_x: float, delta_y: float, **selector: Any) -> ActionResult:
+        """Scroll a ScrollPane by a relative offset in the 0.0–1.0 range.
+
+        delta_x / delta_y are added to the current hvalue / vvalue and clamped
+        to [0.0, 1.0].  Positive delta_y scrolls down; negative scrolls up.
+
+        If no selector is given the first ScrollPane found in the scene is used.
+        """
+        return self._perform("scroll_by", selector, {"delta_x": delta_x, "delta_y": delta_y})
+
     def verify_text(self, expected: str, *, match: str = "exact", **selector: Any) -> ActionResult:
         result = self.get_text(**selector)
         actual = result.value or ""

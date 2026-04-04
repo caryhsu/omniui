@@ -126,14 +126,15 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private ActionResult performOnFxThread(String action, JsonObject selector, JsonObject payload) {
         DiscoverySnapshot snapshot = snapshot();
         Optional<NodeRef> match = resolve(selector, snapshot);
-        if (match.isEmpty()) {
+        // scroll_by can target the first ScrollPane when no selector is given
+        if (match.isEmpty() && !"scroll_by".equals(action)) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
         }
 
-        NodeRef nodeRef = match.get();
-        Object node = nodeRef.node();
-        String fxId = asString(nodeRef.metadata().get("fxId"));
-        String handle = asString(nodeRef.metadata().get("handle"));
+        NodeRef nodeRef = match.orElse(null);
+        Object node = nodeRef != null ? nodeRef.node() : null;
+        String fxId = nodeRef != null ? asString(nodeRef.metadata().get("fxId")) : "";
+        String handle = nodeRef != null ? asString(nodeRef.metadata().get("handle")) : "";
 
         return switch (action) {
             case "click"        -> handleClick(node, fxId, handle);
@@ -247,6 +248,24 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 boolean dis = payload != null && payload.has("disabled") && payload.get("disabled").getAsBoolean();
                 ReflectiveJavaFxSupport.invoke(node, "setDisable", dis);
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), dis);
+            }
+            case "scroll_to" -> {
+                Object sp = findScrollPaneAncestor(node);
+                if (sp == null) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scroll_pane_ancestor", "fxId", fxId));
+                }
+                scrollToNode(sp, node);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+            }
+            case "scroll_by" -> {
+                double deltaX = payload != null && payload.has("delta_x") ? payload.get("delta_x").getAsDouble() : 0.0;
+                double deltaY = payload != null && payload.has("delta_y") ? payload.get("delta_y").getAsDouble() : 0.0;
+                Object sp = (node != null) ? node : findFirstScrollPane(snapshot);
+                if (sp == null) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scroll_pane_found"));
+                }
+                scrollByDelta(sp, deltaX, deltaY);
+                yield ActionResult.success("javafx", handle != null ? handle : "", Map.of("fxId", fxId != null ? fxId : ""), null);
             }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
@@ -890,7 +909,65 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         }
     }
 
-    // ---- ContextMenu actions -----------------------------------------------
+    // ---- Scroll helpers ----------------------------------------------------
+
+    private Object findScrollPaneAncestor(Object node) {
+        Object current = safeInvoke(node, "getParent");
+        while (current != null) {
+            if (current.getClass().getName().endsWith("ScrollPane")) {
+                return current;
+            }
+            current = safeInvoke(current, "getParent");
+        }
+        return null;
+    }
+
+    private void scrollToNode(Object scrollPane, Object node) {
+        try {
+            Object content = safeInvoke(scrollPane, "getContent");
+            if (content == null) return;
+            Object contentBounds  = safeInvoke(content, "getBoundsInLocal");
+            Object viewportBounds = safeInvoke(scrollPane, "getViewportBounds");
+            Object nodeBoundsInLocal   = safeInvoke(node, "getBoundsInLocal");
+            Object nodeBoundsInScene   = safeInvoke(node, "localToScene", nodeBoundsInLocal);
+            Object nodeBoundsInContent = safeInvoke(content, "sceneToLocal", nodeBoundsInScene);
+            if (nodeBoundsInContent == null || contentBounds == null || viewportBounds == null) return;
+            double nodeTop  = (double) ReflectiveJavaFxSupport.invokeExact(nodeBoundsInContent, "getMinY",  new Class<?>[0]);
+            double contentH = (double) ReflectiveJavaFxSupport.invokeExact(contentBounds,       "getHeight", new Class<?>[0]);
+            double viewportH = (double) ReflectiveJavaFxSupport.invokeExact(viewportBounds,     "getHeight", new Class<?>[0]);
+            double range = contentH - viewportH;
+            if (range <= 0) return;
+            double vvalue = Math.max(0.0, Math.min(1.0, nodeTop / range));
+            ReflectiveJavaFxSupport.invoke(scrollPane, "setVvalue", vvalue);
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+
+    private void scrollByDelta(Object scrollPane, double deltaX, double deltaY) {
+        try {
+            if (deltaY != 0.0) {
+                Object vv = safeInvoke(scrollPane, "getVvalue");
+                double cur = vv == null ? 0.0 : ((Number) vv).doubleValue();
+                ReflectiveJavaFxSupport.invoke(scrollPane, "setVvalue", Math.max(0.0, Math.min(1.0, cur + deltaY)));
+            }
+            if (deltaX != 0.0) {
+                Object hv = safeInvoke(scrollPane, "getHvalue");
+                double cur = hv == null ? 0.0 : ((Number) hv).doubleValue();
+                ReflectiveJavaFxSupport.invoke(scrollPane, "setHvalue", Math.max(0.0, Math.min(1.0, cur + deltaX)));
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+
+    private Object findFirstScrollPane(DiscoverySnapshot snapshot) {
+        return snapshot.nodes().stream()
+            .filter(r -> r.node().getClass().getName().endsWith("ScrollPane"))
+            .map(NodeRef::node)
+            .findFirst()
+            .orElse(null);
+    }
 
     private ActionResult doRightClick(JsonObject selector) {
         DiscoverySnapshot snapshot = snapshot();

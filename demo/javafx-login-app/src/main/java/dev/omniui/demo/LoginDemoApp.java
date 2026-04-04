@@ -583,6 +583,19 @@ public final class LoginDemoApp extends Application {
         VBox nodeStateSection = section("Node State Test", "nodeStateSection",
             nodeStateTarget, nodeStateStatus, visibilityToggle, enabledToggle);
 
+        VBox scrollRows = new VBox(4);
+        scrollRows.setId("scrollRowsBox");
+        for (int i = 0; i < 30; i++) {
+            Label row = new Label("Scroll Row " + i);
+            row.setId("scrollRow" + i);
+            scrollRows.getChildren().add(row);
+        }
+        ScrollPane innerScrollPane = new ScrollPane(scrollRows);
+        innerScrollPane.setId("innerScrollPane");
+        innerScrollPane.setPrefHeight(120);
+        innerScrollPane.setFitToWidth(true);
+        VBox scrollTestSection = section("Scroll Test", "scrollTestSection", innerScrollPane);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -612,7 +625,8 @@ public final class LoginDemoApp extends Application {
             treeTableSection,
             colorPickerSection,
             splitPaneSection,
-            nodeStateSection
+            nodeStateSection,
+            scrollTestSection
         );
         root.setPadding(new Insets(24));
 
