@@ -60,6 +60,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "dismiss_menu"    -> doDismissMenu();
             case "navigate_month"  -> doNavigateMonth(payload);
             case "pick_date"       -> doPickDate(payload);
+            case "set_date"        -> doSetDate(selector, payload);
             case "get_dialog"      -> doGetDialog();
             case "dismiss_dialog"  -> doDismissDialog(payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
@@ -1039,6 +1040,32 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 safeInvoke(forward ? buttons.get(buttons.size() - 1) : buttons.get(0), "fire");
             }
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "date_cell_not_found", "date", dateStr));
+        });
+    }
+
+    private ActionResult doSetDate(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String dateStr = payload != null && payload.has("date") ? payload.get("date").getAsString() : null;
+            if (dateStr == null || dateStr.isBlank()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_date"));
+            }
+            DiscoverySnapshot snapshot = snapshot();
+            Optional<NodeRef> match = resolve(selector, snapshot);
+            if (match.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+            }
+            Object node = match.get().node();
+            String fxId = asString(match.get().metadata().get("fxId"));
+            String handle = asString(match.get().metadata().get("handle"));
+            try {
+                Class<?> ldClass = ReflectiveJavaFxSupport.loadClass("java.time.LocalDate");
+                Object localDate = ReflectiveJavaFxSupport.invokeStatic(ldClass, "parse", dateStr);
+                ReflectiveJavaFxSupport.invoke(node, "setValue", localDate);
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "date", dateStr), dateStr);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "set_date_failed", "fxId", fxId,
+                        "detail", ex.getMessage() == null ? "" : ex.getMessage()));
+            }
         });
     }
 

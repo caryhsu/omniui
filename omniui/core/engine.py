@@ -161,6 +161,10 @@ class OmniUIClient:
         """Select a date (ISO-8601 'YYYY-MM-DD') in the open DatePicker popup."""
         return self._direct_action("pick_date", {"date": date})
 
+    def set_date(self, date: str, **selector: Any) -> ActionResult:
+        """Set a DatePicker value directly (ISO-8601 'YYYY-MM-DD') without using the popup."""
+        return self._perform("set_date", selector, {"date": date})
+
     # ---- Dialog / Alert ----------------------------------------------------
 
     def get_dialog(self) -> ActionResult:
