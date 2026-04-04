@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import base64
+import re
 import json
 import time
 from dataclasses import asdict
@@ -118,10 +118,21 @@ class OmniUIClient:
     def get_style_class(self, **selector: Any) -> ActionResult:
         return self._perform("get_style_class", selector)
 
-    def verify_text(self, expected: str, **selector: Any) -> ActionResult:
+    def verify_text(self, expected: str, *, match: str = "exact", **selector: Any) -> ActionResult:
         result = self.get_text(**selector)
-        result.value = {"actual": result.value, "expected": expected, "matches": result.value == expected}
-        result.ok = bool(result.value["matches"])
+        actual = result.value or ""
+        if match == "exact":
+            matched = actual == expected
+        elif match == "contains":
+            matched = expected in actual
+        elif match == "starts_with":
+            matched = actual.startswith(expected)
+        elif match == "regex":
+            matched = re.search(expected, actual) is not None
+        else:
+            raise ValueError(f"Unknown match mode: {match!r}. Use 'exact', 'contains', 'starts_with', or 'regex'.")
+        result.value = {"actual": actual, "expected": expected, "match": match, "matches": matched}
+        result.ok = bool(matched)
         return result
 
     def screenshot(self) -> bytes:

@@ -75,8 +75,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ## 🏗️ Infrastructure / DX
 
-- [ ] **Flexible `verify_text`** — support `contains=`, `starts_with=`, `regex=` match modes
-  - Current exact-match only is often too strict
+- [x] **Flexible `verify_text`** — support `match="contains"`, `match="starts_with"`, `match="regex"` modes
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
 - [ ] **Hover** — `hover(id=...)` to trigger tooltips or hover states

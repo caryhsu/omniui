@@ -177,7 +177,9 @@ client.click(id="password")
 client.type("1234", id="password")
 
 client.click(text="Login")
-client.verify_text(id="status", expected="Success")
+client.verify_text("Success", id="status")                                 # exact (default)
+client.verify_text("Suc", match="contains", id="status")                  # contains
+client.verify_text(r"^Succ", match="regex", id="status")                  # regex
 ```
 
 Use the full API reference for parameters, result models, fallback semantics, and return fields.

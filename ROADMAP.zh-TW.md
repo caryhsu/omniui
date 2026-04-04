@@ -75,7 +75,7 @@
 
 ## 🏗️ 基礎建設 / 開發體驗
 
-- [ ] **`verify_text` 彈性比對** — 支援 `contains=`、`starts_with=`、`regex=` 模式
+- [x] **`verify_text` 彈性比對** — 支援 `match="contains"`、`match="starts_with"`、`match="regex"` 模式
   - 目前只有 exact match，常常過於嚴格
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [ ] **拖放（Drag & Drop）** — `drag(source_id, target_id)`

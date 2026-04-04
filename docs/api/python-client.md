@@ -154,20 +154,39 @@ classes2 = client.get_style_class(id="idField")
 assert "error" in classes2.value
 ```
 
-### `client.verify_text(expected, **selector) -> ActionResult`
+### `client.verify_text(expected, *, match="exact", **selector) -> ActionResult`
 
-Resolve an element, fetch its text, and compare it to `expected`.
+Resolve an element, fetch its text, and compare it to `expected` using the given `match` mode.
+
+| `match` value | Behaviour |
+|---|---|
+| `"exact"` *(default)* | `actual == expected` |
+| `"contains"` | `expected in actual` |
+| `"starts_with"` | `actual.startswith(expected)` |
+| `"regex"` | `re.search(expected, actual)` — matches anywhere in the string |
+
+Raises `ValueError` for unknown `match` values.
 
 Return semantics:
-- `result.ok` is `True` only when the actual text equals `expected`
-- `result.value` currently has:
+- `result.ok` is `True` only when the comparison succeeds
+- `result.value`:
 
 ```python
 {
     "actual": ...,
     "expected": ...,
+    "match": "exact" | "contains" | "starts_with" | "regex",
     "matches": True | False,
 }
+```
+
+**Examples**
+
+```python
+client.verify_text("Login Flow", id="loginSectionTitle")                   # exact (default)
+client.verify_text("Login", match="contains", id="loginSectionTitle")      # substring
+client.verify_text("Login", match="starts_with", id="loginSectionTitle")   # prefix
+client.verify_text(r"^Login \w+$", match="regex", id="loginSectionTitle")  # regex
 ```
 
 ---
