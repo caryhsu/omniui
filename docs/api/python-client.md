@@ -107,6 +107,22 @@ Parameters:
 
 Resolve an element and fetch its text through the JavaFX path.
 
+### `client.get_tooltip(**selector) -> ActionResult`
+
+Read the tooltip text of a node.
+
+- `result.value` — the tooltip text string, or `""` if the node has no tooltip attached
+- `result.ok` is `False` (with reason `selector_not_found`) if the node cannot be resolved
+
+```python
+tip = client.get_tooltip(id="submitButton")
+assert tip.value == "Click to submit the form"
+
+# Node without a tooltip
+tip2 = client.get_tooltip(id="statusLabel")
+assert tip2.value == ""
+```
+
 ### `client.verify_text(expected, **selector) -> ActionResult`
 
 Resolve an element, fetch its text, and compare it to `expected`.

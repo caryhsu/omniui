@@ -51,6 +51,7 @@ import javafx.application.Platform;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.SplitPane;
 import javafx.scene.paint.Color;
+import javafx.scene.control.Tooltip;
 import javafx.stage.Stage;
 
 public final class LoginDemoApp extends Application {
@@ -69,6 +70,7 @@ public final class LoginDemoApp extends Application {
 
         Button loginButton = new Button("Login");
         loginButton.setId("loginButton");
+        loginButton.setTooltip(new Tooltip("Enter credentials and click to log in"));
         loginButton.setOnAction(event -> {
             String value = "admin".equals(username.getText()) && "1234".equals(password.getText())
                 ? "Success"

@@ -109,6 +109,9 @@ class OmniUIClient:
     def get_text(self, **selector: Any) -> ActionResult:
         return self._perform("get_text", selector)
 
+    def get_tooltip(self, **selector: Any) -> ActionResult:
+        return self._perform("get_tooltip", selector)
+
     def verify_text(self, expected: str, **selector: Any) -> ActionResult:
         result = self.get_text(**selector)
         result.value = {"actual": result.value, "expected": expected, "matches": result.value == expected}

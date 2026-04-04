@@ -26,7 +26,7 @@ Implemented in this repo today:
 - recorder-lite script generation for stable click selectors
 
 **Actions — basic interaction**
-- `click`, `right_click`, `double_click`, `type`, `get_text`, `verify_text`
+- `click`, `right_click`, `double_click`, `type`, `get_text`, `verify_text`, `get_tooltip`
 - `press_key(key, **selector)` — keyboard shortcuts; format: `"Ctrl+C"`, `"Shift+Tab"`, `"Escape"`, `"Control+Shift+Z"`
 - `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
 - `is_visible`, `is_enabled` — query node visibility / enabled state

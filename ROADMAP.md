@@ -46,7 +46,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 - [x] **Node state queries** — `is_visible(id=...)`, `is_enabled(id=...)`
   - Agent already includes `visible` / `enabled` in discovery metadata; Python-side convenience wrappers only
-- [ ] **Tooltip verification** — `get_tooltip(id=...)`
+- [x] **Tooltip verification** — `get_tooltip(id=...)`
   - Read the tooltip text of a node
 - [ ] **CSS style inspection** — `get_style(id=...)`, `get_style_class(id=...)`
   - `get_style()` returns the node's inline style string (e.g. `"-fx-text-fill: red;"`)
