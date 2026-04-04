@@ -101,7 +101,7 @@ class OmniUiClientTests(unittest.TestCase):
     def test_select_sends_selection_payload(self, mock_urlopen) -> None:
         captured_requests: list[dict[str, object]] = []
 
-        def fake_urlopen(req):
+        def fake_urlopen(req, **_kw):
             if req.full_url.endswith("/actions"):
                 captured_requests.append(json.loads(req.data.decode("utf-8")))
             if req.full_url.endswith("/health"):

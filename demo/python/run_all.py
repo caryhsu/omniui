@@ -224,7 +224,7 @@ def main(auto_launch: bool = True) -> None:
     # ── Input App ─────────────────────────────────────────────────────────────
     _section("Input App demos (port 48101+)")
     if auto_launch:
-        input_port = OmniUI.find_free_port(48100, 48999)
+        input_port = OmniUI.find_free_port(48101, 48999)
         input_cmd = _build_launch_cmd(
             java_dir / "input-app", "omniui-input-demo",
             "dev.omniui.demo.input", "dev.omniui.demo.input.InputDemoApp", input_port,
@@ -264,7 +264,7 @@ def main(auto_launch: bool = True) -> None:
     # ── Advanced App ──────────────────────────────────────────────────────────
     _section("Advanced App demos (port 48102+)")
     if auto_launch:
-        adv_port = OmniUI.find_free_port(48100, 48999)
+        adv_port = OmniUI.find_free_port(48102, 48999)
         adv_cmd = _build_launch_cmd(
             java_dir / "advanced-app", "omniui-advanced-demo",
             "dev.omniui.demo.advanced", "dev.omniui.demo.advanced.AdvancedDemoApp", adv_port,

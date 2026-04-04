@@ -43,16 +43,17 @@ class OmniUIClient:
         pid: int | None = None,
         ocr_engine: SimpleOcrEngine | None = None,
         vision_engine: SimpleVisionEngine | None = None,
+        connect_timeout: float = 5.0,
     ) -> "OmniUIClient":
         root = base_url.rstrip("/")
-        health = cls._request_json("GET", f"{root}/health")
+        health = cls._request_json("GET", f"{root}/health", timeout=connect_timeout)
         if health["status"] != "ok":
             raise RuntimeError("OmniUI agent is not healthy")
 
         session_payload: dict[str, Any] = {"target": {"appName": app_name}}
         if pid is not None:
             session_payload["target"]["pid"] = pid
-        session = cls._request_json("POST", f"{root}/sessions", session_payload)
+        session = cls._request_json("POST", f"{root}/sessions", session_payload, timeout=connect_timeout)
         return cls(
             base_url=root,
             session_id=session["sessionId"],
@@ -781,12 +782,12 @@ class OmniUIClient:
         return merged
 
     @staticmethod
-    def _request_json(method: str, url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request_json(method: str, url: str, payload: dict[str, Any] | None = None, timeout: float | None = None) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"}
         data = None if payload is None else json.dumps(payload).encode("utf-8")
         req = request.Request(url, data=data, headers=headers, method=method)
         try:
-            with request.urlopen(req) as response:
+            with request.urlopen(req, timeout=timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
