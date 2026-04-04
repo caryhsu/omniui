@@ -244,6 +244,7 @@ class OmniUIClient:
         return soft_assert()
 
 
+    def press_key(self, key: str, **selector: Any) -> ActionResult:
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 
         Format: Playwright-style "[Modifier+]*Key" — case-insensitive.
