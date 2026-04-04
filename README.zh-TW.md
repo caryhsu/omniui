@@ -64,10 +64,15 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 **Actions — SplitPane**
 - `get_divider_positions`、`set_divider_position`
 
+**選擇器（Selectors）**
+- 所有 action 均接受 `**selector` 欄位：`id`、`text`、`type`、`index`
+- `index=N`（0-based）在符合其他條件的節點中選取第 N 個 — 例如 `click(type="Button", index=1)` 點擊第二個 Button
+
 **Demo suite**（全部通過，執行 `python demo/python/run_all.py`）
 - Login、ComboBox、ListView、TableView、TreeView、ContextMenu、MenuBar、DatePicker、Alert
 - RadioButton、Slider+Spinner、Progress、Tab、TextArea、PasswordField、Hyperlink
 - CheckBox、ChoiceBox、Accordion、TreeTableView、ColorPicker、SplitPane、Node State、Wait Conditions
+- Double-Click、Keyboard Shortcuts、Index Selector
 
 尚未完成：
 - 對任意第三方 JavaFX process 的動態 JVM attach

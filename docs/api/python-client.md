@@ -67,7 +67,7 @@ Current node fields include:
 - `visible`
 - `enabled`
 
-### `client.find(id=None, text=None, type=None) -> dict[str, Any]`
+### `client.find(id=None, text=None, type=None, index=None) -> dict[str, Any]`
 
 Normalize selector input without executing any action.
 
@@ -75,6 +75,7 @@ Current selector fields:
 - `id`
 - `text`
 - `type`
+- `index` — 0-based integer; picks the Nth node among all nodes matching the other fields (default: 0)
 
 Normalization rules:
 - empty strings are converted to `None`

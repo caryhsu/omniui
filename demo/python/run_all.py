@@ -34,6 +34,7 @@ if __package__ in (None, ""):
     import wait_conditions_demo  # type: ignore
     import double_click_demo  # type: ignore
     import keyboard_shortcuts_demo  # type: ignore
+    import index_selector_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -69,6 +70,7 @@ else:
         wait_conditions_demo,
         double_click_demo,
         keyboard_shortcuts_demo,
+        index_selector_demo,
     )
 
 
@@ -167,6 +169,9 @@ def main() -> None:
 
     _section("Keyboard Shortcuts Demo")
     keyboard_shortcuts_demo.main()
+
+    _section("Index Selector Demo")
+    index_selector_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

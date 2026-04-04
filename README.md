@@ -64,10 +64,15 @@ Implemented in this repo today:
 **Actions — SplitPane**
 - `get_divider_positions`, `set_divider_position`
 
+**Selectors**
+- All actions accept `**selector` fields: `id`, `text`, `type`, `index`
+- `index=N` (0-based) picks the Nth node among all nodes matching the other criteria — e.g. `click(type="Button", index=1)` clicks the second Button
+
 **Demo suite** (all passing via `python demo/python/run_all.py`)
 - Login, ComboBox, ListView, TableView, TreeView, ContextMenu, MenuBar, DatePicker, Alert
 - RadioButton, Slider+Spinner, Progress, Tab, TextArea, PasswordField, Hyperlink
 - CheckBox, ChoiceBox, Accordion, TreeTableView, ColorPicker, SplitPane, Node State, Wait Conditions
+- Double-Click, Keyboard Shortcuts, Index Selector
 
 Not implemented yet:
 - dynamic JVM attach to arbitrary third-party JavaFX processes

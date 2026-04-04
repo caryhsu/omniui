@@ -54,7 +54,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Double-click a cell and type a new value (requires editable TableView)
 - [ ] **TableView column sort** — `sort_column(id=..., column=..., direction="asc")`
   - Click a column header to trigger sort; read sorted order back
-- [ ] **index= selector** — `click(type="Button", index=0)`, `click(id="myList", index=2)`
+- [x] **index= selector** — `click(type="Button", index=0)`, `click(id="myList", index=2)`
   - Select the Nth matching node when there is no unique id; solves dynamic/generated nodes (ListView cells, repeated controls)
 - [ ] **TableView positional cell access** — `get_cell(id=..., row=N, column=N)`, `click_cell(id=..., row=N, column=N)`
   - Access a specific cell by row/column index, not just by value; needed for dynamic table content without unique ids

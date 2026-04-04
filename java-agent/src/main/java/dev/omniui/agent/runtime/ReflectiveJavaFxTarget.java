@@ -656,10 +656,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             return Optional.empty();
         }
 
+        int index = 0;
+        if (selector.has("index") && !selector.get("index").isJsonNull()) {
+            index = selector.get("index").getAsInt();
+        }
+
         if (selector.has("id") && !selector.get("id").isJsonNull()) {
             String requestedId = selector.get("id").getAsString();
             return snapshot.nodes().stream()
                 .filter(node -> requestedId.equals(node.metadata().get("fxId")))
+                .skip(index)
                 .findFirst();
         }
 
@@ -670,6 +676,15 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             return snapshot.nodes().stream()
                 .filter(node -> requestedType.equals(node.metadata().get("nodeType")))
                 .filter(node -> requestedText.equals(node.metadata().get("text")))
+                .skip(index)
+                .findFirst();
+        }
+
+        if (selector.has("type") && !selector.get("type").isJsonNull()) {
+            String requestedType = selector.get("type").getAsString();
+            return snapshot.nodes().stream()
+                .filter(node -> requestedType.equals(node.metadata().get("nodeType")))
+                .skip(index)
                 .findFirst();
         }
 

@@ -54,7 +54,7 @@
   - 雙擊儲存格並輸入新值（需要 editable TableView）
 - [ ] **TableView 欄位排序** — `sort_column(id=..., column=..., direction="asc")`
   - 點擊欄位標題觸發排序並讀回結果
-- [ ] **index= selector** — `click(type="Button", index=0)`、`click(id="myList", index=2)`
+- [x] **index= selector** — `click(type="Button", index=0)`、`click(id="myList", index=2)`
   - 無唯一 id 時選取第 N 個符合節點；解決動態/自動產生節點（ListView cell、重複控制項）的選取問題
 - [ ] **TableView 位置存取** — `get_cell(id=..., row=N, column=N)`、`click_cell(id=..., row=N, column=N)`
   - 用列/欄索引存取特定儲存格，不依賴 value 比對；適用於無唯一 id 的動態表格內容
