@@ -44,7 +44,7 @@
 
 ## 🧩 中等優先 — 補充控制項
 
-- [ ] **節點狀態查詢** — `is_visible(id=...)`、`is_enabled(id=...)`
+- [x] **節點狀態查詢** — `is_visible(id=...)`、`is_enabled(id=...)`
   - Agent 的節點探索已包含 `visible` / `enabled`；只需在 Python 端加上便利封裝
 - [ ] **Tooltip 驗證** — `get_tooltip(id=...)`
   - 讀取節點的 Tooltip 文字

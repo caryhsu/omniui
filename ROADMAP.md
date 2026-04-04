@@ -44,7 +44,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ## 🧩 Medium Priority — Additional Controls
 
-- [ ] **Node state queries** — `is_visible(id=...)`, `is_enabled(id=...)`
+- [x] **Node state queries** — `is_visible(id=...)`, `is_enabled(id=...)`
   - Agent already includes `visible` / `enabled` in discovery metadata; Python-side convenience wrappers only
 - [ ] **Tooltip verification** — `get_tooltip(id=...)`
   - Read the tooltip text of a node

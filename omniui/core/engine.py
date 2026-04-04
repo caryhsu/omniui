@@ -260,6 +260,44 @@ class OmniUIClient:
         v = result.value
         return v is True or str(v).lower() == "true"
 
+    def is_visible(self, **selector: Any) -> bool:
+        """Return True if the matched node is currently visible.
+
+        Returns False if no node matches the selector.
+        Consistent with Playwright conventions — does not raise on missing node.
+        """
+        try:
+            nodes = self.get_nodes()
+            fx_id = selector.get("id")
+            text = selector.get("text")
+            for node in nodes:
+                if fx_id and node.get("fxId") == fx_id:
+                    return bool(node.get("visible", False))
+                if text and node.get("text") == text:
+                    return bool(node.get("visible", False))
+        except Exception:
+            pass
+        return False
+
+    def is_enabled(self, **selector: Any) -> bool:
+        """Return True if the matched node is currently enabled (not disabled).
+
+        Returns False if no node matches the selector.
+        Consistent with Playwright conventions — does not raise on missing node.
+        """
+        try:
+            nodes = self.get_nodes()
+            fx_id = selector.get("id")
+            text = selector.get("text")
+            for node in nodes:
+                if fx_id and node.get("fxId") == fx_id:
+                    return bool(node.get("enabled", False))
+                if text and node.get("text") == text:
+                    return bool(node.get("enabled", False))
+        except Exception:
+            pass
+        return False
+
     # ---- Accordion / TitledPane --------------------------------------------
 
     def expand_pane(self, **selector: Any) -> ActionResult:

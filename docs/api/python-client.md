@@ -380,6 +380,30 @@ Return the recorded action log for the current client session.
 
 The list contains completed action results only.
 
+## Node State Queries
+
+### `client.is_visible(**selector) -> bool`
+
+Return `True` if the matched node is currently visible.
+
+Returns `False` if no node matches the selector (does not raise).
+
+```python
+if client.is_visible(id="submitButton"):
+    client.click(id="submitButton")
+```
+
+### `client.is_enabled(**selector) -> bool`
+
+Return `True` if the matched node is currently enabled (not disabled).
+
+Returns `False` if no node matches the selector (does not raise).
+
+```python
+assert client.is_enabled(id="loginButton"), "Login button should be enabled"
+assert not client.is_enabled(id="__no_such_node__")  # always False
+```
+
 ## Selectors
 
 The currently supported selector surface is:

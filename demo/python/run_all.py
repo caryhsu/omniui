@@ -30,6 +30,7 @@ if __package__ in (None, ""):
     import text_area_demo  # type: ignore
     import color_picker_demo  # type: ignore
     import split_pane_demo  # type: ignore
+    import node_state_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -61,6 +62,7 @@ else:
         text_area_demo,
         color_picker_demo,
         split_pane_demo,
+        node_state_demo,
     )
 
 
@@ -147,6 +149,9 @@ def main() -> None:
 
     _section("SplitPane Demo")
     split_pane_demo.main()
+
+    _section("Node State Demo")
+    node_state_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()
