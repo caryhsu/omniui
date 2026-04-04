@@ -165,6 +165,34 @@ class OmniUIClient:
         """Set a DatePicker value directly (ISO-8601 'YYYY-MM-DD') without using the popup."""
         return self._perform("set_date", selector, {"date": date})
 
+    # ---- ColorPicker -------------------------------------------------------
+
+    def open_colorpicker(self, **selector: Any) -> ActionResult:
+        """Open a ColorPicker popup palette."""
+        return self._perform("open_colorpicker", selector)
+
+    def set_color(self, color: str, **selector: Any) -> ActionResult:
+        """Set a ColorPicker value directly using a CSS hex color string (e.g. '#ff0000')."""
+        return self._perform("set_color", selector, {"color": color})
+
+    def get_color(self, **selector: Any) -> ActionResult:
+        """Return the current color of a ColorPicker as a lowercase '#rrggbb' hex string."""
+        return self._perform("get_color", selector)
+
+    def dismiss_colorpicker(self) -> ActionResult:
+        """Close an open ColorPicker popup palette."""
+        return self._direct_action("dismiss_colorpicker", {})
+
+    # ---- SplitPane ---------------------------------------------------------
+
+    def get_divider_positions(self, **selector: Any) -> ActionResult:
+        """Return the divider positions of a SplitPane as a list string (e.g. '[0.5]')."""
+        return self._perform("get_divider_positions", selector)
+
+    def set_divider_position(self, index: int, position: float, **selector: Any) -> ActionResult:
+        """Set the divider at the given index to the specified position (0.0–1.0) in a SplitPane."""
+        return self._perform("set_divider_position", selector, {"index": index, "position": position})
+
     # ---- Dialog / Alert ----------------------------------------------------
 
     def get_dialog(self) -> ActionResult:

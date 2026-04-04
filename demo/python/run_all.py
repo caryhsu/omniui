@@ -28,6 +28,8 @@ if __package__ in (None, ""):
     import password_field_demo  # type: ignore
     import tab_demo  # type: ignore
     import text_area_demo  # type: ignore
+    import color_picker_demo  # type: ignore
+    import split_pane_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -57,6 +59,8 @@ else:
         password_field_demo,
         tab_demo,
         text_area_demo,
+        color_picker_demo,
+        split_pane_demo,
     )
 
 
@@ -137,6 +141,12 @@ def main() -> None:
 
     _section("TreeTableView Demo")
     treetableview_demo.main()
+
+    _section("ColorPicker Demo")
+    color_picker_demo.main()
+
+    _section("SplitPane Demo")
+    split_pane_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

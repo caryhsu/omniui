@@ -61,6 +61,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "navigate_month"  -> doNavigateMonth(payload);
             case "pick_date"       -> doPickDate(payload);
             case "set_date"        -> doSetDate(selector, payload);
+            case "open_colorpicker" -> performWithOverlayWait(() -> doOpenColorPicker(selector), this::isColorPickerWindow);
+            case "set_color"        -> doSetColor(selector, payload);
+            case "dismiss_colorpicker" -> doDismissColorPicker();
             case "get_dialog"      -> doGetDialog();
             case "dismiss_dialog"  -> doDismissDialog(payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
@@ -187,6 +190,30 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 if (item == null) yield ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found", "fxId", fxId));
                 Object expanded = safeInvoke(item, "isExpanded");
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), expanded);
+            }
+            case "get_color" -> {
+                Object colorVal = ReflectiveJavaFxSupport.invoke(node, "getValue");
+                if (colorVal == null) yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+                double r = (double) ReflectiveJavaFxSupport.invokeExact(colorVal, "getRed", new Class<?>[0]);
+                double g = (double) ReflectiveJavaFxSupport.invokeExact(colorVal, "getGreen", new Class<?>[0]);
+                double b = (double) ReflectiveJavaFxSupport.invokeExact(colorVal, "getBlue", new Class<?>[0]);
+                String hex = String.format("#%02x%02x%02x", (int)(r*255), (int)(g*255), (int)(b*255));
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), hex);
+            }
+            case "get_divider_positions" -> {
+                Object positions = ReflectiveJavaFxSupport.invoke(node, "getDividerPositions");
+                String serialized = positions == null ? "[]" : java.util.Arrays.toString((double[]) positions);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), serialized);
+            }
+            case "set_divider_position" -> {
+                int divIndex = payload != null && payload.has("index") ? payload.get("index").getAsInt() : 0;
+                double divPos = payload != null && payload.has("position") ? payload.get("position").getAsDouble() : 0.5;
+                double[] positions2 = (double[]) ReflectiveJavaFxSupport.invoke(node, "getDividerPositions");
+                if (positions2 == null || divIndex < 0 || divIndex >= positions2.length) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "invalid_divider_index", "fxId", fxId));
+                }
+                ReflectiveJavaFxSupport.invoke(node, "setDividerPosition", divIndex, divPos);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
             }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
@@ -1067,6 +1094,99 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                         "detail", ex.getMessage() == null ? "" : ex.getMessage()));
             }
         });
+    }
+
+    private ActionResult doSetColor(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            String hexStr = payload != null && payload.has("color") ? payload.get("color").getAsString() : null;
+            if (hexStr == null || hexStr.isBlank()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_color"));
+            }
+            DiscoverySnapshot snapshot = snapshot();
+            Optional<NodeRef> match = resolve(selector, snapshot);
+            if (match.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+            }
+            Object node = match.get().node();
+            String fxId = asString(match.get().metadata().get("fxId"));
+            String handle = asString(match.get().metadata().get("handle"));
+            try {
+                Class<?> colorClass = ReflectiveJavaFxSupport.loadClass("javafx.scene.paint.Color");
+                Object color = ReflectiveJavaFxSupport.invokeStatic(colorClass, "web", hexStr);
+                ReflectiveJavaFxSupport.invoke(node, "setValue", color);
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "color", hexStr), hexStr);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "set_color_failed", "fxId", fxId,
+                        "detail", ex.getMessage() == null ? "" : ex.getMessage()));
+            }
+        });
+    }
+
+    private ActionResult doOpenColorPicker(JsonObject selector) {
+        DiscoverySnapshot snapshot = snapshot();
+        Optional<NodeRef> match = resolve(selector, snapshot);
+        if (match.isEmpty()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
+        }
+        Object colorPicker = match.get().node();
+        String handle = asString(match.get().metadata().get("handle"));
+        String fxId = asString(match.get().metadata().get("fxId"));
+        try {
+            ReflectiveJavaFxSupport.invoke(colorPicker, "show");
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"),
+                Map.of("reason", "open_colorpicker_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+        }
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult doDismissColorPicker() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            List<Object> windows = getAllWindows();
+            for (Object window : windows) {
+                String name = window.getClass().getName();
+                if (name.contains("ColorPalette") || name.contains("CustomColor") || name.contains("PopupControl")) {
+                    try {
+                        Object scene = ReflectiveJavaFxSupport.invoke(window, "getScene");
+                        if (scene != null) {
+                            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+                            if (root != null && root.getClass().getName().contains("Color")) {
+                                safeInvoke(window, "hide");
+                                continue;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    if (name.contains("ColorPalette") || name.contains("CustomColor")) {
+                        safeInvoke(window, "hide");
+                    }
+                }
+            }
+            // Also try hiding via any visible ColorPicker nodes
+            List<Object> allWindows = getAllWindows();
+            for (Object window : allWindows) {
+                try {
+                    Object scene = ReflectiveJavaFxSupport.invoke(window, "getScene");
+                    if (scene == null) continue;
+                    Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+                    if (root == null) continue;
+                    findChildrenByType(root, "ColorPicker").forEach(cp -> safeInvoke(cp, "hide"));
+                } catch (Exception ignored) {}
+            }
+            return ActionResult.success("javafx", null, Map.of(), null);
+        });
+    }
+
+    private boolean isColorPickerWindow(Object window) {
+        String name = window.getClass().getName();
+        if (name.contains("ColorPalette") || name.contains("CustomColor")) return true;
+        try {
+            Object scene = ReflectiveJavaFxSupport.invoke(window, "getScene");
+            if (scene == null) return false;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            return root != null && root.getClass().getName().contains("Color");
+        } catch (Exception ignored) {
+        }
+        return false;
     }
 
     private boolean shouldNavigateForward(Object dpContent, Object targetDate) {

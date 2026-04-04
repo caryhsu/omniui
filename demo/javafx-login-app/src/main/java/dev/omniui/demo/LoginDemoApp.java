@@ -48,6 +48,9 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTableView;
 import javafx.application.Platform;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.SplitPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public final class LoginDemoApp extends Application {
@@ -495,6 +498,56 @@ public final class LoginDemoApp extends Application {
         demoTreeTable.setShowRoot(false);
         VBox treeTableSection = section("TreeTableView Demo", "treeTableSection", demoTreeTable);
 
+        // ---- ColorPicker demo ---------------------------------------------
+        ColorPicker demoPicker2 = new ColorPicker(Color.web("#1e90ff"));
+        demoPicker2.setId("demoPicker2");
+
+        Label colorResult = new Label("Selected: #1e90ff");
+        colorResult.setId("colorResult");
+        demoPicker2.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                String hex = String.format("#%02x%02x%02x",
+                    (int)(newVal.getRed() * 255),
+                    (int)(newVal.getGreen() * 255),
+                    (int)(newVal.getBlue() * 255));
+                colorResult.setText("Selected: " + hex);
+            }
+        });
+
+        Button resetColorButton = new Button("Reset Color");
+        resetColorButton.setId("resetColorButton");
+        resetColorButton.setOnAction(e -> demoPicker2.setValue(Color.web("#1e90ff")));
+
+        VBox colorPickerSection = section("ColorPicker Demo", "colorPickerSection",
+            demoPicker2, colorResult, resetColorButton);
+
+        // ---- SplitPane demo -----------------------------------------------
+        Label leftPanel = new Label("Left Panel");
+        leftPanel.setId("splitLeft");
+        leftPanel.setStyle("-fx-background-color: #e8f4fd; -fx-padding: 10;");
+        VBox leftBox = new VBox(leftPanel);
+        leftBox.setStyle("-fx-background-color: #e8f4fd;");
+
+        Label rightPanel = new Label("Right Panel");
+        rightPanel.setId("splitRight");
+        rightPanel.setStyle("-fx-background-color: #fdecea; -fx-padding: 10;");
+        VBox rightBox = new VBox(rightPanel);
+        rightBox.setStyle("-fx-background-color: #fdecea;");
+
+        SplitPane demoSplitPane = new SplitPane(leftBox, rightBox);
+        demoSplitPane.setId("demoSplitPane");
+        demoSplitPane.setPrefHeight(100);
+        demoSplitPane.setDividerPositions(0.5);
+
+        Label dividerResult = new Label("Divider: 0.50");
+        dividerResult.setId("dividerResult");
+        demoSplitPane.getDividers().get(0).positionProperty().addListener((obs, oldVal, newVal) ->
+            dividerResult.setText(String.format("Divider: %.2f", newVal.doubleValue()))
+        );
+
+        VBox splitPaneSection = section("SplitPane Demo", "splitPaneSection",
+            demoSplitPane, dividerResult);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -521,7 +574,9 @@ public final class LoginDemoApp extends Application {
             checkBoxSection,
             choiceBoxSection,
             accordionSection,
-            treeTableSection
+            treeTableSection,
+            colorPickerSection,
+            splitPaneSection
         );
         root.setPadding(new Insets(24));
 
