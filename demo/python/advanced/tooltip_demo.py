@@ -17,26 +17,26 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # loginButton has tooltip "Enter credentials and click to log in"
-    result = client.get_tooltip(id="loginButton")
+    # tooltipBtn has tooltip "Hover to see this tooltip"
+    result = client.get_tooltip(id="tooltipBtn")
     if not result.ok:
-        raise SystemExit(f"get_tooltip(loginButton) failed: {result.trace.details}")
-    expected = "Enter credentials and click to log in"
+        raise SystemExit(f"get_tooltip(tooltipBtn) failed: {result.trace.details}")
+    expected = "Hover to see this tooltip"
     if result.value != expected:
         raise SystemExit(
             f"Tooltip mismatch: expected {expected!r}, got {result.value!r}"
         )
-    print(f"  loginButton tooltip = {result.value!r}  ✓")
+    print(f"  tooltipBtn tooltip = {result.value!r}  ✓")
 
-    # status Label has no tooltip — should return ""
-    result2 = client.get_tooltip(id="status")
+    # showDialogButton has no tooltip — should return ""
+    result2 = client.get_tooltip(id="showDialogButton")
     if not result2.ok:
-        raise SystemExit(f"get_tooltip(status) failed: {result2.trace.details}")
+        raise SystemExit(f"get_tooltip(showDialogButton) failed: {result2.trace.details}")
     if result2.value != "":
         raise SystemExit(
-            f"Expected empty tooltip for 'status', got {result2.value!r}"
+            f"Expected empty tooltip for 'showDialogButton', got {result2.value!r}"
         )
-    print(f"  status tooltip = {result2.value!r} (empty, as expected)  ✓")
+    print(f"  showDialogButton tooltip = {result2.value!r} (empty, as expected)  ✓")
 
     print("get_tooltip tests passed")
 

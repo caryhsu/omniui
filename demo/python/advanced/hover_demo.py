@@ -18,22 +18,22 @@ def main() -> None:
     client = connect_or_exit()
 
     # Hover over a node that has a tooltip
-    result = client.hover(id="loginButton")
+    result = client.hover(id="tooltipBtn")
     if not result.ok:
-        raise SystemExit(f"hover(loginButton) failed: {result.trace.details}")
-    print("  hover(loginButton) succeeded ✓")
+        raise SystemExit(f"hover(tooltipBtn) failed: {result.trace.details}")
+    print("  hover(tooltipBtn) succeeded ✓")
 
     # Verify the tooltip text is still readable after hover
-    tooltip = client.get_tooltip(id="loginButton")
+    tooltip = client.get_tooltip(id="tooltipBtn")
     if not tooltip.ok:
         raise SystemExit(f"get_tooltip after hover failed: {tooltip.trace.details}")
     print(f"  tooltip text = {tooltip.value!r} ✓")
 
     # Hover over a node without a tooltip — should still succeed
-    result2 = client.hover(id="status")
+    result2 = client.hover(id="showDialogButton")
     if not result2.ok:
-        raise SystemExit(f"hover(status) failed: {result2.trace.details}")
-    print("  hover(status) [no tooltip] succeeded ✓")
+        raise SystemExit(f"hover(showDialogButton) failed: {result2.trace.details}")
+    print("  hover(showDialogButton) [no tooltip] succeeded ✓")
 
     print("\nhover_demo succeeded ✓")
 
