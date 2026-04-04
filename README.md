@@ -54,10 +54,16 @@ Implemented in this repo today:
 - `select_tree_table_row`, `get_tree_table_cell`
 - `expand_tree_table_item`, `collapse_tree_table_item`, `get_tree_table_expanded`
 
+**Actions — ColorPicker**
+- `set_color`, `get_color`, `open_colorpicker`, `dismiss_colorpicker`
+
+**Actions — SplitPane**
+- `get_divider_positions`, `set_divider_position`
+
 **Demo suite** (all passing via `python demo/python/run_all.py`)
 - Login, ComboBox, ListView, TableView, TreeView, ContextMenu, MenuBar, DatePicker, Alert
 - RadioButton, Slider+Spinner, Progress, Tab, TextArea, PasswordField, Hyperlink
-- CheckBox, ChoiceBox, Accordion, TreeTableView
+- CheckBox, ChoiceBox, Accordion, TreeTableView, ColorPicker, SplitPane
 
 Not implemented yet:
 - dynamic JVM attach to arbitrary third-party JavaFX processes
