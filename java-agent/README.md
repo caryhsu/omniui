@@ -29,4 +29,4 @@ JavaFxRuntimeBridge.registerStage("LoginDemo", primaryStage);
 
 This registration path is the current Phase 1 attach model. It gives the agent access to the live JavaFX scene graph and direct node-level actions without introducing a hard compile-time dependency on a specific JavaFX SDK in the agent module.
 
-For an end-to-end reference target, use `demo/javafx-login-app`, which embeds the agent server and registers a live JavaFX stage automatically.
+For an end-to-end reference target, use the demo apps under `demo/java/` (e.g. `demo/java/core-app`), which embed the agent server and register a live JavaFX stage automatically.
