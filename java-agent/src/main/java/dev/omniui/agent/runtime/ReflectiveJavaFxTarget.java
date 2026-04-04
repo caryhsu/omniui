@@ -1152,16 +1152,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private ActionResult doCloseApp() {
-        return ReflectiveJavaFxSupport.onFxThread(() -> {
-            try {
-                Object platformClass = ReflectiveJavaFxSupport.loadClass("javafx.application.Platform");
-                ReflectiveJavaFxSupport.invokeStatic(platformClass, "exit");
-                return ActionResult.success("javafx", null, Map.of(), null);
-            } catch (Exception ex) {
-                return ActionResult.failure(List.of("javafx"),
-                        Map.of("reason", "close_app_failed", "error", String.valueOf(ex.getMessage())));
-            }
+        // Schedule System.exit(0) on a daemon thread with a short delay so the
+        // HTTP response can flush before the JVM terminates. Platform.exit() alone
+        // only stops the JavaFX runtime — the HTTP server's non-daemon threads keep
+        // the JVM alive. System.exit(0) kills everything cleanly.
+        Thread shutdownThread = new Thread(() -> {
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            System.exit(0);
         });
+        shutdownThread.setDaemon(true);
+        shutdownThread.start();
+        return ActionResult.success("javafx", null, Map.of(), null);
     }
 
     private ActionResult doDismissColorPicker() {
