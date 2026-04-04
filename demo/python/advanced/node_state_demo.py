@@ -11,9 +11,9 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # ── baseline: loginButton should be visible and enabled ──────────────────
-    assert client.is_visible(id="loginButton"), "loginButton should be visible"
-    assert client.is_enabled(id="loginButton"), "loginButton should be enabled"
+    # ── baseline: showDialogButton should be visible and enabled ─────────────
+    assert client.is_visible(id="showDialogButton"), "showDialogButton should be visible"
+    assert client.is_enabled(id="showDialogButton"), "showDialogButton should be enabled"
 
     # ── non-existent node returns False without raising ───────────────────────
     assert not client.is_visible(id="__no_such_node__"), "non-existent id: is_visible should be False"
