@@ -131,12 +131,33 @@ class OmniUI:
                 f"(last error: {last_err})"
             )
 
-        client = OmniUIClient.connect(
-            base_url=base_url,
-            app_name=app_name,
-            ocr_engine=ocr_engine,
-            vision_engine=vision_engine,
-        )
+        # Retry session creation: JavaFX scene may still be initialising after
+        # the agent HTTP server becomes healthy.
+        connect_deadline = time.monotonic() + timeout
+        connect_err: Exception | None = None
+        while time.monotonic() < connect_deadline:
+            if process.poll() is not None:
+                raise RuntimeError(
+                    f"App process exited unexpectedly (exit code {process.returncode}) "
+                    "while waiting for the JavaFX session to become available."
+                )
+            try:
+                client = OmniUIClient.connect(
+                    base_url=base_url,
+                    app_name=app_name,
+                    ocr_engine=ocr_engine,
+                    vision_engine=vision_engine,
+                )
+                break
+            except RuntimeError as exc:
+                connect_err = exc
+                time.sleep(0.5)
+        else:
+            process.terminate()
+            raise RuntimeError(
+                f"JavaFX session did not become available within {timeout}s "
+                f"(last error: {connect_err})"
+            )
         return OmniUIProcess(
             process=process,
             base_url=client.base_url,
