@@ -21,6 +21,8 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class OmniUiAgentServer {
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
@@ -52,10 +54,21 @@ public final class OmniUiAgentServer {
 
         server.createContext("/sessions", new SessionsHandler(sessionStore));
         server.createContext("/sessions/", new SessionActionHandler(sessionStore));
-        server.setExecutor(Executors.newCachedThreadPool());
+        server.setExecutor(Executors.newCachedThreadPool(new DaemonThreadFactory()));
         server.start();
         System.out.println("OmniUI agent listening on http://127.0.0.1:" + port);
         return server;
+    }
+
+    private static final class DaemonThreadFactory implements ThreadFactory {
+        private final AtomicInteger count = new AtomicInteger(0);
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, "omniui-http-" + count.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        }
     }
 
     private static final class SessionsHandler implements HttpHandler {
