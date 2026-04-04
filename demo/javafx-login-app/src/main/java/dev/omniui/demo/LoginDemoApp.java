@@ -178,6 +178,7 @@ public final class LoginDemoApp extends Application {
 
         Label regionLabel = new Label("Region");
         regionLabel.setId("regionLabel");
+        regionLabel.setStyle("-fx-text-fill: green;");
         settingsGrid.add(regionLabel, 0, 2);
 
         TextField regionField = new TextField("ap-northeast-1");

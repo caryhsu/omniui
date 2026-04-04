@@ -150,6 +150,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), tipText);
             }
+            case "get_style" -> {
+                Object s = safeInvoke(node, "getStyle");
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), s == null ? "" : s.toString());
+            }
+            case "get_style_class" -> {
+                Object sc = safeInvoke(node, "getStyleClass");
+                java.util.List<String> classes = sc == null
+                    ? java.util.List.of()
+                    : new java.util.ArrayList<>((java.util.Collection<String>) sc);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), classes);
+            }
             case "get_selected" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "isSelected"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
             case "set_selected" -> handleSetSelected(node, fxId, handle, payload);
             case "get_value"    -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getValue"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v == null ? null : v.toString()); }

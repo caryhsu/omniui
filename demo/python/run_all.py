@@ -36,6 +36,7 @@ if __package__ in (None, ""):
     import keyboard_shortcuts_demo  # type: ignore
     import index_selector_demo  # type: ignore
     import tooltip_demo  # type: ignore
+    import css_style_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from . import (
@@ -73,6 +74,7 @@ else:
         keyboard_shortcuts_demo,
         index_selector_demo,
         tooltip_demo,
+        css_style_demo,
     )
 
 
@@ -177,6 +179,9 @@ def main() -> None:
 
     _section("Tooltip Demo")
     tooltip_demo.main()
+
+    _section("CSS Style Demo")
+    css_style_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

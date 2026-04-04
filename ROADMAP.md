@@ -48,7 +48,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Agent already includes `visible` / `enabled` in discovery metadata; Python-side convenience wrappers only
 - [x] **Tooltip verification** — `get_tooltip(id=...)`
   - Read the tooltip text of a node
-- [ ] **CSS style inspection** — `get_style(id=...)`, `get_style_class(id=...)`
+- [x] **CSS style inspection** — `get_style(id=...)`, `get_style_class(id=...)`
   - `get_style()` returns the node's inline style string (e.g. `"-fx-text-fill: red;"`)
   - `get_style_class()` returns the list of CSS class names applied to the node
   - Enables validation state testing: red/green color, error/success CSS class, without depending on a specific label text

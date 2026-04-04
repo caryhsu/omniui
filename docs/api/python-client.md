@@ -123,6 +123,37 @@ tip2 = client.get_tooltip(id="statusLabel")
 assert tip2.value == ""
 ```
 
+### `client.get_style(**selector) -> ActionResult`
+
+Read the **inline** CSS style string of a node (`node.getStyle()`).
+
+- `result.value` — inline style string (e.g. `"-fx-text-fill: red;"`) or `""` if not set
+- Only reflects styles set via `setStyle()` — stylesheet-applied styles are **not** returned
+
+```python
+style = client.get_style(id="validationLabel")
+assert "-fx-text-fill: red" in style.value
+
+# No inline style
+style2 = client.get_style(id="status")
+assert style2.value == ""
+```
+
+### `client.get_style_class(**selector) -> ActionResult`
+
+Read the list of CSS class names applied to a node (`node.getStyleClass()`).
+
+- `result.value` — `list[str]` of CSS class names (e.g. `["button", "error"]`)
+
+```python
+classes = client.get_style_class(id="loginButton")
+assert "button" in classes.value
+
+# Validation error class
+classes2 = client.get_style_class(id="idField")
+assert "error" in classes2.value
+```
+
 ### `client.verify_text(expected, **selector) -> ActionResult`
 
 Resolve an element, fetch its text, and compare it to `expected`.
