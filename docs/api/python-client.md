@@ -377,6 +377,35 @@ Set the selected state of a `CheckBox`, `RadioButton`, or `ToggleButton`.
 Parameters:
 - `value: bool`
 
+### `client.select_multiple(values, **selector) -> ActionResult`
+
+Select multiple items by value in a `ListView` (or any control backed by `MultipleSelectionModel`).
+
+Parameters:
+- `values: list[str]` — ordered list of item labels to select simultaneously
+
+The control **must** have `SelectionMode.MULTIPLE` enabled; otherwise only the last value is kept.
+
+```python
+result = client.select_multiple(["alpha-node", "gamma-node"], id="serverList")
+assert result.ok
+
+# Verify
+items = client.get_selected_items(id="serverList")
+assert set(items.value) == {"alpha-node", "gamma-node"}
+```
+
+### `client.get_selected_items(**selector) -> ActionResult`
+
+Return all currently selected items in a multi-select control.
+
+- `result.value` — `list[str]` of selected item labels (in selection order)
+
+```python
+items = client.get_selected_items(id="serverList")
+assert "alpha-node" in items.value
+```
+
 ---
 
 ## Slider, Spinner, Progress

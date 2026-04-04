@@ -1,5 +1,7 @@
 package dev.omniui.agent.runtime;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayDeque;
@@ -249,8 +251,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 ReflectiveJavaFxSupport.invoke(node, "setDisable", dis);
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), dis);
             }
-            case "scroll_to" -> {
-                Object sp = findScrollPaneAncestor(node);
+            case "scroll_to" -> {                Object sp = findScrollPaneAncestor(node);
                 if (sp == null) {
                     yield ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scroll_pane_ancestor", "fxId", fxId));
                 }
@@ -266,6 +267,49 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
                 scrollByDelta(sp, deltaX, deltaY);
                 yield ActionResult.success("javafx", handle != null ? handle : "", Map.of("fxId", fxId != null ? fxId : ""), null);
+            }
+            case "select_multiple" -> {
+                if (payload == null || !payload.has("values")) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_values_param", "fxId", fxId));
+                }
+                JsonArray valArr = payload.getAsJsonArray("values");
+                List<String> reqValues = new ArrayList<>();
+                for (JsonElement el : valArr) reqValues.add(el.getAsString());
+
+                Object items = ReflectiveJavaFxSupport.invoke(node, "getItems");
+                if (!(items instanceof List<?> itemList)) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "not_a_list_control", "fxId", fxId));
+                }
+                List<Integer> indices = new ArrayList<>();
+                for (String val : reqValues) {
+                    for (int i = 0; i < itemList.size(); i++) {
+                        Object item = itemList.get(i);
+                        if (val.equals(item == null ? null : item.toString())) {
+                            indices.add(i);
+                            break;
+                        }
+                    }
+                }
+                if (indices.isEmpty()) {
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "no_items_found", "fxId", fxId));
+                }
+                Object sm = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
+                ReflectiveJavaFxSupport.invokeOnType(sm, "javafx.scene.control.MultipleSelectionModel", "clearSelection", new Class<?>[0]);
+                int first = indices.get(0);
+                int[] rest = new int[indices.size() - 1];
+                for (int i = 0; i < rest.length; i++) rest[i] = indices.get(i + 1);
+                ReflectiveJavaFxSupport.invokeOnType(sm, "javafx.scene.control.MultipleSelectionModel", "selectIndices", new Class<?>[]{int.class, int[].class}, first, rest);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), indices.size());
+            }
+            case "get_selected_items" -> {
+                Object sm = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
+                Object selectedItems = ReflectiveJavaFxSupport.invokeOnType(
+                    sm, "javafx.scene.control.MultipleSelectionModel", "getSelectedItems", new Class<?>[0]);
+                List<String> selected = new ArrayList<>();
+                if (selectedItems instanceof Collection<?> col) {
+                    for (Object item : col) selected.add(item == null ? null : item.toString());
+                }
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), selected);
             }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };

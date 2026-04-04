@@ -52,8 +52,8 @@
   - `get_style()` 回傳節點的 inline style 字串（例如 `"-fx-text-fill: red;"`）
   - `get_style_class()` 回傳節點套用的 CSS class 名稱清單
   - 可用於驗證狀態測試：紅色/綠色、error/success CSS class，不依賴特定錯誤文字
-- [ ] **多選（Multi-select）** — `select_multiple(id=..., values=[...])`
-  - ListView / TableView 多項目選取；目前 `select` 僅支援單選
+- [x] **多選（Multi-select）** — `select_multiple(id=..., values=[...])`
+  - ListView / TableView 多項目選取；`get_selected_items(id=...)` 以清單回傳目前所有已選項目
 - [ ] **TableView 儲存格編輯** — `edit_cell(id=..., row=..., column=..., value=...)`
   - 雙擊儲存格並輸入新值（需要 editable TableView）
 - [ ] **TableView 欄位排序** — `sort_column(id=..., column=..., direction="asc")`

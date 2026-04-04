@@ -29,6 +29,7 @@ Implemented in this repo today:
 - `click`, `right_click`, `double_click`, `type`, `get_text`, `verify_text`, `get_tooltip`, `get_style`, `get_style_class`, `scroll_to`, `scroll_by`
 - `press_key(key, **selector)` — keyboard shortcuts; format: `"Ctrl+C"`, `"Shift+Tab"`, `"Escape"`, `"Control+Shift+Z"`
 - `select` (ComboBox / ChoiceBox / ListView), `get_selected`, `set_selected` (CheckBox / RadioButton / ToggleButton)
+- `select_multiple(values, **selector)`, `get_selected_items(**selector)` — multi-select for ListView / TableView
 - `is_visible`, `is_enabled` — query node visibility / enabled state
 - `wait_for_text`, `wait_for_visible`, `wait_for_enabled`, `wait_for_node`, `wait_for_value` — poll-based wait conditions
 - `close_app()` — trigger graceful JavaFX application shutdown

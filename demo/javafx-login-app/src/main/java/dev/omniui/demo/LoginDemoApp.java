@@ -98,7 +98,7 @@ public final class LoginDemoApp extends Application {
             "delta-node"
         ));
         serverList.setId("serverList");
-        serverList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        serverList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverList.setPrefHeight(120);
 
         Label listStatus = new Label("Selected server: none");

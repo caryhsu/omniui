@@ -134,6 +134,20 @@ class OmniUIClient:
         """
         return self._perform("scroll_by", selector, {"delta_x": delta_x, "delta_y": delta_y})
 
+    # ---- Multi-select ------------------------------------------------------
+
+    def select_multiple(self, values: list[str], **selector: Any) -> ActionResult:
+        """Select multiple items by value in a MULTIPLE-mode ListView or TableView.
+
+        Clears the existing selection then selects each item whose toString()
+        matches a string in *values*.  Items not found are skipped silently.
+        """
+        return self._perform("select_multiple", selector, {"values": values})
+
+    def get_selected_items(self, **selector: Any) -> ActionResult:
+        """Return all currently selected items as a list of strings."""
+        return self._perform("get_selected_items", selector)
+
     def verify_text(self, expected: str, *, match: str = "exact", **selector: Any) -> ActionResult:
         result = self.get_text(**selector)
         actual = result.value or ""

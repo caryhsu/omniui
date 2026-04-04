@@ -52,8 +52,8 @@ This file tracks planned features and improvements. Check off items as they are 
   - `get_style()` returns the node's inline style string (e.g. `"-fx-text-fill: red;"`)
   - `get_style_class()` returns the list of CSS class names applied to the node
   - Enables validation state testing: red/green color, error/success CSS class, without depending on a specific label text
-- [ ] **Multi-select** — `select_multiple(id=..., values=[...])`
-  - Select multiple items in ListView or TableView; currently `select` only supports single selection
+- [x] **Multi-select** — `select_multiple(id=..., values=[...])`
+  - Select multiple items in ListView or TableView; `get_selected_items(id=...)` returns all selected items as a list
 - [ ] **TableView in-cell editing** — `edit_cell(id=..., row=..., column=..., value=...)`
   - Double-click a cell and type a new value (requires editable TableView)
 - [ ] **TableView column sort** — `sort_column(id=..., column=..., direction="asc")`
