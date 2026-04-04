@@ -216,6 +216,20 @@ class OmniUIClient:
             )
         return result
 
+    def retry(
+        self,
+        fn: Callable,
+        *,
+        times: int = 3,
+        delay: float = 0.5,
+        exceptions: tuple[type[BaseException], ...] = (AssertionError,),
+    ) -> Any:
+        """Retry a callable until it succeeds or exhausts attempts.
+
+        Delegates to the module-level ``retry()`` function.
+        """
+        return retry(fn, times=times, delay=delay, exceptions=exceptions)
+
     def press_key(self, key: str, **selector: Any) -> ActionResult:
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 
@@ -858,6 +872,55 @@ class OmniUIClient:
             raise RuntimeError(f"OmniUI request failed: {exc.code} {message}") from exc
         except URLError as exc:
             raise RuntimeError(f"OmniUI request failed: {exc.reason}") from exc
+
+
+def retry(
+    fn: Callable,
+    *,
+    times: int = 3,
+    delay: float = 0.5,
+    exceptions: tuple[type[BaseException], ...] = (AssertionError,),
+) -> Any:
+    """Retry a callable until it succeeds or exhausts attempts.
+
+    Calls ``fn()`` up to ``times`` times. Between attempts sleeps ``delay``
+    seconds. A retry is triggered when ``fn()`` raises an exception in
+    ``exceptions`` OR returns an ``ActionResult`` with ``ok=False``.
+
+    Re-raises the last exception if all attempts fail. If the last attempt
+    returns ``ActionResult(ok=False)`` (no exception raised), raises
+    ``AssertionError`` with a descriptive message.
+
+    Examples::
+
+        # Retry verify_text up to 5 times, 0.3 s apart
+        client.retry(lambda: client.verify_text(id="status", text="Done"),
+                     times=5, delay=0.3)
+
+        # Module-level usage (no client needed)
+        from omniui import retry
+        retry(lambda: assert_something(), times=3)
+    """
+    last_exc: BaseException | None = None
+    last_result: Any = None
+    for attempt in range(times):
+        try:
+            result = fn()
+            if isinstance(result, ActionResult) and not result.ok:
+                last_result = result
+                if attempt < times - 1:
+                    time.sleep(delay)
+                continue
+            return result
+        except exceptions as exc:
+            last_exc = exc
+            if attempt < times - 1:
+                time.sleep(delay)
+    if last_exc is not None:
+        raise last_exc
+    raise AssertionError(
+        f"retry: all {times} attempts returned a failed ActionResult"
+    )
 
 
 class OmniUIProcess(OmniUIClient):

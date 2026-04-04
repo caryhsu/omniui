@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import io
 import unittest
+import unittest.mock
 from urllib.error import HTTPError
 from urllib.error import URLError
 from unittest.mock import patch
 
 from omniui import OmniUI
+from omniui.core.engine import retry
 from omniui.ocr_module import SimpleOcrEngine
 from omniui.vision_module import SimpleVisionEngine
 
@@ -488,6 +490,109 @@ class FocusManagementTests(unittest.TestCase):
         client, _ = self._make_client_and_capture(mock_urlopen, action_response)
         with self.assertRaises(AssertionError):
             client.verify_focused(id="username")
+
+
+class RetryHelperTests(unittest.TestCase):
+    """Tests for the retry() helper (module-level and OmniUIClient.retry)."""
+
+    def test_succeeds_first_attempt(self):
+        """Callable that never raises should succeed without retry."""
+        calls = {"n": 0}
+
+        def ok():
+            calls["n"] += 1
+
+        retry(ok, times=3, delay=0)
+        self.assertEqual(calls["n"], 1)
+
+    def test_succeeds_on_nth_attempt(self):
+        """Callable that fails twice then succeeds should be retried."""
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise AssertionError("not ready")
+
+        retry(flaky, times=5, delay=0)
+        self.assertEqual(calls["n"], 3)
+
+    def test_exhausts_and_reraises(self):
+        """When all attempts fail the original exception is re-raised."""
+        def always_fails():
+            raise ValueError("boom")
+
+        with self.assertRaises(ValueError):
+            retry(always_fails, times=3, delay=0)
+
+    def test_action_result_ok_false_triggers_retry(self):
+        """Callable returning ActionResult(ok=False) should be retried."""
+        from omniui.core.engine import ActionResult
+
+        calls = {"n": 0}
+        dummy_trace = unittest.mock.MagicMock()
+
+        def flaky() -> ActionResult:
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return ActionResult(ok=False, trace=dummy_trace, value=None)
+            return ActionResult(ok=True, trace=dummy_trace, value="done")
+
+        retry(flaky, times=5, delay=0)
+        self.assertEqual(calls["n"], 3)
+
+    def test_action_result_ok_false_exhausted_raises_assertion_error(self):
+        """Exhausted ActionResult(ok=False) should raise AssertionError."""
+        from omniui.core.engine import ActionResult
+
+        dummy_trace = unittest.mock.MagicMock()
+
+        def always_bad() -> ActionResult:
+            return ActionResult(ok=False, trace=dummy_trace, value=None)
+
+        with self.assertRaises(AssertionError):
+            retry(always_bad, times=3, delay=0)
+
+    def test_custom_exceptions(self):
+        """Only exception types listed in exceptions= should trigger retry."""
+        calls = {"n": 0}
+
+        def raises_type_error():
+            calls["n"] += 1
+            raise TypeError("wrong type")
+
+        with self.assertRaises(TypeError):
+            retry(raises_type_error, times=3, delay=0, exceptions=(ValueError,))
+        self.assertEqual(calls["n"], 1)
+
+    @unittest.mock.patch("time.sleep")
+    def test_sleep_called_between_attempts(self, mock_sleep):
+        """time.sleep(delay) should be called between attempts, not before first."""
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise AssertionError("retry")
+
+        retry(flaky, times=5, delay=0.5)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_called_with(0.5)
+
+    def test_client_retry_delegates(self):
+        """OmniUIClient.retry() should delegate to the module-level retry()."""
+        from omniui.core.engine import OmniUIClient
+
+        client = OmniUIClient.__new__(OmniUIClient)
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] < 2:
+                raise AssertionError("retry")
+
+        client.retry(flaky, times=5, delay=0)
+        self.assertEqual(calls["n"], 2)
 
 
 class LocatorTests(unittest.TestCase):

@@ -25,6 +25,7 @@ if __package__ in (None, ""):
     import core.recorder_preview as recorder_preview  # type: ignore
     import core.modifier_click_demo as modifier_click_demo  # type: ignore
     import core.focus_demo as focus_demo  # type: ignore
+    import core.retry_demo as retry_demo  # type: ignore
     # Input app demos
     import input.text_area_demo as text_area_demo  # type: ignore
     import input.password_field_demo as password_field_demo  # type: ignore
@@ -69,6 +70,7 @@ else:
         recorder_preview,
         modifier_click_demo,
         focus_demo,
+        retry_demo,
     )
     from .input import (
         text_area_demo,
@@ -232,6 +234,9 @@ def main(auto_launch: bool = True) -> None:
 
         _section("Focus Management Demo")
         focus_demo.main()
+
+        _section("Retry Helper Demo")
+        retry_demo.main()
 
     # ── Input App ─────────────────────────────────────────────────────────────
     _section("Input App demos (port 48101+)")

@@ -94,7 +94,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Enables Page Object Model and reduces selector duplication
 - [ ] **Page Object Model base class** — `OmniPage` base class with auto-wired `client`; gives test projects a standard structure
 - [ ] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
-- [ ] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
+- [x] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
 - [x] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
 - [ ] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`
 - [x] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
