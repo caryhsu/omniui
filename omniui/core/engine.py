@@ -298,6 +298,22 @@ class OmniUIClient:
             pass
         return False
 
+    def set_visible(self, visible: bool = True, **selector: Any) -> ActionResult:
+        """Set the visibility of a node (setVisible).
+
+        ``visible=True`` (default) makes the node visible; ``False`` hides it.
+        The node still occupies layout space when hidden — use this to test
+        ``is_visible`` round-trips.
+        """
+        return self._perform("set_visible", selector, {"visible": visible})
+
+    def set_disabled(self, disabled: bool = True, **selector: Any) -> ActionResult:
+        """Enable or disable a node (setDisable).
+
+        ``disabled=True`` disables the node; ``False`` re-enables it.
+        """
+        return self._perform("set_disabled", selector, {"disabled": disabled})
+
     # ---- Accordion / TitledPane --------------------------------------------
 
     def expand_pane(self, **selector: Any) -> ActionResult:

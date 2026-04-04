@@ -548,6 +548,38 @@ public final class LoginDemoApp extends Application {
         VBox splitPaneSection = section("SplitPane Demo", "splitPaneSection",
             demoSplitPane, dividerResult);
 
+        // ---- Node State Test section --------------------------------------
+        Button nodeStateTarget = new Button("Target Button");
+        nodeStateTarget.setId("nodeStateTarget");
+
+        Label nodeStateStatus = new Label("visible=true  enabled=true");
+        nodeStateStatus.setId("nodeStateStatus");
+
+        // CheckBox: toggle visibility of the target button
+        CheckBox visibilityToggle = new CheckBox("Visible");
+        visibilityToggle.setId("visibilityToggle");
+        visibilityToggle.setSelected(true);
+        visibilityToggle.setOnAction(e -> {
+            nodeStateTarget.setVisible(visibilityToggle.isSelected());
+            nodeStateStatus.setText(
+                "visible=" + nodeStateTarget.isVisible() +
+                "  enabled=" + !nodeStateTarget.isDisable());
+        });
+
+        // CheckBox: toggle enabled/disabled state of the target button
+        CheckBox enabledToggle = new CheckBox("Enabled");
+        enabledToggle.setId("enabledToggle");
+        enabledToggle.setSelected(true);
+        enabledToggle.setOnAction(e -> {
+            nodeStateTarget.setDisable(!enabledToggle.isSelected());
+            nodeStateStatus.setText(
+                "visible=" + nodeStateTarget.isVisible() +
+                "  enabled=" + !nodeStateTarget.isDisable());
+        });
+
+        VBox nodeStateSection = section("Node State Test", "nodeStateSection",
+            nodeStateTarget, nodeStateStatus, visibilityToggle, enabledToggle);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -576,7 +608,8 @@ public final class LoginDemoApp extends Application {
             accordionSection,
             treeTableSection,
             colorPickerSection,
-            splitPaneSection
+            splitPaneSection,
+            nodeStateSection
         );
         root.setPadding(new Insets(24));
 

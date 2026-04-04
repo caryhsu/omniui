@@ -215,6 +215,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 ReflectiveJavaFxSupport.invoke(node, "setDividerPosition", divIndex, divPos);
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
             }
+            case "set_visible" -> {
+                boolean vis = payload == null || !payload.has("visible") || payload.get("visible").getAsBoolean();
+                ReflectiveJavaFxSupport.invoke(node, "setVisible", vis);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), vis);
+            }
+            case "set_disabled" -> {
+                boolean dis = payload != null && payload.has("disabled") && payload.get("disabled").getAsBoolean();
+                ReflectiveJavaFxSupport.invoke(node, "setDisable", dis);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), dis);
+            }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }

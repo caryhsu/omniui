@@ -11,18 +11,35 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # loginButton should be visible and enabled
+    # ── baseline: loginButton should be visible and enabled ──────────────────
     assert client.is_visible(id="loginButton"), "loginButton should be visible"
     assert client.is_enabled(id="loginButton"), "loginButton should be enabled"
 
-    # demoScrollPane should be visible
-    assert client.is_visible(id="demoScrollPane"), "demoScrollPane should be visible"
+    # ── non-existent node returns False without raising ───────────────────────
+    assert not client.is_visible(id="__no_such_node__"), "non-existent id: is_visible should be False"
+    assert not client.is_enabled(id="__no_such_node__"), "non-existent id: is_enabled should be False"
 
-    # Non-existent node should return False without raising
-    assert not client.is_visible(id="__no_such_node__"), "non-existent node should return False for is_visible"
-    assert not client.is_enabled(id="__no_such_node__"), "non-existent node should return False for is_enabled"
+    # ── nodeStateTarget starts visible and enabled ────────────────────────────
+    assert client.is_visible(id="nodeStateTarget"), "nodeStateTarget should start visible"
+    assert client.is_enabled(id="nodeStateTarget"), "nodeStateTarget should start enabled"
 
-    print("node_state_demo succeeded — is_visible and is_enabled verified ✓")
+    # ── hide via Python → is_visible becomes False ────────────────────────────
+    client.set_visible(False, id="nodeStateTarget")
+    assert not client.is_visible(id="nodeStateTarget"), "nodeStateTarget should be hidden after set_visible(False)"
+
+    # ── show again → is_visible becomes True ──────────────────────────────────
+    client.set_visible(True, id="nodeStateTarget")
+    assert client.is_visible(id="nodeStateTarget"), "nodeStateTarget should be visible after set_visible(True)"
+
+    # ── disable via Python → is_enabled becomes False ─────────────────────────
+    client.set_disabled(True, id="nodeStateTarget")
+    assert not client.is_enabled(id="nodeStateTarget"), "nodeStateTarget should be disabled after set_disabled(True)"
+
+    # ── re-enable → is_enabled becomes True ───────────────────────────────────
+    client.set_disabled(False, id="nodeStateTarget")
+    assert client.is_enabled(id="nodeStateTarget"), "nodeStateTarget should be enabled after set_disabled(False)"
+
+    print("node_state_demo succeeded — is_visible, is_enabled, set_visible, set_disabled all verified ✓")
 
 
 if __name__ == "__main__":
