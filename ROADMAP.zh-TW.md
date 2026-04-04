@@ -56,7 +56,7 @@
   - 可用於驗證狀態測試：紅色/綠色、error/success CSS class，不依賴特定錯誤文字
 - [x] **多選（Multi-select）** — `select_multiple(id=..., values=[...])`
   - ListView / TableView 多項目選取；`get_selected_items(id=...)` 以清單回傳目前所有已選項目
-- [ ] **Modifier+click** — `click(id=..., modifiers=["Ctrl"])`、`click(id=..., modifiers=["Ctrl", "Shift"])`
+- [x] **Modifier+click** — `click(id=..., modifiers=["Ctrl"])`、`click(id=..., modifiers=["Ctrl", "Shift"])`
   - Ctrl+click 加選、Shift+click 範圍選取；適用於 ListView/TableView 多選工作流，不需要另呼叫 `select_multiple`
 - [ ] **TableView 儲存格編輯** — `edit_cell(id=..., row=..., column=..., value=...)`
   - 雙擊儲存格並輸入新值（需要 editable TableView）

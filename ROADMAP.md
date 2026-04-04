@@ -56,7 +56,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Enables validation state testing: red/green color, error/success CSS class, without depending on a specific label text
 - [x] **Multi-select** — `select_multiple(id=..., values=[...])`
   - Select multiple items in ListView or TableView; `get_selected_items(id=...)` returns all selected items as a list
-- [ ] **Modifier+click** — `click(id=..., modifiers=["Ctrl"])`, `click(id=..., modifiers=["Ctrl", "Shift"])`
+- [x] **Modifier+click** — `click(id=..., modifiers=["Ctrl"])`, `click(id=..., modifiers=["Ctrl", "Shift"])`
   - Ctrl+click for additive selection, Shift+click for range selection; useful for ListView/TableView multi-select workflows without needing a separate `select_multiple` call
 - [ ] **TableView in-cell editing** — `edit_cell(id=..., row=..., column=..., value=...)`
   - Double-click a cell and type a new value (requires editable TableView)

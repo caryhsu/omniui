@@ -139,7 +139,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         String handle = nodeRef != null ? asString(nodeRef.metadata().get("handle")) : "";
 
         return switch (action) {
-            case "click"        -> handleClick(node, fxId, handle);
+            case "click"        -> handleClick(node, fxId, handle, payload);
             case "double_click" -> handleDoubleClick(node, fxId, handle);
             case "select"       -> handleSelect(node, fxId, handle, payload);
             case "type"         -> handleType(node, fxId, handle, payload);
@@ -315,17 +315,104 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         };
     }
 
-    private ActionResult handleClick(Object node, String fxId, String handle) {
-        try {
-            ReflectiveJavaFxSupport.invoke(node, "fire");
-            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
-        } catch (IllegalStateException ex) {
-            try {
-                ReflectiveJavaFxSupport.invoke(node, "requestFocus");
-                return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
-            } catch (IllegalStateException inner) {
-                return ActionResult.failure(List.of("javafx"), Map.of("reason", "click_not_supported", "fxId", fxId));
+    private ActionResult handleClick(Object node, String fxId, String handle, JsonObject payload) {
+        // Parse modifiers from payload (e.g. ["Ctrl", "Shift"])
+        boolean shiftDown = false, controlDown = false, altDown = false, metaDown = false;
+        boolean hasModifiers = false;
+        if (payload != null && payload.has("modifiers") && payload.get("modifiers").isJsonArray()) {
+            for (var el : payload.getAsJsonArray("modifiers")) {
+                String[] parts = parseKeyString(el.getAsString());
+                String mod = parts[0];
+                switch (mod) {
+                    case "SHIFT"   -> shiftDown   = true;
+                    case "CONTROL" -> controlDown = true;
+                    case "ALT"     -> altDown     = true;
+                    case "META"    -> metaDown    = true;
+                    default -> {
+                        return ActionResult.failure(List.of("javafx"),
+                            Map.of("reason", "unknown_modifier", "modifier", mod, "fxId", fxId));
+                    }
+                }
+                hasModifiers = true;
             }
+        }
+
+        if (!hasModifiers) {
+            // Original path: node.fire() for maximum compatibility
+            try {
+                ReflectiveJavaFxSupport.invoke(node, "fire");
+                return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+            } catch (IllegalStateException ex) {
+                try {
+                    ReflectiveJavaFxSupport.invoke(node, "requestFocus");
+                    return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+                } catch (IllegalStateException inner) {
+                    return ActionResult.failure(List.of("javafx"), Map.of("reason", "click_not_supported", "fxId", fxId));
+                }
+            }
+        }
+
+        // Modifier path: fire MouseEvent.MOUSE_CLICKED with modifier flags (mirrors handleDoubleClick)
+        try {
+            Object bounds = safeInvoke(node, "getBoundsInLocal");
+            double localX = 5, localY = 5;
+            if (bounds != null) {
+                Object w = safeInvoke(bounds, "getWidth");
+                Object h = safeInvoke(bounds, "getHeight");
+                if (w instanceof Number nw && h instanceof Number nh) {
+                    localX = nw.doubleValue() / 2;
+                    localY = nh.doubleValue() / 2;
+                }
+            }
+            Object screenPt = safeInvoke(node, "localToScreen", localX, localY);
+            double screenX = 0, screenY = 0;
+            if (screenPt != null) {
+                Object sx = safeInvoke(screenPt, "getX");
+                Object sy = safeInvoke(screenPt, "getY");
+                if (sx instanceof Number nx) screenX = nx.doubleValue();
+                if (sy instanceof Number ny) screenY = ny.doubleValue();
+            }
+
+            Class<?> mouseCls  = Class.forName("javafx.scene.input.MouseEvent");
+            Class<?> btnCls    = Class.forName("javafx.scene.input.MouseButton");
+            Class<?> pickCls   = Class.forName("javafx.scene.input.PickResult");
+            Class<?> etCls     = Class.forName("javafx.event.EventType");
+
+            Object mouseClicked = mouseCls.getField("MOUSE_CLICKED").get(null);
+            Object primary      = btnCls.getField("PRIMARY").get(null);
+
+            java.lang.reflect.Constructor<?> ctor = mouseCls.getConstructor(
+                etCls,
+                double.class, double.class, double.class, double.class,
+                btnCls, int.class,
+                boolean.class, boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                boolean.class, boolean.class, boolean.class,
+                pickCls
+            );
+
+            Object event = ctor.newInstance(
+                mouseClicked,
+                localX, localY, screenX, screenY,
+                primary, 1,
+                shiftDown, controlDown, altDown, metaDown,
+                false, false, false,
+                true, false, true,
+                (Object) null
+            );
+
+            Class<?> eventCls  = Class.forName("javafx.event.Event");
+            Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+            java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+            fireMethod.invoke(null, node, event);
+
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of(
+                "reason", "modifier_click_failed",
+                "fxId", fxId,
+                "message", ex.getMessage() == null ? "" : ex.getMessage()
+            ));
         }
     }
 

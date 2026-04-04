@@ -23,6 +23,7 @@ if __package__ in (None, ""):
     import core.flexible_verify_text_demo as flexible_verify_text_demo  # type: ignore
     import core.css_style_demo as css_style_demo  # type: ignore
     import core.recorder_preview as recorder_preview  # type: ignore
+    import core.modifier_click_demo as modifier_click_demo  # type: ignore
     # Input app demos
     import input.text_area_demo as text_area_demo  # type: ignore
     import input.password_field_demo as password_field_demo  # type: ignore
@@ -64,7 +65,7 @@ else:
         flexible_verify_text_demo,
         css_style_demo,
         recorder_preview,
-    )
+        modifier_click_demo,
     from .input import (
         text_area_demo,
         password_field_demo,
@@ -220,6 +221,9 @@ def main(auto_launch: bool = True) -> None:
 
         _section("Recorder Preview")
         recorder_preview.main()
+
+        _section("Modifier+Click Demo")
+        modifier_click_demo.main()
 
     # ── Input App ─────────────────────────────────────────────────────────────
     _section("Input App demos (port 48101+)")

@@ -146,8 +146,15 @@ class OmniUIClient:
         )
         return {key: value for key, value in asdict(normalized).items() if value is not None}
 
-    def click(self, **selector: Any) -> ActionResult:
-        return self._perform("click", selector)
+    def click(self, modifiers: list[str] | None = None, **selector: Any) -> ActionResult:
+        """Click the target node.
+
+        modifiers: optional list of modifier keys held during the click.
+        Accepts the same format as press_key: case-insensitive, "Ctrl"="Control", "Win"="Meta".
+        Examples: ["Ctrl"], ["Shift"], ["Ctrl", "Shift"]
+        """
+        payload = {"modifiers": modifiers} if modifiers else None
+        return self._perform("click", selector, payload)
 
     def double_click(self, **selector: Any) -> ActionResult:
         """Fire a double-click (MouseEvent clickCount=2) on the target node.

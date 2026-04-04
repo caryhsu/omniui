@@ -325,7 +325,49 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class LocatorTests(unittest.TestCase):
+class ModifierClickTests(unittest.TestCase):
+    """Tests for click() with modifiers parameter."""
+
+    def _make_client_and_capture(self, mock_urlopen):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "node-1", "matchedAttributes": {"fxId": "serverList"}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": None,
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_click_with_modifiers_includes_modifiers_in_payload(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.click(id="serverList", modifiers=["Ctrl"])
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "click")
+        self.assertEqual(captured[0]["payload"], {"modifiers": ["Ctrl"]})
+
+    @patch("urllib.request.urlopen")
+    def test_click_without_modifiers_omits_payload(self, mock_urlopen) -> None:
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.click(id="serverList")
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "click")
+        # No modifiers: payload should be empty (not contain modifiers key)
+        self.assertNotIn("modifiers", captured[0].get("payload", {}))
+
+
+
     """Tests for OmniUIClient.locator() and the Locator class."""
 
     def _make_client(self, mock_urlopen):
