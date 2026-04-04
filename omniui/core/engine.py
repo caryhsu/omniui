@@ -203,6 +203,36 @@ class OmniUIClient:
         """
         return self._perform("get_focused", {})
 
+    def get_clipboard(self) -> ActionResult:
+        """Return the current system clipboard text content.
+
+        The ``value`` field of the returned ``ActionResult`` contains the
+        clipboard string (empty string if clipboard is empty or non-text).
+        """
+        return self._perform("get_clipboard", {})
+
+    def set_clipboard(self, text: str) -> ActionResult:
+        """Write ``text`` to the system clipboard.
+
+        Useful for pre-seeding clipboard content before a paste action.
+        """
+        return self._perform("set_clipboard", {}, {"text": text})
+
+    def copy(self, **selector: Any) -> ActionResult:
+        """Select all content of a node and copy it to the clipboard.
+
+        Equivalent to pressing Ctrl+A then Ctrl+C on the node.
+        """
+        self.press_key("Control+A", **selector)
+        return self.press_key("Control+C", **selector)
+
+    def paste(self, **selector: Any) -> ActionResult:
+        """Paste clipboard content into a node.
+
+        Equivalent to pressing Ctrl+V on the node.
+        """
+        return self.press_key("Control+V", **selector)
+
     def verify_focused(self, id: str) -> ActionResult:
         """Assert that the node with the given fx:id is currently focused.
 

@@ -71,6 +71,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "close_app"       -> doCloseApp();
             case "get_focused"     -> doGetFocused();
             case "press_key"       -> doPressKey(selector, payload);
+            case "get_clipboard"   -> doGetClipboard();
+            case "set_clipboard"   -> doSetClipboard(payload);
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
     }
@@ -504,6 +506,37 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             data.put("fxId",     focusFxId);
             data.put("nodeType", focusType);
             return ActionResult.success("javafx", null, Map.of(), data);
+        });
+    }
+
+    private ActionResult doGetClipboard() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            try {
+                Class<?> clipboardClass = Class.forName("javafx.scene.input.Clipboard");
+                Object clipboard = clipboardClass.getMethod("getSystemClipboard").invoke(null);
+                Object text = clipboard.getClass().getMethod("getString").invoke(clipboard);
+                String value = text != null ? text.toString() : "";
+                return ActionResult.success("javafx", null, Map.of(), value);
+            } catch (Exception e) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", e.getMessage()));
+            }
+        });
+    }
+
+    private ActionResult doSetClipboard(JsonObject payload) {
+        String text = payload != null && payload.has("text") ? payload.get("text").getAsString() : "";
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            try {
+                Class<?> clipboardClass = Class.forName("javafx.scene.input.Clipboard");
+                Class<?> contentClass   = Class.forName("javafx.scene.input.ClipboardContent");
+                Object clipboard = clipboardClass.getMethod("getSystemClipboard").invoke(null);
+                Object content   = contentClass.getDeclaredConstructor().newInstance();
+                contentClass.getMethod("putString", String.class).invoke(content, text);
+                clipboardClass.getMethod("setContent", java.util.Map.class).invoke(clipboard, content);
+                return ActionResult.success("javafx", null, Map.of(), null);
+            } catch (Exception e) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", e.getMessage()));
+            }
         });
     }
 

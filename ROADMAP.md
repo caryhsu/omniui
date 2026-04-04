@@ -106,7 +106,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
 - [x] **Hover** — `hover(id=...)` to trigger tooltips or hover states
-- [ ] **Clipboard operations** — `copy()`, `paste()`, `get_clipboard()`
+- [x] **Clipboard operations** — `copy()`, `paste()`, `get_clipboard()`
 
 ---
 

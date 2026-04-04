@@ -656,6 +656,85 @@ class SoftAssertTests(unittest.TestCase):
         self.assertTrue(hasattr(omniui, "SoftAssertContext"))
 
 
+class ClipboardTests(unittest.TestCase):
+    """Tests for get_clipboard / set_clipboard / copy / paste."""
+
+    def _make_client_and_capture(self, mock_urlopen, action_response=None):
+        captured: list[dict] = []
+        if action_response is None:
+            action_response = {
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "n1",
+                             "matchedAttributes": {"fxId": "username"}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": None,
+            }
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse(action_response)
+
+        mock_urlopen.side_effect = fake_urlopen
+        from omniui.core.engine import OmniUIClient
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_clipboard_sends_correct_action(self, mock_urlopen):
+        action_response = {
+            "ok": True,
+            "resolved": None,
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": "hello",
+        }
+        client, captured = self._make_client_and_capture(mock_urlopen, action_response)
+        result = client.get_clipboard()
+        self.assertTrue(result.ok)
+        self.assertEqual(result.value, "hello")
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "get_clipboard")
+
+    @patch("urllib.request.urlopen")
+    def test_set_clipboard_sends_text_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.set_clipboard("OmniUI")
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "set_clipboard")
+        self.assertEqual(captured[0]["payload"]["text"], "OmniUI")
+
+    @patch("urllib.request.urlopen")
+    def test_copy_sends_two_press_key_actions(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.copy(id="username")
+        self.assertEqual(len(captured), 2)
+        self.assertEqual(captured[0]["action"], "press_key")
+        self.assertEqual(captured[0]["payload"]["key"], "Control+A")
+        self.assertEqual(captured[1]["action"], "press_key")
+        self.assertEqual(captured[1]["payload"]["key"], "Control+C")
+
+    @patch("urllib.request.urlopen")
+    def test_paste_sends_ctrl_v(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.paste(id="username")
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "press_key")
+        self.assertEqual(captured[0]["payload"]["key"], "Control+V")
+
+    @patch("urllib.request.urlopen")
+    def test_clipboard_methods_present_on_client(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        for method_name in ("get_clipboard", "set_clipboard", "copy", "paste"):
+            self.assertTrue(callable(getattr(client, method_name, None)),
+                            f"Missing method: {method_name}")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

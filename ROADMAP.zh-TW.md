@@ -107,7 +107,7 @@
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [ ] **拖放（Drag & Drop）** — `drag(source_id, target_id)`
 - [x] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
-- [ ] **剪貼簿操作** — `copy()`、`paste()`、`get_clipboard()`
+- [x] **剪貼簿操作** — `copy()`、`paste()`、`get_clipboard()`
 
 ---
 
