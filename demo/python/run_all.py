@@ -23,6 +23,7 @@ if __package__ in (None, ""):
     import checkbox_demo  # type: ignore
     import choicebox_demo  # type: ignore
     import accordion_demo  # type: ignore
+    import treetableview_demo  # type: ignore
     import hyperlink_demo  # type: ignore
     import password_field_demo  # type: ignore
     import tab_demo  # type: ignore
@@ -51,6 +52,7 @@ else:
         checkbox_demo,
         choicebox_demo,
         accordion_demo,
+        treetableview_demo,
         hyperlink_demo,
         password_field_demo,
         tab_demo,
@@ -132,6 +134,9 @@ def main() -> None:
 
     _section("Accordion Demo")
     accordion_demo.main()
+
+    _section("TreeTableView Demo")
+    treetableview_demo.main()
 
     _section("Recorder Preview")
     recorder_preview.main()

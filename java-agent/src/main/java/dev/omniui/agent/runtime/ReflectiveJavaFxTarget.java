@@ -147,6 +147,46 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "expand_pane"  -> { safeInvoke(node, "setExpanded", true); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null); }
             case "collapse_pane" -> { safeInvoke(node, "setExpanded", false); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null); }
             case "get_expanded" -> { Object v = safeInvoke(node, "isExpanded"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
+            case "select_tree_table_row" -> {
+                String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
+                String column = payload != null && payload.has("column") ? payload.get("column").getAsString() : null;
+                boolean selected = selectTreeTableRow(node, value, column);
+                yield selected
+                    ? ActionResult.success("javafx", handle, Map.of("fxId", fxId, "value", value), value)
+                    : ActionResult.failure(List.of("javafx"), Map.of("reason", "select_not_supported", "fxId", fxId, "value", value));
+            }
+            case "get_tree_table_cell" -> {
+                String row  = payload != null && payload.has("row")    ? payload.get("row").getAsString()    : "";
+                String col2 = payload != null && payload.has("column") ? payload.get("column").getAsString() : "";
+                String cellValue = getTreeTableCell(node, row, col2);
+                yield cellValue != null
+                    ? ActionResult.success("javafx", handle, Map.of("fxId", fxId), cellValue)
+                    : ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found", "fxId", fxId));
+            }
+            case "expand_tree_table_item" -> {
+                String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
+                Object root2 = ReflectiveJavaFxSupport.invoke(node, "getRoot");
+                Object item = findTreeTableItemByCell(node, root2, value, null);
+                if (item == null) yield ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found", "fxId", fxId));
+                safeInvoke(item, "setExpanded", true);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+            }
+            case "collapse_tree_table_item" -> {
+                String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
+                Object root2 = ReflectiveJavaFxSupport.invoke(node, "getRoot");
+                Object item = findTreeTableItemByCell(node, root2, value, null);
+                if (item == null) yield ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found", "fxId", fxId));
+                safeInvoke(item, "setExpanded", false);
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+            }
+            case "get_tree_table_expanded" -> {
+                String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
+                Object root2 = ReflectiveJavaFxSupport.invoke(node, "getRoot");
+                Object item = findTreeTableItemByCell(node, root2, value, null);
+                if (item == null) yield ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found", "fxId", fxId));
+                Object expanded = safeInvoke(item, "isExpanded");
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), expanded);
+            }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }
@@ -323,6 +363,103 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Object match = findTreeItem(child, value);
             if (match != null) {
                 return match;
+            }
+        }
+        return null;
+    }
+
+    // ---- TreeTableView helpers ---------------------------------------------
+
+    private Object findTreeTableItem(Object treeItem, String value) {
+        if (treeItem == null) return null;
+        Object itemValue = safeInvoke(treeItem, "getValue");
+        if (value.equals(itemValue == null ? null : itemValue.toString())) {
+            return treeItem;
+        }
+        Object children = safeInvoke(treeItem, "getChildren");
+        if (!(children instanceof Collection<?> col)) return null;
+        for (Object child : col) {
+            Object found = findTreeTableItem(child, value);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private Object findTreeTableItemByCell(Object treeTable, Object treeItem, String value, String column) {
+        if (treeItem == null) return null;
+        if (treeTableItemMatchesCell(treeTable, treeItem, value, column)) return treeItem;
+        Object children = safeInvoke(treeItem, "getChildren");
+        if (!(children instanceof Collection<?> col)) return null;
+        for (Object child : col) {
+            Object found = findTreeTableItemByCell(treeTable, child, value, column);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private boolean treeTableItemMatchesCell(Object treeTable, Object treeItem, String value, String column) {
+        Object columns = safeInvoke(treeTable, "getColumns");
+        if (columns instanceof List<?> cols) {
+            for (Object col : cols) {
+                String header = asString(safeInvoke(col, "getText"));
+                if (column != null && !column.isBlank() && !column.equals(header)) continue;
+                Object observable = safeInvoke(col, "getCellObservableValue", treeItem);
+                if (observable != null) {
+                    Object cellValue = safeInvoke(observable, "getValue");
+                    if (value.equals(cellValue == null ? null : cellValue.toString())) return true;
+                }
+            }
+        }
+        // fallback: check all no-arg String-returning methods on the item value (handles records/beans)
+        if (column == null || column.isBlank()) {
+            Object itemValue = safeInvoke(treeItem, "getValue");
+            if (itemValue != null) {
+                for (java.lang.reflect.Method m : itemValue.getClass().getMethods()) {
+                    if (m.getParameterCount() == 0 && m.getReturnType() == String.class) {
+                        try {
+                            Object result = m.invoke(itemValue);
+                            if (value.equals(result)) return true;
+                        } catch (Exception ignored) { }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean selectTreeTableRow(Object node, String value, String column) {
+        if (!"TreeTableView".equals(node.getClass().getSimpleName())) return false;
+        Object root = safeInvoke(node, "getRoot");
+        Object match = findTreeTableItemByCell(node, root, value, column);
+        if (match == null) return false;
+        Object rowIndex = safeInvoke(node, "getRow", match);
+        if (!(rowIndex instanceof Number idx)) return false;
+        Object selectionModel = ReflectiveJavaFxSupport.invoke(node, "getSelectionModel");
+        ReflectiveJavaFxSupport.invokeOnType(
+            selectionModel,
+            "javafx.scene.control.TableSelectionModel",
+            "select",
+            new Class<?>[] {int.class},
+            idx.intValue()
+        );
+        return true;
+    }
+
+    private String getTreeTableCell(Object node, String rowValue, String column) {
+        if (!"TreeTableView".equals(node.getClass().getSimpleName())) return null;
+        Object root = safeInvoke(node, "getRoot");
+        Object match = findTreeTableItemByCell(node, root, rowValue, null);
+        if (match == null) return null;
+        Object columns = safeInvoke(node, "getColumns");
+        if (!(columns instanceof List<?> cols)) return null;
+        for (Object col : cols) {
+            String header = asString(safeInvoke(col, "getText"));
+            if (column.equals(header)) {
+                Object observable = safeInvoke(col, "getCellObservableValue", match);
+                if (observable != null) {
+                    Object cellValue = safeInvoke(observable, "getValue");
+                    return cellValue == null ? null : cellValue.toString();
+                }
             }
         }
         return null;

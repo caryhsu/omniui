@@ -246,6 +246,35 @@ class OmniUIClient:
         v = result.value
         return v is True or str(v).lower() == "true"
 
+    # ---- TreeTableView -----------------------------------------------------
+
+    def select_tree_table_row(self, value: str, column: str | None = None, **selector: Any) -> ActionResult:
+        """Select a row in a TreeTableView by matching a cell value. Optional column narrows search."""
+        payload: dict[str, Any] = {"value": value}
+        if column is not None:
+            payload["column"] = column
+        return self._perform("select_tree_table_row", selector, payload)
+
+    def get_tree_table_cell(self, row: str, column: str, **selector: Any) -> ActionResult:
+        """Read the string value of a cell in a TreeTableView by row identifier and column header."""
+        return self._perform("get_tree_table_cell", selector, {"row": row, "column": column})
+
+    def expand_tree_table_item(self, value: str, **selector: Any) -> ActionResult:
+        """Expand a TreeItem inside a TreeTableView by matching its value string."""
+        return self._perform("expand_tree_table_item", selector, {"value": value})
+
+    def collapse_tree_table_item(self, value: str, **selector: Any) -> ActionResult:
+        """Collapse a TreeItem inside a TreeTableView by matching its value string."""
+        return self._perform("collapse_tree_table_item", selector, {"value": value})
+
+    def get_tree_table_expanded(self, value: str, **selector: Any) -> bool:
+        """Return True if the TreeItem matching value inside a TreeTableView is expanded."""
+        result = self._perform("get_tree_table_expanded", selector, {"value": value})
+        if not result.ok:
+            return False
+        v = result.value
+        return v is True or str(v).lower() == "true"
+
     def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
         """Send an action with no selector normalization or OCR/vision fallback."""
         response = self._request_json(

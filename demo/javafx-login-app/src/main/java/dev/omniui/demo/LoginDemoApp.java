@@ -45,6 +45,8 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.TreeTableColumn;
+import javafx.scene.control.TreeTableView;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 
@@ -457,6 +459,42 @@ public final class LoginDemoApp extends Application {
         demoAccordion.setId("demoAccordion");
         VBox accordionSection = section("Accordion Demo", "accordionSection", demoAccordion);
 
+        TreeTableColumn<DeptRecord, String> deptNameCol = new TreeTableColumn<>("Name");
+        deptNameCol.setId("deptNameCol");
+        deptNameCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getValue().name()));
+
+        TreeTableColumn<DeptRecord, String> deptTypeCol = new TreeTableColumn<>("Department");
+        deptTypeCol.setId("deptTypeCol");
+        deptTypeCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getValue().department()));
+
+        TreeTableView<DeptRecord> demoTreeTable = new TreeTableView<>();
+        demoTreeTable.setId("demoTreeTable");
+        demoTreeTable.setColumnResizePolicy(TreeTableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        demoTreeTable.setPrefHeight(200);
+        demoTreeTable.getColumns().addAll(deptNameCol, deptTypeCol);
+
+        TreeItem<DeptRecord> treeRoot = new TreeItem<>(new DeptRecord("Company", "Root"));
+        treeRoot.setExpanded(true);
+
+        TreeItem<DeptRecord> engDept = new TreeItem<>(new DeptRecord("Engineering", "Department"));
+        engDept.setExpanded(false);
+        engDept.getChildren().addAll(
+            new TreeItem<>(new DeptRecord("Alice", "Engineer")),
+            new TreeItem<>(new DeptRecord("Bob", "Engineer"))
+        );
+
+        TreeItem<DeptRecord> salesDept = new TreeItem<>(new DeptRecord("Sales", "Department"));
+        salesDept.setExpanded(false);
+        salesDept.getChildren().addAll(
+            new TreeItem<>(new DeptRecord("Carol", "Sales Rep")),
+            new TreeItem<>(new DeptRecord("Dave", "Sales Rep"))
+        );
+
+        treeRoot.getChildren().addAll(engDept, salesDept);
+        demoTreeTable.setRoot(treeRoot);
+        demoTreeTable.setShowRoot(false);
+        VBox treeTableSection = section("TreeTableView Demo", "treeTableSection", demoTreeTable);
+
         VBox root = new VBox(
             18,
             loginSectionTitle,
@@ -482,7 +520,8 @@ public final class LoginDemoApp extends Application {
             hyperlinkSection,
             checkBoxSection,
             choiceBoxSection,
-            accordionSection
+            accordionSection,
+            treeTableSection
         );
         root.setPadding(new Insets(24));
 
@@ -511,5 +550,9 @@ public final class LoginDemoApp extends Application {
     }
 
     public record UserRecord(String name, String role, String state) {
+    }
+
+    public record DeptRecord(String name, String department) {
+        @Override public String toString() { return name; }
     }
 }
