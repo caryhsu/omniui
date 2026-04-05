@@ -66,6 +66,7 @@ class OmniUI:
         ocr_engine: SimpleOcrEngine | None = None,
         vision_engine: SimpleVisionEngine | None = None,
         scan_range: tuple[int, int] = (_SCAN_START, _SCAN_END),
+        step_delay: float = 0.0,
     ) -> OmniUIClient:
         """Connect to a running OmniUI agent.
 
@@ -75,6 +76,11 @@ class OmniUI:
         2. ``base_url`` → used as-is
         3. neither → scan ``scan_range`` for the first active agent
 
+        Args:
+            step_delay: Seconds to sleep after each action. Useful for slowing
+                down script playback for demos. Can be overridden per-call via
+                the ``delay`` argument on individual action methods.
+
         Examples::
 
             # Explicit port
@@ -82,6 +88,9 @@ class OmniUI:
 
             # Auto-scan (finds the first running agent in 48100-48999)
             ui = OmniUI.connect()
+
+            # Demo mode — 0.5s pause between every action
+            ui = OmniUI.connect(port=48100, step_delay=0.5)
 
             # Legacy base_url style
             ui = OmniUI.connect(base_url="http://127.0.0.1:48100")
@@ -104,6 +113,7 @@ class OmniUI:
             pid=pid,
             ocr_engine=ocr_engine,
             vision_engine=vision_engine,
+            step_delay=step_delay,
         )
 
     @staticmethod

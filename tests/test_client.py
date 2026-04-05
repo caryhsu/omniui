@@ -1215,6 +1215,70 @@ class LocatorTests(unittest.TestCase):
         result = loc.click()
         self.assertTrue(result.ok)
 
+
+class StepDelayTests(unittest.TestCase):
+    def _make_client(self, mock_urlopen, step_delay: float = 0.0):
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []}),
+        ]
+        return OmniUI.connect(port=48100, step_delay=step_delay)
+
+    def _click_response(self):
+        return _FakeResponse({
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": "btn", "matchedAttributes": {"fxId": "btn"}, "confidence": None},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": None,
+        })
+
+    @patch("urllib.request.urlopen")
+    def test_step_delay_default_is_zero(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        self.assertEqual(client.step_delay, 0.0)
+
+    @patch("urllib.request.urlopen")
+    def test_connect_sets_step_delay(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen, step_delay=0.5)
+        self.assertEqual(client.step_delay, 0.5)
+
+    @patch("time.sleep")
+    @patch("urllib.request.urlopen")
+    def test_global_step_delay_sleeps_after_action(self, mock_urlopen, mock_sleep) -> None:
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []}),
+            self._click_response(),
+        ]
+        client = OmniUI.connect(port=48100, step_delay=0.5)
+        client.click(id="btn")
+        mock_sleep.assert_called_with(0.5)
+
+    @patch("time.sleep")
+    @patch("urllib.request.urlopen")
+    def test_per_call_delay_overrides_global(self, mock_urlopen, mock_sleep) -> None:
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []}),
+            self._click_response(),
+        ]
+        client = OmniUI.connect(port=48100, step_delay=0.5)
+        client.click(id="btn", delay=1.5)
+        mock_sleep.assert_called_with(1.5)
+
+    @patch("time.sleep")
+    @patch("urllib.request.urlopen")
+    def test_no_sleep_when_step_delay_is_zero(self, mock_urlopen, mock_sleep) -> None:
+        mock_urlopen.side_effect = [
+            _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
+            _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []}),
+            self._click_response(),
+        ]
+        client = OmniUI.connect(port=48100, step_delay=0.0)
+        client.click(id="btn")
+        mock_sleep.assert_not_called()
+
+
     @patch("urllib.request.urlopen")
     def test_locator_verify_text_delegates_to_client(self, mock_urlopen) -> None:
         mock_urlopen.side_effect = [
