@@ -115,12 +115,12 @@
 ## 🎬 完整錄製器（Full Recorder）
 
 - [ ] **事件捕捉** — Java agent 在 Scene 上掛 `EventFilter`，攔截滑鼠點擊、雙擊、按鍵與文字輸入
-- [ ] **Selector 推導** — 從被點擊的節點自動選出最佳 selector：`fx:id` → `text` → `type + index`
-- [ ] **腳本生成** — Python 端將錄製事件序列化為可執行的測試腳本
+- [x] **Selector 推導** — 從被點擊的節點自動選出最佳 selector：`fx:id` → `text` → `type + index`
+- [x] **腳本生成** — Python 端將錄製事件序列化為可執行的測試腳本
   - 輸出 `click`、`type`、`press_key`、`verify_text` 等指令
   - 敏感欄位（如 `PasswordField`）自動遮罩，替換為佔位符
 - [ ] **Wait 自動插入** — 啟發式判斷哪些操作後需要等待非同步 UI 變更，自動插入 `wait_for_*`
-- [ ] **錄製 Session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+- [x] **錄製 Session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
 
 ---
 

@@ -114,12 +114,12 @@ This file tracks planned features and improvements. Check off items as they are 
 ## 🎬 Full Recorder
 
 - [ ] **Event capture** — Java agent attaches `EventFilter` to the Scene to intercept mouse clicks, double-clicks, key presses, and text input
-- [ ] **Selector inference** — derive the best selector from the clicked node: `fx:id` → `text` → `type + index`
-- [ ] **Script generation** — Python-side generator serialises recorded events into a runnable test script
+- [x] **Selector inference** — derive the best selector from the clicked node: `fx:id` → `text` → `type + index`
+- [x] **Script generation** — Python-side generator serialises recorded events into a runnable test script
   - Outputs `click`, `type`, `press_key`, `verify_text`, etc.
   - Sensitive fields (e.g. `PasswordField`) are masked with a placeholder
 - [ ] **Wait injection** — heuristically insert `wait_for_*` calls after actions that trigger async UI changes
-- [ ] **Record session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+- [x] **Record session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
 
 ---
 

@@ -17,7 +17,7 @@ from omniui.ocr_module import OcrMatch, SimpleOcrEngine
 from omniui.selector_engine.resolver import normalize_selector
 from omniui.vision_module import SimpleVisionEngine
 
-from .models import ActionLogEntry, ActionResult, ActionTrace, ResolvedElement, Selector, UISnapshot, UIDiff
+from .models import ActionLogEntry, ActionResult, ActionTrace, ResolvedElement, Selector, UISnapshot, UIDiff, RecordedEvent, RecordedScript
 
 
 class OmniUIClient:
@@ -36,6 +36,7 @@ class OmniUIClient:
         self.vision_engine = vision_engine or SimpleVisionEngine()
         self._action_log: list[ActionLogEntry] = []
         self._scope: dict[str, Any] | None = None
+        self._recording: bool = False
 
     @classmethod
     def connect(
@@ -92,6 +93,36 @@ class OmniUIClient:
             and any(before_map[k].get(a) != after_map[k].get(a) for a in _COMPARED_ATTRS)
         ]
         return UIDiff(added=added, removed=removed, changed=changed)
+
+    def start_recording(self) -> None:
+        """Start recording user interactions via the Java agent's EventFilter."""
+        self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/events/start", {})
+        self._recording = True
+
+    def stop_recording(self) -> RecordedScript:
+        """Stop recording and return a :class:`RecordedScript` with generated Python code."""
+        if not self._recording:
+            raise RuntimeError("stop_recording() called without a prior start_recording()")
+        payload = self._request_json("DELETE", f"{self.base_url}/sessions/{self.session_id}/events", {})
+        self._recording = False
+
+        from ..recorder.selector_inference import infer_selector  # local import avoids circular dep
+        from ..recorder.script_gen import generate_script
+
+        raw_events: list[dict[str, Any]] = payload.get("events", [])
+        events = [
+            RecordedEvent(
+                event_type=e.get("type", ""),
+                fx_id=e.get("fxId", ""),
+                text=e.get("text", ""),
+                node_type=e.get("nodeType", ""),
+                node_index=int(e.get("nodeIndex", 0)),
+                timestamp=float(e.get("timestamp", 0)),
+            )
+            for e in raw_events
+        ]
+        script = generate_script(events)
+        return RecordedScript(events=events, script=script)
 
     def action_history(self) -> list[ActionLogEntry]:
         return list(self._action_log)
