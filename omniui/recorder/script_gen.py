@@ -20,6 +20,27 @@ def _selector_kwargs(sel: dict) -> str:
     return parts, suffix
 
 
+def _drag_line(event: "RecordedEvent") -> str:
+    """Return a drag().to() line for a drag event."""
+    from_sel = infer_selector(event)
+    from_kwargs, from_suffix = _selector_kwargs(from_sel)
+
+    # Build a synthetic "to" event using to_* fields
+    from omniui.core.models import RecordedEvent as RE
+    to_event = RE(
+        event_type="drag_to",
+        fx_id=event.to_fx_id,
+        text=event.to_text,
+        node_type=event.to_node_type,
+        node_index=event.to_node_index,
+        timestamp=event.timestamp,
+    )
+    to_sel = infer_selector(to_event)
+    to_kwargs, to_suffix = _selector_kwargs(to_sel)
+    suffix = from_suffix or to_suffix
+    return f"client.drag({from_kwargs}).to({to_kwargs}){suffix}"
+
+
 def generate_script(
     events: list[RecordedEvent],
     wait_injection: bool = False,
@@ -46,6 +67,9 @@ def generate_script(
             action_events.append(event)
         elif event.event_type == "type":
             action_lines.append(f'client.type({kwargs}, text="{event.text}"){suffix}')
+            action_events.append(event)
+        elif event.event_type == "drag":
+            action_lines.append(_drag_line(event))
             action_events.append(event)
 
     if wait_injection:
