@@ -16,8 +16,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
@@ -155,18 +153,6 @@ public final class AdvancedDemoApp extends Application {
 
         VBox alertSection = section("Alert Demo", "alertSection",
             infoAlertButton, confirmAlertButton, warnAlertButton, errorAlertButton, alertStatus);
-
-        // ---- ProgressBar demo -----------------------------------------------
-        ProgressBar demoProgressBar = new ProgressBar(0.4);
-        demoProgressBar.setId("demoProgressBar");
-        demoProgressBar.setPrefWidth(300);
-        ProgressIndicator demoProgressIndicator = new ProgressIndicator(0.7);
-        demoProgressIndicator.setId("demoProgressIndicator");
-        Label progressLabel = new Label("Bar: 40%  |  Indicator: 70%");
-        progressLabel.setId("progressLabel");
-
-        VBox progressSection = section("ProgressBar Demo", "progressSection",
-            demoProgressBar, demoProgressIndicator, progressLabel);
 
         // ---- TabPane demo ---------------------------------------------------
         TabPane demoTabPane = new TabPane();
@@ -402,7 +388,6 @@ public final class AdvancedDemoApp extends Application {
             menuBarSection,
             dialogSection,
             alertSection,
-            progressSection,
             tabSection,
             accordionSection,
             treeTableSection,

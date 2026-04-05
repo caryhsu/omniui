@@ -49,7 +49,6 @@ if __package__ in (None, ""):
     import advanced.accordion_demo as accordion_demo  # type: ignore
     import advanced.treetableview_demo as treetableview_demo  # type: ignore
     import advanced.split_pane_demo as split_pane_demo  # type: ignore
-    import advanced.progress_demo as progress_demo  # type: ignore
     import advanced.node_state_demo as node_state_demo  # type: ignore
     import advanced.scroll_demo as scroll_demo  # type: ignore
     import advanced.tooltip_demo as tooltip_demo  # type: ignore
@@ -64,6 +63,8 @@ if __package__ in (None, ""):
     import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
     # Drag app demos
     import drag.drag_listview_demo as drag_listview_demo  # type: ignore
+    # Progress app demos
+    import progress.progress_demo as progress_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -109,7 +110,6 @@ else:
         accordion_demo,
         treetableview_demo,
         split_pane_demo,
-        progress_demo,
         node_state_demo,
         scroll_demo,
         tooltip_demo,
@@ -124,6 +124,7 @@ else:
         discover_advanced_controls,
     )
     from .drag import drag_listview_demo
+    from .progress import progress_demo
 
 from omniui import OmniUI
 
@@ -356,9 +357,6 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
         _section("SplitPane Demo")
         split_pane_demo.main()
 
-        _section("ProgressBar Demo")
-        progress_demo.main()
-
         _section("Node State Demo")
         node_state_demo.main()
 
@@ -407,6 +405,22 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
     with drag_ctx:
         _section("Drag ListView Demo")
         drag_listview_demo.main()
+
+    # ── Progress App ───────────────────────────────────────────────────────────
+    _section("Progress App demos (port 48104+)")
+    if auto_launch:
+        progress_port = OmniUI.find_free_port(48104, 48999)
+        progress_cmd = _build_launch_cmd(
+            java_dir / "progress-app", "omniui-progress-demo",
+            "dev.omniui.demo.progress", "dev.omniui.demo.progress.ProgressDemoApp", progress_port,
+        )
+        progress_ctx = OmniUI.launch(cmd=progress_cmd, port=progress_port, timeout=30.0)
+    else:
+        progress_ctx = nullcontext()
+
+    with progress_ctx:
+        _section("Progress Demo")
+        progress_demo.main()
 
 
 if __name__ == "__main__":
