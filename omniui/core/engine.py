@@ -358,6 +358,27 @@ class OmniUIClient:
         """
         return self._perform("click_at", {}, {"x": x, "y": y})
 
+    def drag(self, delay: float | None = None, **selector: Any) -> "OmniUIClient":
+        """Start a drag gesture from the node matched by *selector*.
+
+        Returns a ``_DragBuilder`` that you chain with ``.to()`` or ``.to_coords()``::
+
+            client.drag(id="sourceItem").to(id="targetItem")
+            client.drag(id="handle").to_coords(x=300, y=200)
+
+        delay: optional per-call sleep (seconds) after the action.
+        """
+        return _DragBuilder(self, selector, delay)
+
+    def drag_to(self, *, to_x: float, to_y: float, delay: float | None = None, **selector: Any) -> ActionResult:
+        """Drag the node matched by *selector* to scene-relative coordinates (to_x, to_y).
+
+        Example::
+
+            client.drag_to(id="handle", to_x=300, to_y=200)
+        """
+        return self._perform("drag_to", selector, {"to_x": to_x, "to_y": to_y}, step_delay_override=delay)
+
     def get_cell(self, *, id: str, row: int, column: int) -> ActionResult:
         """Read the string value of a TableView cell at zero-based row/column indices.
 
@@ -1184,6 +1205,40 @@ class OmniUIClient:
             raise RuntimeError(f"OmniUI request failed: {exc.code} {message}") from exc
         except URLError as exc:
             raise RuntimeError(f"OmniUI request failed: {exc.reason}") from exc
+
+
+class _DragBuilder:
+    """Fluent builder returned by :meth:`OmniUIClient.drag`.
+
+    Chain with ``.to()`` to drag to another node, or ``.to_coords()`` to drag
+    to absolute scene coordinates::
+
+        client.drag(id="sourceItem").to(id="targetItem")
+        client.drag(id="handle").to_coords(x=300, y=200)
+    """
+
+    def __init__(self, client: "OmniUIClient", source_selector: dict[str, Any], delay: float | None) -> None:
+        self._client = client
+        self._source = source_selector
+        self._delay = delay
+
+    def to(self, **target_selector: Any) -> ActionResult:
+        """Drag to the node matched by *target_selector*."""
+        return self._client._perform(
+            "drag",
+            self._source,
+            {"target": target_selector},
+            step_delay_override=self._delay,
+        )
+
+    def to_coords(self, *, x: float, y: float) -> ActionResult:
+        """Drag to absolute scene coordinates (x, y)."""
+        return self._client._perform(
+            "drag_to",
+            self._source,
+            {"to_x": x, "to_y": y},
+            step_delay_override=self._delay,
+        )
 
 
 def retry(
