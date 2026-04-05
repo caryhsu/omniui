@@ -109,3 +109,27 @@ class UIDiff:
     added: list[dict[str, Any]]
     removed: list[dict[str, Any]]
     changed: list[dict[str, Any]]
+
+
+@dataclass
+class RecordedEvent:
+    """A single user interaction event captured by the Java agent."""
+
+    event_type: str   # "click" | "type"
+    fx_id: str
+    text: str
+    node_type: str
+    node_index: int
+    timestamp: float
+
+
+@dataclass
+class RecordedScript:
+    """Result of a recording session: raw events plus generated Python script."""
+
+    events: list[RecordedEvent]
+    script: str
+
+    def save(self, path: str | Path) -> None:
+        """Write the generated script to *path*."""
+        Path(path).write_text(self.script, encoding="utf-8")

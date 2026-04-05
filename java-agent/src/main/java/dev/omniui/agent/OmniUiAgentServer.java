@@ -18,6 +18,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
@@ -154,6 +155,21 @@ public final class OmniUiAgentServer {
                     "encoding", "base64",
                     "data", Base64.getEncoder().encodeToString(session.target().screenshot())
                 ));
+                return;
+            }
+
+            // ── Recorder endpoints ─────────────────────────────────────────
+            if (parts.length == 5 && "events".equals(parts[3]) && "start".equals(parts[4])
+                    && "POST".equals(exchange.getRequestMethod())) {
+                ActionResult result = session.target().startRecording();
+                writeJson(exchange, 200, Map.of("ok", result.ok()));
+                return;
+            }
+
+            if (parts.length == 4 && "events".equals(parts[3])
+                    && "DELETE".equals(exchange.getRequestMethod())) {
+                List<Map<String, Object>> events = session.target().stopRecordingFlush();
+                writeJson(exchange, 200, Map.of("ok", true, "events", events));
                 return;
             }
 

@@ -141,6 +141,50 @@ Response shape:
 }
 ```
 
+### `POST /sessions/{sessionId}/events/start`
+
+Attaches a JavaFX `EventFilter` to the Scene to begin capturing `MOUSE_CLICKED` and `KEY_TYPED` events. Consecutive key events on the same node within a short window are aggregated into a single `type` entry.
+
+Request shape: `{}` (empty body)
+
+Response shape:
+
+```json
+{ "ok": true }
+```
+
+### `DELETE /sessions/{sessionId}/events`
+
+Removes the EventFilter and flushes all buffered events. Returns the captured event list.
+
+Request shape: `{}` (empty body)
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "events": [
+    {
+      "type": "click",
+      "fxId": "tbNew",
+      "text": "",
+      "nodeType": "Button",
+      "nodeIndex": 0,
+      "timestamp": 1712345678.123
+    },
+    {
+      "type": "type",
+      "fxId": "inputField",
+      "text": "hello",
+      "nodeType": "TextField",
+      "nodeIndex": 0,
+      "timestamp": 1712345679.456
+    }
+  ]
+}
+```
+
 ## Resolution semantics
 
 - Resolution order is fixed: JavaFX structural lookup, OCR text lookup, vision template match.

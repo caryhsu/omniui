@@ -141,6 +141,50 @@ Response shape:
 }
 ```
 
+### `POST /sessions/{sessionId}/events/start`
+
+在 Scene 掛 JavaFX `EventFilter`，開始擷取 `MOUSE_CLICKED` 和 `KEY_TYPED` 事件。同一節點上連續的 KEY_TYPED 事件會在短時間內聚合為單一 `type` 記錄。
+
+Request shape: `{}` （空 body）
+
+Response shape:
+
+```json
+{ "ok": true }
+```
+
+### `DELETE /sessions/{sessionId}/events`
+
+移除 EventFilter 並 flush 所有緩衝事件。回傳已擷取的事件列表。
+
+Request shape: `{}` （空 body）
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "events": [
+    {
+      "type": "click",
+      "fxId": "tbNew",
+      "text": "",
+      "nodeType": "Button",
+      "nodeIndex": 0,
+      "timestamp": 1712345678.123
+    },
+    {
+      "type": "type",
+      "fxId": "inputField",
+      "text": "hello",
+      "nodeType": "TextField",
+      "nodeIndex": 0,
+      "timestamp": 1712345679.456
+    }
+  ]
+}
+```
+
 ## Resolution semantics
 
 - 解析順序固定為：JavaFX structural lookup、OCR text lookup、vision template match
