@@ -201,6 +201,72 @@ client.click(text="Login", type="Button")
 
 ---
 
+## TableView 操作
+
+### `client.get_cell(row, col, **selector) -> ActionResult`
+
+讀取儲存格文字，`row`、`col` 為 0-based 整數。
+
+### `client.click_cell(row, col, **selector) -> ActionResult`
+
+點擊 TableView 的儲存格。
+
+### `client.edit_cell(row, col, value, **selector) -> ActionResult`
+
+雙擊進入編輯模式，輸入 `value` 後按 Enter 確認。
+
+### `client.sort_column(col, direction=None, **selector) -> ActionResult`
+
+排序欄位。`direction`: `"asc"` | `"desc"` | `None`（切換）。
+
+---
+
+## ToolBar 操作
+
+### `client.get_toolbar_items(*, id) -> ActionResult`
+
+取得 `ToolBar` 內所有項目的描述清單。
+
+`result.value`：每項為含 `fxId`、`text`、`type`、`disabled` 的 dict。
+
+---
+
+## ScrollBar 操作
+
+### `client.get_scroll_position(*, id) -> ActionResult`
+
+讀取獨立 `ScrollBar` 的目前值。
+
+`result.value`：含 `value`、`min`、`max`（均為 float）的 dict。
+
+### `client.set_scroll_position(*, id, value) -> ActionResult`
+
+設定捲動位置，超出 `[min, max]` 自動 clamp。
+
+---
+
+## Pagination 操作
+
+### `client.get_page(*, id) -> ActionResult`
+
+讀取 `Pagination` 控件的目前頁碼與總頁數。
+
+`result.value`：含 `page`（0-based int）與 `page_count`（int）的 dict。
+
+### `client.set_page(*, id, page) -> ActionResult`
+
+跳到指定頁（0-based），超出範圍自動 clamp。
+
+### `client.next_page(*, id) -> ActionResult`
+
+前進一頁，在最後一頁時為 no-op。
+
+### `client.prev_page(*, id) -> ActionResult`
+
+後退一頁，在第一頁時為 no-op。
+
+---
+
 ## Locator
 
 ### `client.locator(**selector) -> Locator`
@@ -363,3 +429,34 @@ for entry in client.action_history():
 - fallback click 目前只 resolve 並記錄 bounds，尚未發出真正 OS click
 - `type()` 目前依賴 JavaFX direct interaction，沒有 OCR / vision fallback
 - `find()` 只做 selector normalization，不會真正對應用程式做 resolution
+
+
+---
+
+## OmniPage — Page Object Model
+
+### class OmniPage(client)
+
+Page Object Model 的基礎類別。繼承後加入方法，將同一個畫面或元件的 UI 操作封裝在一起。
+
+`python
+from omniui import OmniUI, OmniPage
+
+class LoginPage(OmniPage):
+    def login(self, username: str, password: str) -> None:
+        self.client.input_text(id="username", text=username)
+        self.client.input_text(id="password", text=password)
+        self.client.click(id="loginButton")
+
+    def get_status(self) -> str:
+        return self.client.get_text(id="statusLabel").value
+
+client = OmniUI.connect(port=48100)
+page = LoginPage(client)
+page.login("admin", "secret")
+assert page.get_status() == "Welcome"
+`
+
+### page.locator(**selector) -> Locator
+
+self.client.locator(**selector) 的簡寫。

@@ -522,6 +522,80 @@ Read whether a tree item is expanded.
 
 ---
 
+## TableView Actions
+
+### `client.get_cell(row, col, **selector) -> ActionResult`
+
+Read the text value of a cell. `row` and `col` are 0-based integers.
+
+`result.value`: cell text string.
+
+### `client.click_cell(row, col, **selector) -> ActionResult`
+
+Click a cell in the TableView.
+
+### `client.edit_cell(row, col, value, **selector) -> ActionResult`
+
+Double-click a cell to enter edit mode and type `value`, then commit with Enter.
+
+### `client.sort_column(col, direction=None, **selector) -> ActionResult`
+
+Sort a column. `direction`: `"asc"` | `"desc"` | `None` (toggle).
+
+---
+
+## ToolBar Actions
+
+### `client.get_toolbar_items(*, id) -> ActionResult`
+
+Return a list of item descriptors for all items in a `ToolBar`.
+
+`result.value`: list of dicts, each with keys `fxId`, `text`, `type`, `disabled`.
+
+```python
+result = client.get_toolbar_items(id="mainToolBar")
+for item in result.value:
+    print(item["fxId"], item["text"], item["disabled"])
+```
+
+---
+
+## ScrollBar Actions
+
+### `client.get_scroll_position(*, id) -> ActionResult`
+
+Read the current value of a standalone `ScrollBar` node.
+
+`result.value`: dict with keys `value`, `min`, `max` (all float).
+
+### `client.set_scroll_position(*, id, value) -> ActionResult`
+
+Set the scroll position. Values outside `[min, max]` are silently clamped.
+
+---
+
+## Pagination Actions
+
+### `client.get_page(*, id) -> ActionResult`
+
+Read the current page index and total page count of a `Pagination` control.
+
+`result.value`: dict with keys `page` (int, 0-based) and `page_count` (int).
+
+### `client.set_page(*, id, page) -> ActionResult`
+
+Jump to a specific page (0-based). Out-of-range values are silently clamped.
+
+### `client.next_page(*, id) -> ActionResult`
+
+Advance one page. No-op at the last page.
+
+### `client.prev_page(*, id) -> ActionResult`
+
+Go back one page. No-op at the first page.
+
+---
+
 ## Locator
 
 ### `client.locator(**selector) -> Locator`
@@ -884,3 +958,35 @@ cell = client.get_tree_table_cell("Alice", "Name", id="demoTreeTable")
 - Fallback click currently resolves and records bounds, but does not issue a real OS click.
 - `type()` currently depends on JavaFX direct interaction and does not have OCR/vision fallback.
 - `find()` normalizes selectors only; it does not resolve them against the application.
+
+
+---
+
+## OmniPage — Page Object Model
+
+### class OmniPage(client)
+
+Base class for the Page Object Model pattern. Subclass this and add methods
+that group related UI actions for a single screen or component.
+
+`python
+from omniui import OmniUI, OmniPage
+
+class LoginPage(OmniPage):
+    def login(self, username: str, password: str) -> None:
+        self.client.input_text(id="username", text=username)
+        self.client.input_text(id="password", text=password)
+        self.client.click(id="loginButton")
+
+    def get_status(self) -> str:
+        return self.client.get_text(id="statusLabel").value
+
+client = OmniUI.connect(port=48100)
+page = LoginPage(client)
+page.login("admin", "secret")
+assert page.get_status() == "Welcome"
+`
+
+### page.locator(**selector) -> Locator
+
+Shorthand for self.client.locator(**selector).
