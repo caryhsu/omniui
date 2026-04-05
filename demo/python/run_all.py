@@ -59,10 +59,11 @@ if __package__ in (None, ""):
     import advanced.pagination_demo as pagination_demo  # type: ignore
     import advanced.window_demo as window_demo  # type: ignore
     import advanced.within_demo as within_demo  # type: ignore
-    import advanced.drag_demo as drag_demo  # type: ignore
     import advanced.snapshot_diff_demo as snapshot_diff_demo  # type: ignore
     import advanced.recorder_demo as recorder_demo  # type: ignore
     import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
+    # Drag app demos
+    import drag.drag_listview_demo as drag_listview_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -118,11 +119,11 @@ else:
         pagination_demo,
         window_demo,
         within_demo,
-        drag_demo,
         snapshot_diff_demo,
         recorder_demo,
         discover_advanced_controls,
     )
+    from .drag import drag_listview_demo
 
 from omniui import OmniUI
 
@@ -385,14 +386,27 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
         _section("Within Demo")
         within_demo.main()
 
-        _section("Drag & Drop Demo")
-        drag_demo.main()
-
         _section("Snapshot/Diff Demo")
         snapshot_diff_demo.main()
 
         _section("Recorder Demo")
         recorder_demo.main()
+
+    # ── Drag App ──────────────────────────────────────────────────────────────
+    _section("Drag App demos (port 48103+)")
+    if auto_launch:
+        drag_port = OmniUI.find_free_port(48103, 48999)
+        drag_cmd = _build_launch_cmd(
+            java_dir / "drag-app", "omniui-drag-demo",
+            "dev.omniui.demo.drag", "dev.omniui.demo.drag.DragDropApp", drag_port,
+        )
+        drag_ctx = OmniUI.launch(cmd=drag_cmd, port=drag_port, timeout=30.0)
+    else:
+        drag_ctx = nullcontext()
+
+    with drag_ctx:
+        _section("Drag ListView Demo")
+        drag_listview_demo.main()
 
 
 if __name__ == "__main__":
