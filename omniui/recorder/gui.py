@@ -97,7 +97,7 @@ class RecorderApp:
             side="right", padx=8)
 
         # ── Row 2: Script output ───────────────────────────────────────────
-        script_frame = tk.Frame(root, padx=8, pady=(0, 8))
+        script_frame = tk.Frame(root, padx=8, pady=4)
         script_frame.grid(row=2, column=0, sticky="nsew")
         script_frame.columnconfigure(0, weight=1)
         script_frame.rowconfigure(0, weight=1)
