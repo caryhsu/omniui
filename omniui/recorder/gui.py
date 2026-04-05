@@ -23,22 +23,31 @@ _SCAN_TIMEOUT = 0.3
 def _probe_port(port: int) -> Optional[dict]:
     """Return info dict if an OmniUI agent is listening on *port*, else None."""
     try:
-        url = f"http://127.0.0.1:{port}/info"
+        url = f"http://127.0.0.1:{port}/health"
         with urllib.request.urlopen(url, timeout=_SCAN_TIMEOUT) as resp:
             data = json.loads(resp.read())
-            return data
+            if data.get("status") != "ok":
+                return None
     except Exception:
         return None
 
+    try:
+        url = f"http://127.0.0.1:{port}/info"
+        with urllib.request.urlopen(url, timeout=_SCAN_TIMEOUT) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return {"port": port, "appName": f"port {port}"}
+
 
 def _scan_agents() -> list[dict]:
-    """Scan localhost ports and return list of discovered agents."""
-    results = []
-    for port in _SCAN_PORTS:
-        info = _probe_port(port)
-        if info:
-            results.append(info)
-    return results
+    """Scan localhost ports in parallel and return discovered agents."""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=20) as ex:
+        results = list(ex.map(_probe_port, _SCAN_PORTS))
+    return sorted(
+        (r for r in results if r is not None),
+        key=lambda r: r["port"],
+    )
 
 
 class RecorderApp:
