@@ -103,8 +103,16 @@ class OmniUIClient:
         self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/events/start", {})
         self._recording = True
 
-    def stop_recording(self) -> RecordedScript:
-        """Stop recording and return a :class:`RecordedScript` with generated Python code."""
+    def stop_recording(self, wait_injection: bool = False, wait_timeout: float = 5.0) -> RecordedScript:
+        """Stop recording and return a :class:`RecordedScript` with generated Python code.
+
+        Args:
+            wait_injection: If ``True``, insert ``wait_for_enabled`` /
+                ``wait_for_visible`` lines between actions so the replayed
+                script waits for the UI to be ready instead of failing on
+                timing issues.
+            wait_timeout: Timeout (seconds) for each injected wait call.
+        """
         if not self._recording:
             raise RuntimeError("stop_recording() called without a prior start_recording()")
         payload = self._request_json("DELETE", f"{self.base_url}/sessions/{self.session_id}/events", {})
@@ -125,7 +133,7 @@ class OmniUIClient:
             )
             for e in raw_events
         ]
-        script = generate_script(events)
+        script = generate_script(events, wait_injection=wait_injection, wait_timeout=wait_timeout)
         return RecordedScript(events=events, script=script)
 
     def action_history(self) -> list[ActionLogEntry]:
