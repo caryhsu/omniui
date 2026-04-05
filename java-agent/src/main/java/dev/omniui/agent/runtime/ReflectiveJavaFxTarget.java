@@ -39,14 +39,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private volatile Object mouseReleaseFilter  = null;  // for drag detection
 
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
-    private volatile double  dragPressX       = 0;
-    private volatile double  dragPressY       = 0;
-    private volatile String  dragPressId      = "";
-    private volatile String  dragPressText    = "";
-    private volatile String  dragPressType    = "";
-    private volatile int     dragPressIndex   = 0;
-    private volatile double  dragPressTime    = 0;
-    private static final double DRAG_MIN_DIST = 15.0; // px threshold to distinguish drag from click
+    private volatile double  dragPressX         = 0;
+    private volatile double  dragPressY         = 0;
+    private volatile String  dragPressId        = "";
+    private volatile String  dragPressText      = "";
+    private volatile String  dragPressType      = "";
+    private volatile int     dragPressIndex     = 0;
+    private volatile double  dragPressTime      = 0;
+    // Set to true after a drag is recorded; onMouseClicked will skip the next click
+    private volatile boolean dragJustFired      = false;
+    private static final double DRAG_MIN_DIST   = 15.0; // px threshold to distinguish drag from click
 
     public ReflectiveJavaFxTarget(String appName, Supplier<Object> sceneSupplier) {
         this.appName = Objects.requireNonNull(appName, "appName");
@@ -267,6 +269,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             mouseReleaseFilter = null;
             dragPressId        = "";
             dragPressText      = "";
+            dragJustFired      = false;
 
             // Flush any pending key accumulations
             flushKeyAccumulator();
@@ -281,6 +284,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private void onMouseClicked(Object event) {
         if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        // Suppress click that immediately follows a recorded drag
+        if (dragJustFired) { dragJustFired = false; return; }
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {
@@ -304,6 +309,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private void onMousePressed(Object event) {
         // Record press info for drag detection (consumed by onMouseReleased)
+        dragJustFired = false;
         try {
             Object xObj = ReflectiveJavaFxSupport.invoke(event, "getSceneX");
             Object yObj = ReflectiveJavaFxSupport.invoke(event, "getSceneY");
@@ -337,12 +343,28 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // Only record as drag if movement exceeds threshold
             if (dist < DRAG_MIN_DIST) return;
 
-            Object target    = ReflectiveJavaFxSupport.invoke(event, "getTarget");
-            Object toNode    = target != null ? nearestNode(target) : null;
-            String toFxId    = toNode != null ? nullToEmpty(safeString(toNode, "getId"))          : "";
-            String toText    = toNode != null ? nullToEmpty(ReflectiveJavaFxSupport.textOf(toNode)) : "";
-            String toType    = toNode != null ? toNode.getClass().getSimpleName()                  : "";
-            int    toIdx     = toNode != null ? nodeIndexOf(toNode)                                : 0;
+            // Use PickResult to get the node actually under the cursor at release time.
+            // MOUSE_RELEASED target is always the original press node in JavaFX, so we
+            // must use getPickResult().getIntersectedNode() for the drop target.
+            Object toNode = null;
+            try {
+                Object pickResult = ReflectiveJavaFxSupport.invoke(event, "getPickResult");
+                if (pickResult != null) {
+                    Object intersected = ReflectiveJavaFxSupport.invoke(pickResult, "getIntersectedNode");
+                    toNode = intersected != null ? nearestNode(intersected) : null;
+                }
+            } catch (Exception ignored2) { /* best-effort */ }
+
+            // Fallback: use event target (original press node — less accurate for drag-to)
+            if (toNode == null) {
+                Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+                toNode = target != null ? nearestNode(target) : null;
+            }
+
+            String toFxId = toNode != null ? nullToEmpty(safeString(toNode, "getId"))           : "";
+            String toText = toNode != null ? nullToEmpty(ReflectiveJavaFxSupport.textOf(toNode)) : "";
+            String toType = toNode != null ? toNode.getClass().getSimpleName()                   : "";
+            int    toIdx  = toNode != null ? nodeIndexOf(toNode)                                 : 0;
 
             // Flush pending key accumulations before emitting drag
             flushKeyAccumulator();
@@ -359,6 +381,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             entry.put("toNodeIndex", toIdx);
             entry.put("timestamp",   dragPressTime);
             recorderBuffer.addLast(entry);
+
+            // Signal onMouseClicked to skip the click that JavaFX fires after a drag
+            dragJustFired = true;
         } catch (Exception ignored) { /* best-effort */ }
     }
 
