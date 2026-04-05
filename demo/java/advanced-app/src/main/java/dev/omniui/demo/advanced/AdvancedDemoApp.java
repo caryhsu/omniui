@@ -367,12 +367,37 @@ public final class AdvancedDemoApp extends Application {
         });
         VBox windowSection = section("Window Demo", "windowSection", openSecondWindowBtn);
 
+        // Within (Scoped Selector) Demo — two panels each with a duplicate-id button
+        VBox withinLeft = new VBox(8);
+        withinLeft.setId("leftPanel");
+        withinLeft.setStyle("-fx-border-color: #999; -fx-padding: 8;");
+        Button leftOkBtn = new Button("OK");
+        leftOkBtn.setId("panelOkBtn");
+        Label leftStatus = new Label("left idle");
+        leftStatus.setId("leftPanelStatus");
+        leftOkBtn.setOnAction(e -> leftStatus.setText("left clicked"));
+        withinLeft.getChildren().addAll(new Label("Left Panel"), leftOkBtn, leftStatus);
+
+        VBox withinRight = new VBox(8);
+        withinRight.setId("rightPanel");
+        withinRight.setStyle("-fx-border-color: #999; -fx-padding: 8;");
+        Button rightOkBtn = new Button("OK");
+        rightOkBtn.setId("panelOkBtn");
+        Label rightStatus = new Label("right idle");
+        rightStatus.setId("rightPanelStatus");
+        rightOkBtn.setOnAction(e -> rightStatus.setText("right clicked"));
+        withinRight.getChildren().addAll(new Label("Right Panel"), rightOkBtn, rightStatus);
+
+        javafx.scene.layout.HBox panelRow = new javafx.scene.layout.HBox(16, withinLeft, withinRight);
+        VBox withinSection = section("Within Demo", "withinSection", panelRow);
+
         VBox root = new VBox(
             18,
             toolBarSection,
             scrollBarSection,
             paginationSection,
             windowSection,
+            withinSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,

@@ -141,8 +141,24 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private ActionResult performOnFxThread(String action, JsonObject selector, JsonObject payload) {
-        DiscoverySnapshot snapshot = snapshot();
-        Optional<NodeRef> match = resolve(selector, snapshot);
+        // Handle scoped selector: if selector has a "scope" field, restrict lookup to that subtree
+        DiscoverySnapshot snapshot;
+        JsonObject effectiveSelector = selector;
+        if (selector != null && selector.has("scope") && !selector.get("scope").isJsonNull()) {
+            JsonObject scopeSel = selector.getAsJsonObject("scope");
+            DiscoverySnapshot fullSnapshot = snapshot();
+            Optional<NodeRef> scopeRef = resolve(scopeSel, fullSnapshot);
+            if (scopeRef.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "scope_not_found"));
+            }
+            snapshot = snapshotFromRoot(scopeRef.get().node());
+            // Strip the "scope" field from the selector before matching
+            effectiveSelector = selector.deepCopy();
+            effectiveSelector.remove("scope");
+        } else {
+            snapshot = snapshot();
+        }
+        Optional<NodeRef> match = resolve(effectiveSelector, snapshot);
         // scroll_by can target the first ScrollPane when no selector is given
         if (match.isEmpty() && !"scroll_by".equals(action)) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
@@ -1321,6 +1337,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         List<NodeRef> nodes = new ArrayList<>();
         Deque<TraversalFrame> stack = new ArrayDeque<>();
         stack.push(new TraversalFrame(root, "/Scene"));
+        while (!stack.isEmpty()) {
+            TraversalFrame frame = stack.pop();
+            String handle = handles.computeIfAbsent(frame.node(), ignored -> "node-" + counter.incrementAndGet());
+            Map<String, Object> metadata = toNodeMap(frame.node(), frame.path(), handle);
+            nodes.add(new NodeRef(frame.node(), metadata));
+            List<Object> children = childrenOf(frame.node());
+            for (int i = children.size() - 1; i >= 0; i--) {
+                Object child = children.get(i);
+                stack.push(new TraversalFrame(child, frame.path() + "/" + child.getClass().getSimpleName() + "[" + (i + 1) + "]"));
+            }
+        }
+        return new DiscoverySnapshot(nodes);
+    }
+
+    private DiscoverySnapshot snapshotFromRoot(Object root) {
+        if (root == null) return new DiscoverySnapshot(List.of());
+        IdentityHashMap<Object, String> handles = new IdentityHashMap<>();
+        AtomicInteger counter = new AtomicInteger();
+        List<NodeRef> nodes = new ArrayList<>();
+        Deque<TraversalFrame> stack = new ArrayDeque<>();
+        stack.push(new TraversalFrame(root, "/Scope"));
         while (!stack.isEmpty()) {
             TraversalFrame frame = stack.pop();
             String handle = handles.computeIfAbsent(frame.node(), ignored -> "node-" + counter.incrementAndGet());

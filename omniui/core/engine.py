@@ -7,8 +7,9 @@ import json
 import time
 import base64
 import subprocess
+from contextlib import contextmanager
 from dataclasses import asdict
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 from urllib.error import HTTPError, URLError
 from urllib import request
 
@@ -34,6 +35,7 @@ class OmniUIClient:
         self.ocr_engine = ocr_engine or SimpleOcrEngine()
         self.vision_engine = vision_engine or SimpleVisionEngine()
         self._action_log: list[ActionLogEntry] = []
+        self._scope: dict[str, Any] | None = None
 
     @classmethod
     def connect(
@@ -145,6 +147,21 @@ class OmniUIClient:
             type=selector.get("type"),
         )
         return {key: value for key, value in asdict(normalized).items() if value is not None}
+
+    @contextmanager
+    def within(self, **selector: Any) -> Generator[None, None, None]:
+        """Scope all node-lookup actions to descendants of the matched container.
+
+        Usage::
+
+            with client.within(id="leftPanel"):
+                client.click(id="ok")
+        """
+        self._scope = self.find(**selector)
+        try:
+            yield
+        finally:
+            self._scope = None
 
     def click(self, modifiers: list[str] | None = None, **selector: Any) -> ActionResult:
         """Click the target node.
@@ -902,6 +919,8 @@ class OmniUIClient:
 
     def _perform(self, action: str, selector_payload: dict[str, Any], payload: dict[str, Any] | None = None) -> ActionResult:
         selector = self.find(**selector_payload)
+        if self._scope:
+            selector = {**selector, "scope": self._scope}
         result = self._perform_request(action, selector_payload, selector, payload or {})
         if not result.ok and self._should_retry(result):
             try:

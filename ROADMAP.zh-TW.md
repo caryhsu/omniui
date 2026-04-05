@@ -80,7 +80,7 @@
   - 透過 JavaFX `Stage` reflective call 實作（`setMaximized`、`setIconified`、`setX/Y` 等）
 - [x] **絕對座標點擊** — `click_at(x=100, y=200)`
   - Canvas 自繪或無 scene graph 節點的 UI 元素的 fallback 操作方式
-- [ ] **範圍限定選擇器（`within`）** — `with client.within(id="panel"): client.click(id="btn")`
+- [x] **範圍限定選擇器（`within`）** — `with client.within(id="panel"): client.click(id="btn")`
   - 將節點搜尋限定在子樹範圍；避免多個 panel 共用相同子節點 ID 時發生衝突
 - [ ] **Scene graph 快照 / 差異比對** — `client.snapshot()` 擷取完整 UI 狀態；`client.diff(before, after)` 顯示哪些節點發生變化
   - 比 `verify_text` 更全面；適合驗證單一操作的所有副作用

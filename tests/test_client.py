@@ -1107,6 +1107,74 @@ class WindowTests(unittest.TestCase):
             self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
 
 
+class WithinTests(unittest.TestCase):
+    """Tests for client.within() scoped selector context manager."""
+
+    def _make_client(self, mock_urlopen):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": "ok",
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_within_injects_scope_into_selector(self, mock_urlopen):
+        client, captured = self._make_client(mock_urlopen)
+        with client.within(id="leftPanel"):
+            client.click(id="panelOkBtn")
+        sel = captured[0]["selector"]
+        self.assertEqual(sel.get("id"), "panelOkBtn")
+        self.assertEqual(sel.get("scope"), {"id": "leftPanel"})
+
+    @patch("urllib.request.urlopen")
+    def test_within_scope_cleared_after_context(self, mock_urlopen):
+        client, _ = self._make_client(mock_urlopen)
+        with client.within(id="leftPanel"):
+            pass
+        self.assertIsNone(client._scope)
+
+    @patch("urllib.request.urlopen")
+    def test_without_within_no_scope_field(self, mock_urlopen):
+        client, captured = self._make_client(mock_urlopen)
+        client.click(id="panelOkBtn")
+        sel = captured[0]["selector"]
+        self.assertNotIn("scope", sel)
+
+    @patch("urllib.request.urlopen")
+    def test_within_multiple_actions_same_scope(self, mock_urlopen):
+        client, captured = self._make_client(mock_urlopen)
+        with client.within(id="myContainer"):
+            client.click(id="btn1")
+            client.get_text(id="lbl1")
+        self.assertEqual(captured[0]["selector"]["scope"], {"id": "myContainer"})
+        self.assertEqual(captured[1]["selector"]["scope"], {"id": "myContainer"})
+
+    @patch("urllib.request.urlopen")
+    def test_within_scope_cleared_on_exception(self, mock_urlopen):
+        client, _ = self._make_client(mock_urlopen)
+        try:
+            with client.within(id="leftPanel"):
+                raise ValueError("test error")
+        except ValueError:
+            pass
+        self.assertIsNone(client._scope)
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

@@ -80,7 +80,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Implemented via JavaFX `Stage` reflective calls (`setMaximized`, `setIconified`, `setX/Y`, etc.)
 - [x] **Absolute coordinate click** — `click_at(x=100, y=200)`
   - Fallback for Canvas-rendered or custom-drawn UI elements that have no scene graph node
-- [ ] **Scoped selector (`within`)** — `with client.within(id="panel"): client.click(id="btn")`
+- [x] **Scoped selector (`within`)** — `with client.within(id="panel"): client.click(id="btn")`
   - Restrict node search to a subtree; avoids conflicts when multiple panels share the same child IDs
 - [ ] **Scene graph snapshot / diff** — `client.snapshot()` captures full UI state; `client.diff(before, after)` shows which nodes changed
   - More thorough than `verify_text`; useful for verifying the side-effects of a single action
