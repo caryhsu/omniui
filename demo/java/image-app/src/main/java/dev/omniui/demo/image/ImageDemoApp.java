@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -152,8 +153,14 @@ public class ImageDemoApp extends Application {
                 "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 4, 0, 0, 1);"
             );
 
-            // On mouse release, check if cursor is over dropPane
+            // Cursor: open hand on hover, closed hand while dragging
+            srcView.setOnMouseEntered(e -> srcView.setCursor(Cursor.OPEN_HAND));
+            srcView.setOnMouseExited(e -> srcView.setCursor(Cursor.DEFAULT));
+            srcView.setOnMousePressed(e -> srcView.getScene().setCursor(Cursor.CLOSED_HAND));
+
+            // On mouse release: restore cursor, then check drop target
             srcView.setOnMouseReleased(e -> {
+                srcView.getScene().setCursor(Cursor.DEFAULT);
                 Node pickNode = e.getPickResult().getIntersectedNode();
                 Node n = pickNode;
                 boolean overDrop = false;
