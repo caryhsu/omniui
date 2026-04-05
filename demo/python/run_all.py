@@ -54,6 +54,7 @@ if __package__ in (None, ""):
     import advanced.scroll_demo as scroll_demo  # type: ignore
     import advanced.tooltip_demo as tooltip_demo  # type: ignore
     import advanced.hover_demo as hover_demo  # type: ignore
+    import advanced.toolbar_demo as toolbar_demo  # type: ignore
     import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
@@ -105,6 +106,7 @@ else:
         scroll_demo,
         tooltip_demo,
         hover_demo,
+        toolbar_demo,
         discover_advanced_controls,
     )
 
@@ -353,6 +355,9 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
 
         _section("Hover Demo")
         hover_demo.main()
+
+        _section("ToolBar Demo")
+        toolbar_demo.main()
 
 
 if __name__ == "__main__":

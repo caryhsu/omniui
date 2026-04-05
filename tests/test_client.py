@@ -856,6 +856,59 @@ class TableViewTests(unittest.TestCase):
             self.assertTrue(callable(getattr(client, method, None)), f"Missing: {method}")
 
 
+class ToolBarTests(unittest.TestCase):
+    """Tests for OmniUIClient.get_toolbar_items()."""
+
+    def _make_client_and_capture(self, mock_urlopen):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": [
+                    {"fxId": "tbNew", "text": "New", "type": "Button", "disabled": False},
+                    {"fxId": "tbSave", "text": "Save", "type": "Button", "disabled": True},
+                    {"fxId": "tbSeparator", "text": "", "type": "Separator", "disabled": False},
+                ],
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_toolbar_items_sends_correct_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.get_toolbar_items(id="mainToolBar")
+        self.assertTrue(result.ok)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "get_toolbar_items")
+        self.assertEqual(captured[0]["selector"]["id"], "mainToolBar")
+
+    @patch("urllib.request.urlopen")
+    def test_get_toolbar_items_returns_list(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        result = client.get_toolbar_items(id="mainToolBar")
+        self.assertIsInstance(result.value, list)
+        self.assertEqual(len(result.value), 3)
+        self.assertEqual(result.value[0]["fxId"], "tbNew")
+        self.assertTrue(result.value[1]["disabled"])
+
+    @patch("urllib.request.urlopen")
+    def test_get_toolbar_items_method_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        self.assertTrue(callable(getattr(client, "get_toolbar_items", None)))
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

@@ -302,6 +302,19 @@ class OmniUIClient:
         """
         return self._perform("sort_column", {"id": id}, {"column": column, "direction": direction})
 
+    def get_toolbar_items(self, *, id: str) -> ActionResult:
+        """Return a list of item descriptors for all items in a ToolBar.
+
+        Each item is a dict with keys ``fxId``, ``text``, ``type``, and ``disabled``.
+
+        Example::
+
+            result = client.get_toolbar_items(id="mainToolBar")
+            for item in result.value:
+                print(item["fxId"], item["text"], item["disabled"])
+        """
+        return self._perform("get_toolbar_items", {"id": id})
+
     def retry(
         self,
         fn: Callable,

@@ -178,6 +178,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "step_spinner" -> handleStepSpinner(node, fxId, handle, payload);
             case "get_progress" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getProgress"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
             case "get_tabs"     -> handleGetTabs(node, fxId, handle);
+            case "get_toolbar_items" -> handleGetToolbarItems(node, fxId, handle);
             case "select_tab"   -> handleSelectTab(node, fxId, handle, payload);
             case "get_visited"  -> { Object v = safeInvoke(node, "isVisited"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
             case "expand_pane"  -> { safeInvoke(node, "setExpanded", true); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), null); }
@@ -2351,6 +2352,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             ReflectiveJavaFxSupport.invoke(node, "decrement", -steps);
         }
         return ActionResult.success("javafx", handle, Map.of("fxId", fxId), null);
+    }
+
+    private ActionResult handleGetToolbarItems(Object node, String fxId, String handle) {
+        try {
+            java.util.List<?> items = (java.util.List<?>) ReflectiveJavaFxSupport.invoke(node, "getItems");
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object item : items) {
+                Map<String, Object> desc = new LinkedHashMap<>();
+                desc.put("type", item.getClass().getSimpleName());
+                Object id2 = safeInvoke(item, "getId");
+                desc.put("fxId", id2 == null ? null : id2.toString());
+                Object txt = safeInvoke(item, "getText");
+                desc.put("text", txt == null ? "" : txt.toString());
+                Object dis = safeInvoke(item, "isDisabled");
+                desc.put("disabled", dis instanceof Boolean b ? b : false);
+                result.add(desc);
+            }
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId), result);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_toolbar_items_failed", "error", ex.getMessage()));
+        }
     }
 
     private ActionResult handleGetTabs(Object node, String fxId, String handle) {

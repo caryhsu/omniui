@@ -66,7 +66,7 @@
   - 無唯一 id 時選取第 N 個符合節點；解決動態/自動產生節點（ListView cell、重複控制項）的選取問題
 - [x] **TableView 位置存取** — `get_cell(id=..., row=N, column=N)`、`click_cell(id=..., row=N, column=N)`
   - 用列/欄索引存取特定儲存格，不依賴 value 比對；適用於無唯一 id 的動態表格內容
-- [ ] **ToolBar** — `get_toolbar_items(id=...)`，透過現有 `click` 操作工具列按鈕
+- [x] **ToolBar** — `get_toolbar_items(id=...)`，透過現有 `click` 操作工具列按鈕
   - 存取與操作 `ToolBar` 容器中的項目
 - [ ] **ScrollBar** — `get_scroll_position(id=...)`、`set_scroll_position(id=..., value=...)`
   - 對獨立 `ScrollBar` 節點進行精細捲動控制

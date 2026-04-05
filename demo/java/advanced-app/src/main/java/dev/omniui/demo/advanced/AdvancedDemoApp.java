@@ -307,8 +307,35 @@ public final class AdvancedDemoApp extends Application {
         tooltipBtn.setTooltip(new Tooltip("Hover to see this tooltip"));
         VBox tooltipSection = section("Tooltip Demo", "tooltipSection", tooltipBtn);
 
+        // ---- ToolBar demo -------------------------------------------------
+        javafx.scene.control.ToolBar mainToolBar = new javafx.scene.control.ToolBar();
+        mainToolBar.setId("mainToolBar");
+
+        Button tbNew = new Button("New");
+        tbNew.setId("tbNew");
+        Button tbOpen = new Button("Open");
+        tbOpen.setId("tbOpen");
+        Button tbSave = new Button("Save");
+        tbSave.setId("tbSave");
+        tbSave.setDisable(true);
+        javafx.scene.control.Separator tbSep = new javafx.scene.control.Separator();
+        tbSep.setId("tbSeparator");
+        Button tbDelete = new Button("Delete");
+        tbDelete.setId("tbDelete");
+
+        mainToolBar.getItems().addAll(tbNew, tbOpen, tbSave, tbSep, tbDelete);
+
+        Label tbStatus = new Label("ToolBar ready");
+        tbStatus.setId("tbStatus");
+        tbNew.setOnAction(e -> tbStatus.setText("New clicked"));
+        tbOpen.setOnAction(e -> tbStatus.setText("Open clicked"));
+        tbDelete.setOnAction(e -> tbStatus.setText("Delete clicked"));
+
+        VBox toolBarSection = section("ToolBar Demo", "toolBarSection", mainToolBar, tbStatus);
+
         VBox root = new VBox(
             18,
+            toolBarSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,

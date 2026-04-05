@@ -66,7 +66,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Select the Nth matching node when there is no unique id; solves dynamic/generated nodes (ListView cells, repeated controls)
 - [x] **TableView positional cell access** — `get_cell(id=..., row=N, column=N)`, `click_cell(id=..., row=N, column=N)`
   - Access a specific cell by row/column index, not just by value; needed for dynamic table content without unique ids
-- [ ] **ToolBar** — `get_toolbar_items(id=...)`, click toolbar buttons via existing `click`
+- [x] **ToolBar** — `get_toolbar_items(id=...)`, click toolbar buttons via existing `click`
   - Access and interact with items in a `ToolBar` container
 - [ ] **ScrollBar** — `get_scroll_position(id=...)`, `set_scroll_position(id=..., value=...)`
   - Fine-grained scroll control for standalone `ScrollBar` nodes
