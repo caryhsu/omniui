@@ -107,6 +107,7 @@
 - [x] **HTML 測試報告** — pytest-html 整合；失敗時截圖自動嵌入報告；詳見 `docs/html-report.zh-TW.md`
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [x] **拖放（Drag & Drop）** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`；觸發 MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
+- [ ] **獨立 drag-drop demo app** — 獨立 JavaFX app，左右兩個 ListView 可拖曳項目（左 → 右）；作為更完整的 drag & drop 展示，取代塞在 advanced-app 中的簡陋區塊
 - [x] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
 - [x] **剪貼簿操作** — `copy()`、`paste()`、`get_clipboard()`
 
