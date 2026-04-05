@@ -94,49 +94,91 @@ public class ImageDemoApp extends Application {
             imageRow, switchBtn, urlLabel, statusLabel);
 
         // ── Drag & Drop section ───────────────────────────────────────────────
-        ImageView dragImageView = new ImageView(validImg);
-        dragImageView.setId("dragImageView");
-        dragImageView.setFitWidth(80);
-        dragImageView.setFitHeight(80);
-        dragImageView.setPreserveRatio(true);
-        dragImageView.setPickOnBounds(true);
-        dragImageView.setStyle("-fx-border-color: #4a90d9; -fx-border-width: 2; -fx-background-color: #e8f4fd;");
+        // Three drag sources — each shows a different image; sources don't change.
+        // Drop target ImageView updates to show whichever source was dragged onto it.
+        String[] sourceUrls = {
+            "https://picsum.photos/seed/omniuisrc1/100/100",
+            "https://picsum.photos/seed/omniuisrc2/100/100",
+            "https://picsum.photos/seed/omniuisrc3/100/100",
+        };
+        String[] sourceIds = { "dragSource1", "dragSource2", "dragSource3" };
 
-        Label dropZoneInner = new Label("Drop Here");
-        dropZoneInner.setId("dropZoneLabel");
-        dropZoneInner.setStyle("-fx-font-size: 14px; -fx-text-fill: #4a90d9;");
-
-        VBox dropZone = new VBox(dropZoneInner);
-        dropZone.setId("dropZone");
-        dropZone.setPrefSize(200, 100);
-        dropZone.setAlignment(Pos.CENTER);
-        dropZone.setStyle(
-            "-fx-background-color: #e8f4fd; " +
+        Label dropTarget = new Label("Drop target");
+        dropTarget.setId("dropTarget");
+        dropTarget.setPrefSize(120, 120);
+        dropTarget.setAlignment(Pos.CENTER);
+        dropTarget.setStyle(
+            "-fx-background-color: #f0f0f0; " +
             "-fx-border-color: #4a90d9; " +
             "-fx-border-style: dashed; " +
             "-fx-border-width: 2; " +
-            "-fx-border-radius: 4;"
+            "-fx-border-radius: 4; " +
+            "-fx-font-size: 12px; -fx-text-fill: #888;"
         );
+
+        ImageView dropTargetImage = new ImageView();
+        dropTargetImage.setId("dropTargetImage");
+        dropTargetImage.setFitWidth(100);
+        dropTargetImage.setFitHeight(100);
+        dropTargetImage.setPreserveRatio(true);
+        dropTargetImage.setPickOnBounds(true);
+
+        // StackPane: dropTarget label behind, dropTargetImage in front
+        javafx.scene.layout.StackPane dropPane = new javafx.scene.layout.StackPane(dropTarget, dropTargetImage);
+        dropPane.setId("dropPane");
+        dropPane.setPrefSize(120, 120);
 
         Label dropResult = new Label("");
         dropResult.setId("dropResult");
-        dropResult.setStyle("-fx-font-size: 14px; -fx-text-fill: #27ae60; -fx-font-weight: bold;");
+        dropResult.setStyle("-fx-font-size: 13px; -fx-text-fill: #27ae60; -fx-font-weight: bold;");
 
-        // Detect drop: MOUSE_RELEASED fires on source node; PickResult gives the
-        // node under the cursor — walk up to check if dropZone was the target.
-        dragImageView.setOnMouseReleased(e -> {
-            Node target = e.getPickResult().getIntersectedNode();
-            while (target != null) {
-                if (target == dropZone) {
-                    Platform.runLater(() -> dropResult.setText("dropped!"));
-                    break;
+        HBox sourcesRow = new HBox(16);
+        sourcesRow.setAlignment(Pos.CENTER_LEFT);
+
+        for (int i = 0; i < 3; i++) {
+            final String srcUrl = sourceUrls[i];
+            final String srcId  = sourceIds[i];
+            final int idx = i + 1;
+
+            Image srcImg = new Image(srcUrl, 100, 100, true, true, true);
+            ImageView srcView = new ImageView(srcImg);
+            srcView.setId(srcId);
+            srcView.setFitWidth(100);
+            srcView.setFitHeight(100);
+            srcView.setPreserveRatio(true);
+            srcView.setPickOnBounds(true);
+            srcView.setStyle(
+                "-fx-border-color: #aaa; -fx-border-width: 1; " +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 4, 0, 0, 1);"
+            );
+
+            // On mouse release, check if cursor is over dropPane
+            srcView.setOnMouseReleased(e -> {
+                Node pickNode = e.getPickResult().getIntersectedNode();
+                Node n = pickNode;
+                boolean overDrop = false;
+                while (n != null) {
+                    if (n == dropPane) { overDrop = true; break; }
+                    n = n.getParent();
                 }
-                target = target.getParent();
-            }
-            e.consume();
-        });
+                if (overDrop) {
+                    Image img = srcView.getImage();
+                    Platform.runLater(() -> {
+                        dropTargetImage.setImage(img);
+                        dropTarget.setText("");
+                        dropResult.setText("source" + idx + " dropped!");
+                    });
+                }
+                e.consume();
+            });
 
-        HBox dragRow = new HBox(32, dragImageView, dropZone);
+            sourcesRow.getChildren().add(srcView);
+        }
+
+        Label arrowLabel = new Label("→");
+        arrowLabel.setStyle("-fx-font-size: 24px; -fx-text-fill: #888;");
+
+        HBox dragRow = new HBox(24, sourcesRow, arrowLabel, dropPane);
         dragRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox dragSection = section("Drag & Drop", "dragSection", dragRow, dropResult);
@@ -145,7 +187,7 @@ public class ImageDemoApp extends Application {
         VBox root = new VBox(18, imageSection, dragSection);
         root.setPadding(new Insets(24));
 
-        Scene scene = new Scene(root, 600, 500);
+        Scene scene = new Scene(root, 650, 580);
         stage.setTitle("OmniUI Image Demo");
         stage.setScene(scene);
         stage.show();
