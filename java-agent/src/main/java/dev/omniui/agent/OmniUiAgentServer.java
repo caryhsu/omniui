@@ -53,6 +53,31 @@ public final class OmniUiAgentServer {
             ));
         });
 
+        server.createContext("/info", exchange -> {
+            if (!"GET".equals(exchange.getRequestMethod())) {
+                writeError(exchange, 405, "Method not allowed");
+                return;
+            }
+
+            String mainClass = Thread.getAllStackTraces().keySet().stream()
+                    .filter(t -> "main".equals(t.getName()))
+                    .findFirst()
+                    .map(t -> {
+                        StackTraceElement[] stack = t.getStackTrace();
+                        return stack.length > 0 ? stack[stack.length - 1].getClassName() : "unknown";
+                    })
+                    .orElse("unknown");
+            String simpleAppName = mainClass.contains(".")
+                    ? mainClass.substring(mainClass.lastIndexOf('.') + 1)
+                    : mainClass;
+
+            writeJson(exchange, 200, Map.of(
+                "port", port,
+                "appName", simpleAppName,
+                "version", "0.1.0"
+            ));
+        });
+
         server.createContext("/sessions", new SessionsHandler(sessionStore));
         server.createContext("/sessions/", new SessionActionHandler(sessionStore));
         server.setExecutor(Executors.newCachedThreadPool(new DaemonThreadFactory()));
