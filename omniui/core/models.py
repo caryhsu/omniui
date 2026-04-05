@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, UTC
+from pathlib import Path
 from typing import Any
 
 
@@ -82,6 +84,19 @@ class UISnapshot:
 
     nodes: list[dict[str, Any]]
     timestamp: float
+
+    def save(self, path: str | Path) -> None:
+        """Serialize snapshot to a JSON file."""
+        Path(path).write_text(
+            json.dumps({"timestamp": self.timestamp, "nodes": self.nodes}, indent=2),
+            encoding="utf-8",
+        )
+
+    @classmethod
+    def load(cls, path: str | Path) -> "UISnapshot":
+        """Load a snapshot previously saved with :meth:`save`."""
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return cls(nodes=data["nodes"], timestamp=data["timestamp"])
 
 
 @dataclass

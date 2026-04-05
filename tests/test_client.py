@@ -1325,3 +1325,19 @@ class SnapshotDiffTests(unittest.TestCase):
         from omniui import UISnapshot, UIDiff
         self.assertIsNotNone(UISnapshot)
         self.assertIsNotNone(UIDiff)
+
+    @patch("urllib.request.urlopen")
+    def test_snapshot_save_and_load(self, mock_urlopen):
+        import tempfile, os
+        from omniui.core.models import UISnapshot
+        client = self._make_client(mock_urlopen)
+        snap = client.snapshot()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            snap.save(path)
+            loaded = UISnapshot.load(path)
+            self.assertEqual(loaded.nodes, snap.nodes)
+            self.assertAlmostEqual(loaded.timestamp, snap.timestamp, places=3)
+        finally:
+            os.unlink(path)
