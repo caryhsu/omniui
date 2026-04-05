@@ -32,7 +32,7 @@ Core model types:
 
 ## Connection
 
-### `OmniUI.connect(base_url="http://127.0.0.1:48100", app_name="LoginDemo", pid=None, ocr_engine=None, vision_engine=None)`
+### `OmniUI.connect(base_url="http://127.0.0.1:48100", app_name="LoginDemo", pid=None, ocr_engine=None, vision_engine=None, step_delay=0.0)`
 
 Create a client session against the local OmniUI agent.
 
@@ -47,6 +47,10 @@ Parameters:
   Optional OCR provider implementation.
 - `vision_engine: SimpleVisionEngine | None`
   Optional vision provider implementation.
+- `step_delay: float`
+  Seconds to sleep after each action. Default `0.0` (no delay). Useful for slowing down
+  script playback in demos. Can be overridden per-call via the `delay` argument on
+  individual action methods.
 
 Returns:
 - `OmniUIClient`
@@ -55,6 +59,19 @@ Behavior:
 - Calls `GET /health`
 - Calls `POST /sessions`
 - Raises `RuntimeError` if the agent does not report healthy status
+
+**Playback speed example:**
+
+```python
+# 0.5s pause after every action — useful for demos and presentations
+client = OmniUI.connect(port=48102, step_delay=0.5)
+
+# Per-call override: this specific click waits 1 second
+client.click(id="tbNew", delay=1.0)
+
+# No delay (default behaviour)
+client = OmniUI.connect(port=48102)
+```
 
 ## Session API
 
@@ -85,9 +102,12 @@ Normalization rules:
 - empty strings are converted to `None`
 - values are stripped before use
 
-### `client.click(**selector) -> ActionResult`
+### `client.click(delay=None, **selector) -> ActionResult`
 
 Execute a click action.
+
+Parameters:
+- `delay: float | None` — per-call sleep (seconds) after the action, overrides the global `step_delay`.
 
 Resolution order:
 1. JavaFX direct resolution through the agent
@@ -99,12 +119,13 @@ Notes:
 - In the current repo, OCR and vision fallback resolve the target and trace it, but do not yet dispatch a real OS-level click.
 - For JavaFX-resolved nodes, the Java agent uses direct node-level interaction.
 
-### `client.type(text, **selector) -> ActionResult`
+### `client.type(text, delay=None, **selector) -> ActionResult`
 
 Execute a text input action through the JavaFX path.
 
 Parameters:
 - `text: str`
+- `delay: float | None` — per-call sleep (seconds) after the action.
 - selector fields such as `id`, `text`, `type`
 
 ### `client.get_text(**selector) -> ActionResult`
@@ -215,12 +236,13 @@ client.scroll_to(id="scrollRow29")   # bring row 29 into view
 
 ---
 
-### `client.scroll_by(delta_x, delta_y, **selector) -> ActionResult`
+### `client.scroll_by(delta_x, delta_y, delay=None, **selector) -> ActionResult`
 
 Adjust the `hvalue` / `vvalue` of the resolved `ScrollPane` by a relative offset. Both `delta_x` and `delta_y` are in the 0.0–1.0 normalised range.
 
 - Positive `delta_y` → scroll down; negative → scroll up
 - If no selector is given the first `ScrollPane` found in the scene is used
+- `delay: float | None` — per-call sleep (seconds) after the action.
 
 **Examples**
 
@@ -238,22 +260,26 @@ client.scroll_by(0.0,  0.5)                       # first ScrollPane in scene
 
 Right-click a node to open its context menu. Waits for the context menu overlay to appear.
 
-### `client.double_click(**selector) -> ActionResult`
+### `client.double_click(delay=None, **selector) -> ActionResult`
 
 Fire a double-click (synthesized `MouseEvent.MOUSE_CLICKED` with `clickCount=2`) on the target node.
 
 Use for interactions such as expanding TreeView items, opening detail views from ListView/TableView rows, or any custom `setOnMouseClicked` handler that inspects `event.getClickCount() == 2`.
+
+- `delay: float | None` — per-call sleep (seconds) after the action.
 
 ```python
 client.double_click(id="myTreeItem")
 client.double_click(text="Record 1", type="ListCell")
 ```
 
-### `client.press_key(key, **selector) -> ActionResult`
+### `client.press_key(key, delay=None, **selector) -> ActionResult`
 
 Fire `KEY_PRESSED` + `KEY_RELEASED` for the given key string.
 
 **Format:** `"[Modifier+]*Key"` — case-insensitive. Aliases: `Ctrl` = `Control`, `Win` = `Meta`.
+
+- `delay: float | None` — per-call sleep (seconds) after the action.
 
 | Example | Meaning |
 |---------|---------|

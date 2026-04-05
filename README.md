@@ -193,6 +193,16 @@ client.verify_text(r"^Succ", match="regex", id="status")                  # rege
 
 Use the full API reference for parameters, result models, fallback semantics, and return fields.
 
+Demo / presentation mode — slow down playback with `step_delay`:
+
+```python
+# 0.5s pause after every action (global)
+client = OmniUI.connect(port=48102, step_delay=0.5)
+
+# Or override per call
+client.click(id="tbNew", delay=1.0)
+```
+
 ## Recorder-lite
 
 Recorder-lite currently works from the client action history and only emits stable click expressions.

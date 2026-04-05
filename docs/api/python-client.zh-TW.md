@@ -32,7 +32,7 @@ client = OmniUI.connect(...)
 
 ## Connection
 
-### `OmniUI.connect(base_url="http://127.0.0.1:48100", app_name="LoginDemo", pid=None, ocr_engine=None, vision_engine=None)`
+### `OmniUI.connect(base_url="http://127.0.0.1:48100", app_name="LoginDemo", pid=None, ocr_engine=None, vision_engine=None, step_delay=0.0)`
 
 建立一個指向本機 OmniUI agent 的 client session。
 
@@ -47,6 +47,9 @@ client = OmniUI.connect(...)
   可選的 OCR provider implementation
 - `vision_engine: SimpleVisionEngine | None`
   可選的 vision provider implementation
+- `step_delay: float`
+  每個 action 執行後的等待秒數。預設 `0.0`（不等待）。適用於 demo 展示的慢速播放。
+  可透過各 action 方法的 `delay` 參數覆蓋單次設定。
 
 回傳：
 - `OmniUIClient`
@@ -55,6 +58,19 @@ client = OmniUI.connect(...)
 - 呼叫 `GET /health`
 - 呼叫 `POST /sessions`
 - 若 agent 沒有回報 healthy status，則丟出 `RuntimeError`
+
+**播放速度範例：**
+
+```python
+# 每個 action 後等 0.5 秒，適合 demo 展示
+client = OmniUI.connect(port=48102, step_delay=0.5)
+
+# 單次覆蓋：這個 click 等 1 秒
+client.click(id="tbNew", delay=1.0)
+
+# 不等待（預設行為）
+client = OmniUI.connect(port=48102)
+```
 
 ## Session API
 
@@ -84,9 +100,12 @@ client = OmniUI.connect(...)
 - 空字串會轉成 `None`
 - 使用前會先做字串 trim
 
-### `client.click(**selector) -> ActionResult`
+### `client.click(delay=None, **selector) -> ActionResult`
 
 執行 click action。
+
+參數：
+- `delay: float | None` — 此次 action 後的等待秒數，覆蓋全域 `step_delay`。
 
 解析順序：
 1. 先透過 agent 做 JavaFX direct resolution
@@ -98,12 +117,13 @@ client = OmniUI.connect(...)
 - 目前 repo 中，OCR 與 vision fallback 會 resolve target 並記錄 trace，但尚未發出真正的 OS-level click
 - 若 node 由 JavaFX resolve，Java agent 會使用 direct node-level interaction
 
-### `client.type(text, **selector) -> ActionResult`
+### `client.type(text, delay=None, **selector) -> ActionResult`
 
 透過 JavaFX path 執行文字輸入。
 
 參數：
 - `text: str`
+- `delay: float | None` — 此次 action 後的等待秒數。
 - selector 欄位，例如 `id`、`text`、`type`
 
 ### `client.get_text(**selector) -> ActionResult`

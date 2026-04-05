@@ -185,6 +185,16 @@ client.verify_text(r"^Succ", match="regex", id="status")                  # rege
 
 參數、回傳 model、fallback 行為與欄位定義，請以完整 API 文件為準，不建議把 README 當成正式 API reference。
 
+Demo / 展示模式 — 用 `step_delay` 放慢執行速度：
+
+```python
+# 每個 action 後等 0.5 秒（全域設定）
+client = OmniUI.connect(port=48102, step_delay=0.5)
+
+# 或單次覆蓋
+client.click(id="tbNew", delay=1.0)
+```
+
 ## Recorder-lite
 
 目前 recorder-lite 是從 client 的 action history 產生 script，只輸出穩定的 click selector，不會輸出 raw coordinate。
