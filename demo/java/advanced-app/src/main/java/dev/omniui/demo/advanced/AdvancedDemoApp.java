@@ -356,11 +356,23 @@ public final class AdvancedDemoApp extends Application {
             pageLabel.setText("Page: " + newV.intValue() + " / " + demoPagination.getPageCount()));
         VBox paginationSection = section("Pagination Demo", "paginationSection", demoPagination, pageLabel);
 
+        // Window Demo
+        Button openSecondWindowBtn = new Button("Open Second Window");
+        openSecondWindowBtn.setId("openSecondWindowBtn");
+        openSecondWindowBtn.setOnAction(e -> {
+            javafx.stage.Stage second = new javafx.stage.Stage();
+            second.setTitle("OmniUI Second Window");
+            second.setScene(new Scene(new javafx.scene.layout.StackPane(new Label("Second Window")), 400, 200));
+            second.show();
+        });
+        VBox windowSection = section("Window Demo", "windowSection", openSecondWindowBtn);
+
         VBox root = new VBox(
             18,
             toolBarSection,
             scrollBarSection,
             paginationSection,
+            windowSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,

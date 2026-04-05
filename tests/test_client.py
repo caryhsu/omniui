@@ -1036,6 +1036,77 @@ class PaginationTests(unittest.TestCase):
             self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
 
 
+class WindowTests(unittest.TestCase):
+    """Tests for Window / Stage management APIs."""
+
+    def _make_client_and_capture(self, mock_urlopen, value=None):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": value,
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_windows_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen, value=["Main Window"])
+        result = client.get_windows()
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "get_windows")
+
+    @patch("urllib.request.urlopen")
+    def test_focus_window_sends_title(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.focus_window(title="Main Window")
+        self.assertEqual(captured[0]["action"], "focus_window")
+        self.assertEqual(captured[0]["payload"]["title"], "Main Window")
+
+    @patch("urllib.request.urlopen")
+    def test_maximize_restore_window(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.maximize_window(title="Main Window")
+        self.assertEqual(captured[0]["action"], "maximize_window")
+        client.restore_window(title="Main Window")
+        self.assertEqual(captured[1]["action"], "restore_window")
+
+    @patch("urllib.request.urlopen")
+    def test_set_window_size_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.set_window_size(title="Main Window", width=800, height=600)
+        self.assertEqual(captured[0]["action"], "set_window_size")
+        self.assertEqual(captured[0]["payload"]["width"], 800)
+        self.assertEqual(captured[0]["payload"]["height"], 600)
+
+    @patch("urllib.request.urlopen")
+    def test_get_window_size_returns_dict(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen, value={"width": 720.0, "height": 760.0})
+        result = client.get_window_size(title="Main Window")
+        self.assertEqual(result.value["width"], 720.0)
+
+    @patch("urllib.request.urlopen")
+    def test_window_methods_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        for m in ("get_windows", "focus_window", "maximize_window", "minimize_window",
+                  "restore_window", "is_maximized", "is_minimized",
+                  "set_window_size", "set_window_position",
+                  "get_window_size", "get_window_position"):
+            self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

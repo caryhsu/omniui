@@ -72,7 +72,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Fine-grained scroll control for standalone `ScrollBar` nodes
 - [x] **Pagination** — `get_page()`, `set_page(n)`, `next_page()`, `prev_page()`
   - Automate JavaFX `Pagination` control
-- [ ] **Window / Stage management** — `get_windows()`, `focus_window(title=...)`
+- [x] **Window / Stage management** — `get_windows()`, `focus_window(title=...)`
   - Multi-window test scenarios
   - `maximize_window()`, `minimize_window()`, `restore_window()`
   - `set_window_size(width, height)`, `set_window_position(x, y)`

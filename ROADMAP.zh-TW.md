@@ -72,7 +72,7 @@
   - 對獨立 `ScrollBar` 節點進行精細捲動控制
 - [x] **Pagination（分頁）** — `get_page()`、`set_page(n)`、`next_page()`、`prev_page()`
   - 自動化 JavaFX `Pagination` 控件
-- [ ] **Window / Stage 管理** — `get_windows()`、`focus_window(title=...)`
+- [x] **Window / Stage 管理** — `get_windows()`、`focus_window(title=...)`
   - 多視窗測試場景
   - `maximize_window()`、`minimize_window()`、`restore_window()`
   - `set_window_size(width, height)`、`set_window_position(x, y)`

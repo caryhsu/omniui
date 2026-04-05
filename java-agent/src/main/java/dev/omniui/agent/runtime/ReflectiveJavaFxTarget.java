@@ -74,6 +74,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "get_clipboard"   -> doGetClipboard();
             case "set_clipboard"   -> doSetClipboard(payload);
             case "click_at"        -> doClickAt(payload);
+            case "get_windows"         -> ReflectiveJavaFxSupport.onFxThread(() -> handleGetWindows());
+            case "focus_window"        -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "maximize_window"     -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "minimize_window"     -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "restore_window"      -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "is_maximized"        -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "is_minimized"        -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "set_window_size"     -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "set_window_position" -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "get_window_size"     -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
+            case "get_window_position" -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
             default -> ReflectiveJavaFxSupport.onFxThread(() -> performOnFxThread(action, selector, payload));
         };
     }
@@ -1900,6 +1911,109 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private ActionResult doCloseApp() {
+        // Schedule System.exit(0) on a daemon thread with a short delay so the
+        // HTTP response can flush before the JVM terminates. Platform.exit() alone
+        // only stops the JavaFX runtime — the HTTP server's non-daemon threads keep
+        // the JVM alive. System.exit(0) kills everything cleanly.
+        Thread shutdownThread = new Thread(() -> {
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            System.exit(0);
+        });
+        shutdownThread.setDaemon(true);
+        shutdownThread.start();
+        return ActionResult.success("javafx", null, Map.of(), null);
+    }
+
+    // ── Window / Stage helpers ────────────────────────────────────────────────
+
+    private Object findStageByTitle(String title) {
+        try {
+            Class<?> windowClass = Class.forName("javafx.stage.Window");
+            Object windows = windowClass.getMethod("getWindows").invoke(null);
+            java.util.List<?> list = (java.util.List<?>) windows;
+            for (Object w : list) {
+                if (!"Stage".equals(w.getClass().getSimpleName())) continue;
+                Object t = w.getClass().getMethod("getTitle").invoke(w);
+                if (title == null || title.equals(t)) return w;
+                if (title.equals(t != null ? t.toString() : null)) return w;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private ActionResult handleGetWindows() {
+        try {
+            Class<?> windowClass = Class.forName("javafx.stage.Window");
+            Object windows = windowClass.getMethod("getWindows").invoke(null);
+            java.util.List<?> list = (java.util.List<?>) windows;
+            List<String> titles = new ArrayList<>();
+            for (Object w : list) {
+                if (!"Stage".equals(w.getClass().getSimpleName())) continue;
+                Object t = safeInvoke(w, "getTitle");
+                titles.add(t != null ? t.toString() : "");
+            }
+            return ActionResult.success("javafx", null, Map.of(), titles);
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_windows_failed", "error", ex.getMessage()));
+        }
+    }
+
+    private ActionResult handleWindowAction(String action, JsonObject payload) {
+        String title = payload != null && payload.has("title") ? payload.get("title").getAsString() : null;
+        Object stage = findStageByTitle(title);
+        if (stage == null) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "window_not_found", "title", title != null ? title : ""));
+        }
+        try {
+            return switch (action) {
+                case "focus_window"    -> { ReflectiveJavaFxSupport.invoke(stage, "toFront"); yield ActionResult.success("javafx", null, Map.of("title", title), null); }
+                case "maximize_window" -> { ReflectiveJavaFxSupport.invoke(stage, "setMaximized", true);  yield ActionResult.success("javafx", null, Map.of("title", title), null); }
+                case "minimize_window" -> { ReflectiveJavaFxSupport.invoke(stage, "setIconified", true);  yield ActionResult.success("javafx", null, Map.of("title", title), null); }
+                case "restore_window"  -> {
+                    ReflectiveJavaFxSupport.invoke(stage, "setMaximized", false);
+                    ReflectiveJavaFxSupport.invoke(stage, "setIconified", false);
+                    yield ActionResult.success("javafx", null, Map.of("title", title), null);
+                }
+                case "is_maximized" -> { Object v = safeInvoke(stage, "isMaximized"); yield ActionResult.success("javafx", null, Map.of("title", title), v instanceof Boolean b ? b : false); }
+                case "is_minimized" -> { Object v = safeInvoke(stage, "isIconified"); yield ActionResult.success("javafx", null, Map.of("title", title), v instanceof Boolean b ? b : false); }
+                case "set_window_size" -> {
+                    double w = payload.has("width")  ? payload.get("width").getAsDouble()  : 0;
+                    double h = payload.has("height") ? payload.get("height").getAsDouble() : 0;
+                    ReflectiveJavaFxSupport.invoke(stage, "setWidth",  w);
+                    ReflectiveJavaFxSupport.invoke(stage, "setHeight", h);
+                    yield ActionResult.success("javafx", null, Map.of("title", title), null);
+                }
+                case "set_window_position" -> {
+                    double x = payload.has("x") ? payload.get("x").getAsDouble() : 0;
+                    double y = payload.has("y") ? payload.get("y").getAsDouble() : 0;
+                    ReflectiveJavaFxSupport.invoke(stage, "setX", x);
+                    ReflectiveJavaFxSupport.invoke(stage, "setY", y);
+                    yield ActionResult.success("javafx", null, Map.of("title", title), null);
+                }
+                case "get_window_size" -> {
+                    Object w = safeInvoke(stage, "getWidth");
+                    Object h = safeInvoke(stage, "getHeight");
+                    Map<String, Object> sz = new LinkedHashMap<>();
+                    sz.put("width",  w instanceof Number n ? n.doubleValue() : 0.0);
+                    sz.put("height", h instanceof Number n ? n.doubleValue() : 0.0);
+                    yield ActionResult.success("javafx", null, Map.of("title", title), sz);
+                }
+                case "get_window_position" -> {
+                    Object x = safeInvoke(stage, "getX");
+                    Object y = safeInvoke(stage, "getY");
+                    Map<String, Object> pos = new LinkedHashMap<>();
+                    pos.put("x", x instanceof Number n ? n.doubleValue() : 0.0);
+                    pos.put("y", y instanceof Number n ? n.doubleValue() : 0.0);
+                    yield ActionResult.success("javafx", null, Map.of("title", title), pos);
+                }
+                default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_window_action", "action", action));
+            };
+        } catch (Exception ex) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "window_action_failed", "action", action, "error", ex.getMessage()));
+        }
+    }
+
+
         // Schedule System.exit(0) on a daemon thread with a short delay so the
         // HTTP response can flush before the JVM terminates. Platform.exit() alone
         // only stops the JavaFX runtime — the HTTP server's non-daemon threads keep

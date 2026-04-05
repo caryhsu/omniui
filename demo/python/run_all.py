@@ -57,6 +57,7 @@ if __package__ in (None, ""):
     import advanced.toolbar_demo as toolbar_demo  # type: ignore
     import advanced.scrollbar_demo as scrollbar_demo  # type: ignore
     import advanced.pagination_demo as pagination_demo  # type: ignore
+    import advanced.window_demo as window_demo  # type: ignore
     import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
@@ -111,6 +112,7 @@ else:
         toolbar_demo,
         scrollbar_demo,
         pagination_demo,
+        window_demo,
         discover_advanced_controls,
     )
 
@@ -368,6 +370,9 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
 
         _section("Pagination Demo")
         pagination_demo.main()
+
+        _section("Window Demo")
+        window_demo.main()
 
 
 if __name__ == "__main__":

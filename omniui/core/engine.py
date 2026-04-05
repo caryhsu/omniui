@@ -351,6 +351,56 @@ class OmniUIClient:
         """Go back one page in a Pagination control. No-op at the first page."""
         return self._perform("prev_page", {"id": id})
 
+    # ── Window / Stage management ─────────────────────────────────────────────
+
+    def _perform_window(self, action: str, payload: dict[str, Any]) -> ActionResult:
+        """Send a window-level action (no node selector required)."""
+        return self._perform_request(action, {}, {}, payload)
+
+    def get_windows(self) -> ActionResult:
+        """Return a list of titles of all open JavaFX Stage windows."""
+        return self._perform_window("get_windows", {})
+
+    def focus_window(self, *, title: str) -> ActionResult:
+        """Bring the Stage with the given title to the foreground."""
+        return self._perform_window("focus_window", {"title": title})
+
+    def maximize_window(self, *, title: str) -> ActionResult:
+        """Maximize the Stage with the given title."""
+        return self._perform_window("maximize_window", {"title": title})
+
+    def minimize_window(self, *, title: str) -> ActionResult:
+        """Minimize (iconify) the Stage with the given title."""
+        return self._perform_window("minimize_window", {"title": title})
+
+    def restore_window(self, *, title: str) -> ActionResult:
+        """Restore the Stage (un-maximize and un-minimize)."""
+        return self._perform_window("restore_window", {"title": title})
+
+    def is_maximized(self, *, title: str) -> ActionResult:
+        """Return whether the Stage with the given title is maximized."""
+        return self._perform_window("is_maximized", {"title": title})
+
+    def is_minimized(self, *, title: str) -> ActionResult:
+        """Return whether the Stage with the given title is minimized."""
+        return self._perform_window("is_minimized", {"title": title})
+
+    def set_window_size(self, *, title: str, width: float, height: float) -> ActionResult:
+        """Resize the Stage to the given width and height (pixels)."""
+        return self._perform_window("set_window_size", {"title": title, "width": width, "height": height})
+
+    def set_window_position(self, *, title: str, x: float, y: float) -> ActionResult:
+        """Move the Stage to the given screen position."""
+        return self._perform_window("set_window_position", {"title": title, "x": x, "y": y})
+
+    def get_window_size(self, *, title: str) -> ActionResult:
+        """Return the current size of the Stage as ``{"width": float, "height": float}``."""
+        return self._perform_window("get_window_size", {"title": title})
+
+    def get_window_position(self, *, title: str) -> ActionResult:
+        """Return the current position of the Stage as ``{"x": float, "y": float}``."""
+        return self._perform_window("get_window_position", {"title": title})
+
     def retry(
         self,
         fn: Callable,
