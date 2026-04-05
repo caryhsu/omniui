@@ -101,8 +101,8 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
 - [x] **Auto-screenshot on failure** — automatically capture and save a screenshot when any action raises an exception
 - [x] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
-- [ ] **Headless mode** — document and support JavaFX Monocle headless mode for running tests in CI without a display
-- [ ] **CI/CD examples** — GitHub Actions workflow template (headless + agent startup + pytest)
+- [x] **Headless mode** — Xvfb virtual display on Linux; `run_all.py` auto-detects OS and selects correct JavaFX JARs; see `docs/headless.md`
+- [x] **CI/CD examples** — GitHub Actions workflows: `ci-unit.yml` (pytest only) and `ci-integration.yml` (Xvfb + full demo suite)
 - [ ] **HTML test report** — pytest-html or Allure integration guide
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
