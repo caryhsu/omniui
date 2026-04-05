@@ -120,7 +120,8 @@ This file tracks planned features and improvements. Check off items as they are 
   - Sensitive fields (e.g. `PasswordField`) are masked with a placeholder
 - [ ] **Wait injection** — heuristically insert `wait_for_*` calls after actions that trigger async UI changes
 - [x] **Record session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
-- [ ] **Recorder UI tool** — interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code
+- [ ] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
+- [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
 
 ---
 

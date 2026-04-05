@@ -121,7 +121,8 @@
   - 敏感欄位（如 `PasswordField`）自動遮罩，替換為佔位符
 - [ ] **Wait 自動插入** — 啟發式判斷哪些操作後需要等待非同步 UI 變更，自動插入 `wait_for_*`
 - [x] **錄製 Session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
-- [ ] **錄製 UI 工具** — 互動式 TUI/GUI 應用程式（`python -m omniui.recorder`），提供錄製 / 停止 / 儲存控制，讓非工程師也能不寫程式即可錄製操作
+- [ ] **錄製 UI 工具** — ~~互動式 TUI/GUI 應用程式（`python -m omniui.recorder`），提供錄製 / 停止 / 儲存控制，讓非工程師也能不寫程式即可錄製操作~~
+- [x] **錄製 UI 工具** — `python -m omniui.recorder` tkinter GUI；自動掃描執行中的 app，提供錄製 / 停止 / 儲存流程
 
 ---
 
