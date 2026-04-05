@@ -17,4 +17,12 @@ public interface AutomationTarget {
     ActionResult perform(String action, JsonObject selector, JsonObject payload);
 
     byte[] screenshot();
+
+    default ActionResult startRecording() {
+        throw new UnsupportedOperationException("startRecording not supported by this target");
+    }
+
+    default List<Map<String, Object>> stopRecordingFlush() {
+        throw new UnsupportedOperationException("stopRecordingFlush not supported by this target");
+    }
 }

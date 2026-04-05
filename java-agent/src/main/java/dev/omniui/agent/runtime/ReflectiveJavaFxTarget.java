@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -22,9 +24,17 @@ import java.nio.charset.StandardCharsets;
 public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private static final int OVERLAY_TIMEOUT_MS = 2_000;
     private static final int OVERLAY_POLL_INTERVAL_MS = 50;
+    private static final int MAX_RECORDER_EVENTS = 1_000;
 
     private final String appName;
     private final Supplier<Object> sceneSupplier;
+
+    // ── Recorder state ────────────────────────────────────────────────────────
+    private final ConcurrentLinkedDeque<Map<String, Object>> recorderBuffer = new ConcurrentLinkedDeque<>();
+    private final ConcurrentHashMap<String, StringBuilder> keyAccumulator   = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long>          keyTimestamps    = new ConcurrentHashMap<>();
+    private volatile Object mouseEventFilter = null;
+    private volatile Object keyEventFilter   = null;
 
     public ReflectiveJavaFxTarget(String appName, Supplier<Object> sceneSupplier) {
         this.appName = Objects.requireNonNull(appName, "appName");
@@ -124,6 +134,193 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         }
 
         return result;
+    }
+
+    // ── Recorder ─────────────────────────────────────────────────────────────
+
+    ActionResult startRecording() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            Object scene = sceneSupplier.get();
+            if (scene == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scene"));
+            }
+            recorderBuffer.clear();
+            keyAccumulator.clear();
+            keyTimestamps.clear();
+
+            Class<?> eventHandlerClass = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+            Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+
+            mouseEventFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onMouseClicked(args[0]);
+                    }
+                    return null;
+                }
+            );
+
+            keyEventFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onKeyTyped(args[0]);
+                    }
+                    return null;
+                }
+            );
+
+            try {
+                Object mouseClickedType = mouseEventClass.getField("MOUSE_CLICKED").get(null);
+                Object keyTypedType     = keyEventClass.getField("KEY_TYPED").get(null);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, mouseClickedType, mouseEventFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, keyTypedType, keyEventFilter);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "filter_attach_failed", "message", ex.getMessage()));
+            }
+
+            return ActionResult.success("javafx", null, Map.of(), null);
+        });
+    }
+
+    List<Map<String, Object>> stopRecordingFlush() {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            Object scene = sceneSupplier.get();
+            if (scene != null && mouseEventFilter != null) {
+                try {
+                    Class<?> eventHandlerClass = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+                    Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+                    Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+                    Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+                    Object mouseClickedType = mouseEventClass.getField("MOUSE_CLICKED").get(null);
+                    Object keyTypedType     = keyEventClass.getField("KEY_TYPED").get(null);
+                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                        .invoke(scene, mouseClickedType, mouseEventFilter);
+                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                        .invoke(scene, keyTypedType, keyEventFilter);
+                } catch (Exception ignored) { /* best-effort */ }
+            }
+            mouseEventFilter = null;
+            keyEventFilter   = null;
+
+            // Flush any pending key accumulations
+            flushKeyAccumulator();
+
+            List<Map<String, Object>> events = new ArrayList<>(recorderBuffer);
+            recorderBuffer.clear();
+            keyAccumulator.clear();
+            keyTimestamps.clear();
+            return events;
+        });
+    }
+
+    private void onMouseClicked(Object event) {
+        if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        // Flush pending key accumulations before recording the click
+        flushKeyAccumulator();
+        try {
+            Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+            if (target == null) return;
+            Object node = nearestNode(target);
+            if (node == null) return;
+            String fxId     = nullToEmpty(safeString(node, "getId"));
+            String nodeType = node.getClass().getSimpleName();
+            int    nodeIdx  = nodeIndexOf(node);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("type",       "click");
+            entry.put("fxId",       fxId);
+            entry.put("text",       nullToEmpty(ReflectiveJavaFxSupport.textOf(node)));
+            entry.put("nodeType",   nodeType);
+            entry.put("nodeIndex",  nodeIdx);
+            entry.put("timestamp",  System.currentTimeMillis() / 1000.0);
+            recorderBuffer.addLast(entry);
+        } catch (Exception ignored) { /* best-effort: never crash the app */ }
+    }
+
+    private void onKeyTyped(Object event) {
+        try {
+            Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+            if (target == null) return;
+            Object node = nearestNode(target);
+            if (node == null) return;
+            String nodeKey = nodeKeyFor(node);
+            Object charObj = ReflectiveJavaFxSupport.invoke(event, "getCharacter");
+            if (charObj == null) return;
+            String ch = charObj.toString();
+            if (ch.isEmpty() || ch.charAt(0) < 32) return; // ignore control chars
+            keyAccumulator.computeIfAbsent(nodeKey, k -> new StringBuilder()).append(ch);
+            keyTimestamps.put(nodeKey, System.currentTimeMillis());
+        } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    private void flushKeyAccumulator() {
+        for (Map.Entry<String, StringBuilder> kv : keyAccumulator.entrySet()) {
+            if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) break;
+            String text = kv.getValue().toString();
+            if (text.isEmpty()) continue;
+            String nodeKey = kv.getKey();
+            // nodeKey is either fxId or a synthetic handle-like string
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("type",       "type");
+            entry.put("fxId",       nodeKey.startsWith("_handle_") ? "" : nodeKey);
+            entry.put("text",       text);
+            entry.put("nodeType",   "");
+            entry.put("nodeIndex",  0);
+            entry.put("timestamp",  keyTimestamps.getOrDefault(nodeKey, System.currentTimeMillis()) / 1000.0);
+            recorderBuffer.addLast(entry);
+        }
+        keyAccumulator.clear();
+        keyTimestamps.clear();
+    }
+
+    private Object nearestNode(Object target) {
+        // Walk up looking for a Node (not a sub-shape)
+        Object current = target;
+        int limit = 10;
+        while (current != null && limit-- > 0) {
+            if (current.getClass().getName().startsWith("javafx.scene.")) {
+                return current;
+            }
+            try {
+                current = ReflectiveJavaFxSupport.invoke(current, "getParent");
+            } catch (Exception ex) {
+                break;
+            }
+        }
+        return target;
+    }
+
+    private String nodeKeyFor(Object node) {
+        String fxId = nullToEmpty(safeString(node, "getId"));
+        return fxId.isEmpty() ? "_handle_" + System.identityHashCode(node) : fxId;
+    }
+
+    private int nodeIndexOf(Object node) {
+        try {
+            Object parent = ReflectiveJavaFxSupport.invoke(node, "getParent");
+            if (parent == null) return 0;
+            List<Object> siblings = childrenOf(parent);
+            String nodeType = node.getClass().getSimpleName();
+            int idx = 0;
+            for (Object sibling : siblings) {
+                if (sibling.getClass().getSimpleName().equals(nodeType)) {
+                    if (sibling == node) return idx;
+                    idx++;
+                }
+            }
+        } catch (Exception ignored) { /* ignore */ }
+        return 0;
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
     }
 
     private byte[] screenshotOnFxThread() {
