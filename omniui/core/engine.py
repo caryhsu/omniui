@@ -39,6 +39,8 @@ class OmniUIClient:
         self._action_log: list[ActionLogEntry] = []
         self._scope: dict[str, Any] | None = None
         self._recording: bool = False
+        self._wait_injection: bool = False
+        self._wait_timeout: float = 5.0
 
     @classmethod
     def connect(
@@ -98,20 +100,25 @@ class OmniUIClient:
         ]
         return UIDiff(added=added, removed=removed, changed=changed)
 
-    def start_recording(self) -> None:
-        """Start recording user interactions via the Java agent's EventFilter."""
-        self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/events/start", {})
-        self._recording = True
-
-    def stop_recording(self, wait_injection: bool = False, wait_timeout: float = 5.0) -> RecordedScript:
-        """Stop recording and return a :class:`RecordedScript` with generated Python code.
+    def start_recording(self, wait_injection: bool = False, wait_timeout: float = 5.0) -> None:
+        """Start recording user interactions via the Java agent's EventFilter.
 
         Args:
-            wait_injection: If ``True``, insert ``wait_for_enabled`` /
-                ``wait_for_visible`` lines between actions so the replayed
-                script waits for the UI to be ready instead of failing on
-                timing issues.
+            wait_injection: If ``True``, the generated script will include
+                ``wait_for_enabled`` / ``wait_for_visible`` lines between
+                actions so replayed scripts wait for the UI to be ready.
             wait_timeout: Timeout (seconds) for each injected wait call.
+        """
+        self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/events/start", {})
+        self._recording = True
+        self._wait_injection = wait_injection
+        self._wait_timeout = wait_timeout
+
+    def stop_recording(self) -> RecordedScript:
+        """Stop recording and return a :class:`RecordedScript` with generated Python code.
+
+        The ``wait_injection`` and ``wait_timeout`` settings are taken from
+        the matching :meth:`start_recording` call.
         """
         if not self._recording:
             raise RuntimeError("stop_recording() called without a prior start_recording()")
@@ -133,7 +140,7 @@ class OmniUIClient:
             )
             for e in raw_events
         ]
-        script = generate_script(events, wait_injection=wait_injection, wait_timeout=wait_timeout)
+        script = generate_script(events, wait_injection=self._wait_injection, wait_timeout=self._wait_timeout)
         return RecordedScript(events=events, script=script)
 
     def action_history(self) -> list[ActionLogEntry]:

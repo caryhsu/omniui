@@ -98,7 +98,11 @@ class RecorderApp:
 
         self._save_btn = tk.Button(ctrl, text="💾 Save", width=12,
                                    state="disabled", command=self._save_script)
-        self._save_btn.pack(side="left")
+        self._save_btn.pack(side="left", padx=(0, 12))
+
+        self._wait_injection_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Insert wait_for_*",
+                       variable=self._wait_injection_var).pack(side="left")
 
         # ── Row 1 right: status label ──────────────────────────────────────
         self._status_var = tk.StringVar(value="Ready")
@@ -171,7 +175,9 @@ class RecorderApp:
 
         try:
             self._client = OmniUI.connect(port=agent["port"])
-            self._client.start_recording()
+            self._client.start_recording(
+                wait_injection=self._wait_injection_var.get()
+            )
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to start recording:\n{exc}")
             self._client = None
