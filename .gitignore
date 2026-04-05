@@ -6,6 +6,11 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+*.egg-info/
+
+# Test outputs
+report.html
+screenshots/
 
 # Java / Maven
 target/

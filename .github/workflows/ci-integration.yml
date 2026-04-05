@@ -48,3 +48,20 @@ jobs:
           cd demo/python
           python run_all.py
         timeout-minutes: 10
+
+      - name: Run pytest integration suite
+        if: always()
+        run: |
+          export DISPLAY=:99
+          python -m pytest tests/ -v \
+            --html=report.html --self-contained-html \
+            -m "not unit" --ignore=tests/test_demo_launchers.py \
+            --omniui-url http://127.0.0.1:48100 || true
+        timeout-minutes: 5
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-report
+          path: report.html
