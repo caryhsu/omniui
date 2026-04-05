@@ -70,7 +70,7 @@
   - 存取與操作 `ToolBar` 容器中的項目
 - [x] **ScrollBar** — `get_scroll_position(id=...)`、`set_scroll_position(id=..., value=...)`
   - 對獨立 `ScrollBar` 節點進行精細捲動控制
-- [ ] **Pagination（分頁）** — `get_page()`、`set_page(n)`、`next_page()`、`prev_page()`
+- [x] **Pagination（分頁）** — `get_page()`、`set_page(n)`、`next_page()`、`prev_page()`
   - 自動化 JavaFX `Pagination` 控件
 - [ ] **Window / Stage 管理** — `get_windows()`、`focus_window(title=...)`
   - 多視窗測試場景

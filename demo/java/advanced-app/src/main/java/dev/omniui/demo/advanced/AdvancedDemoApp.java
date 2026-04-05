@@ -347,10 +347,20 @@ public final class AdvancedDemoApp extends Application {
             scrollBarValueLabel.setText("ScrollBar value: " + String.format("%.1f", newV.doubleValue())));
         VBox scrollBarSection = section("ScrollBar Demo", "scrollBarSection", demoScrollBar, scrollBarValueLabel);
 
+        // Pagination Demo
+        javafx.scene.control.Pagination demoPagination = new javafx.scene.control.Pagination(5, 0);
+        demoPagination.setId("demoPagination");
+        Label pageLabel = new Label("Page: 0 / 5");
+        pageLabel.setId("pageLabel");
+        demoPagination.currentPageIndexProperty().addListener((obs, oldV, newV) ->
+            pageLabel.setText("Page: " + newV.intValue() + " / " + demoPagination.getPageCount()));
+        VBox paginationSection = section("Pagination Demo", "paginationSection", demoPagination, pageLabel);
+
         VBox root = new VBox(
             18,
             toolBarSection,
             scrollBarSection,
+            paginationSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,

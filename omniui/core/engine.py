@@ -329,6 +329,28 @@ class OmniUIClient:
         """
         return self._perform("set_scroll_position", {"id": id}, {"value": value})
 
+    def get_page(self, *, id: str) -> ActionResult:
+        """Return the current page index and total page count of a Pagination control.
+
+        ``ActionResult.value`` is a dict with keys ``page`` (0-based) and ``page_count``.
+        """
+        return self._perform("get_page", {"id": id})
+
+    def set_page(self, *, id: str, page: int) -> ActionResult:
+        """Jump to a specific page (0-based) in a Pagination control.
+
+        Values outside ``[0, page_count-1]`` are silently clamped by the agent.
+        """
+        return self._perform("set_page", {"id": id}, {"page": page})
+
+    def next_page(self, *, id: str) -> ActionResult:
+        """Advance one page in a Pagination control. No-op at the last page."""
+        return self._perform("next_page", {"id": id})
+
+    def prev_page(self, *, id: str) -> ActionResult:
+        """Go back one page in a Pagination control. No-op at the first page."""
+        return self._perform("prev_page", {"id": id})
+
     def retry(
         self,
         fn: Callable,

@@ -70,7 +70,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Access and interact with items in a `ToolBar` container
 - [x] **ScrollBar** — `get_scroll_position(id=...)`, `set_scroll_position(id=..., value=...)`
   - Fine-grained scroll control for standalone `ScrollBar` nodes
-- [ ] **Pagination** — `get_page()`, `set_page(n)`, `next_page()`, `prev_page()`
+- [x] **Pagination** — `get_page()`, `set_page(n)`, `next_page()`, `prev_page()`
   - Automate JavaFX `Pagination` control
 - [ ] **Window / Stage management** — `get_windows()`, `focus_window(title=...)`
   - Multi-window test scenarios

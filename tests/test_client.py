@@ -969,6 +969,73 @@ class ScrollBarTests(unittest.TestCase):
             self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
 
 
+class PaginationTests(unittest.TestCase):
+    """Tests for get_page, set_page, next_page, prev_page."""
+
+    def _make_client_and_capture(self, mock_urlopen, page=0, page_count=5):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": {"page": page, "page_count": page_count},
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_page_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.get_page(id="demoPagination")
+        self.assertTrue(result.ok)
+        self.assertEqual(captured[0]["action"], "get_page")
+        self.assertEqual(captured[0]["selector"]["id"], "demoPagination")
+
+    @patch("urllib.request.urlopen")
+    def test_get_page_returns_dict(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen, page=2, page_count=5)
+        result = client.get_page(id="demoPagination")
+        self.assertEqual(result.value["page"], 2)
+        self.assertEqual(result.value["page_count"], 5)
+
+    @patch("urllib.request.urlopen")
+    def test_set_page_sends_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.set_page(id="demoPagination", page=3)
+        self.assertEqual(captured[0]["action"], "set_page")
+        self.assertEqual(captured[0]["payload"]["page"], 3)
+
+    @patch("urllib.request.urlopen")
+    def test_next_page_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.next_page(id="demoPagination")
+        self.assertEqual(captured[0]["action"], "next_page")
+        self.assertEqual(captured[0]["selector"]["id"], "demoPagination")
+
+    @patch("urllib.request.urlopen")
+    def test_prev_page_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.prev_page(id="demoPagination")
+        self.assertEqual(captured[0]["action"], "prev_page")
+
+    @patch("urllib.request.urlopen")
+    def test_pagination_methods_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        for m in ("get_page", "set_page", "next_page", "prev_page"):
+            self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

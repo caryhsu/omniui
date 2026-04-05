@@ -324,6 +324,23 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "sort_column" -> doSortColumn(node, fxId, handle, payload);
             case "get_scroll_position" -> handleGetScrollPosition(node, fxId, handle);
             case "set_scroll_position" -> handleSetScrollPosition(node, fxId, handle, payload);
+            case "get_page" -> handleGetPage(node, fxId, handle);
+            case "set_page" -> handleSetPage(node, fxId, handle, payload);
+            case "next_page" -> {
+                if (node == null || !node.getClass().getSimpleName().equals("Pagination"))
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+                int cur  = ((Number) safeInvoke(node, "getCurrentPageIndex")).intValue();
+                int cnt  = ((Number) safeInvoke(node, "getPageCount")).intValue();
+                ReflectiveJavaFxSupport.invoke(node, "setCurrentPageIndex", Math.min(cur + 1, cnt - 1));
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), Math.min(cur + 1, cnt - 1));
+            }
+            case "prev_page" -> {
+                if (node == null || !node.getClass().getSimpleName().equals("Pagination"))
+                    yield ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+                int cur2 = ((Number) safeInvoke(node, "getCurrentPageIndex")).intValue();
+                ReflectiveJavaFxSupport.invoke(node, "setCurrentPageIndex", Math.max(cur2 - 1, 0));
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), Math.max(cur2 - 1, 0));
+            }
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }
@@ -2375,6 +2392,29 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ex) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_toolbar_items_failed", "error", ex.getMessage()));
         }
+    }
+
+    private ActionResult handleGetPage(Object node, String fxId, String handle) {
+        if (node == null || !node.getClass().getSimpleName().equals("Pagination")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+        }
+        int page  = ((Number) safeInvoke(node, "getCurrentPageIndex")).intValue();
+        int count = ((Number) safeInvoke(node, "getPageCount")).intValue();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("page", page);
+        result.put("page_count", count);
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), result);
+    }
+
+    private ActionResult handleSetPage(Object node, String fxId, String handle, JsonObject payload) {
+        if (node == null || !node.getClass().getSimpleName().equals("Pagination")) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+        }
+        int requested = payload != null && payload.has("page") ? payload.get("page").getAsInt() : 0;
+        int count = ((Number) safeInvoke(node, "getPageCount")).intValue();
+        int clamped = Math.max(0, Math.min(count - 1, requested));
+        ReflectiveJavaFxSupport.invoke(node, "setCurrentPageIndex", clamped);
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), clamped);
     }
 
     private ActionResult handleGetScrollPosition(Object node, String fxId, String handle) {
