@@ -391,29 +391,6 @@ public final class AdvancedDemoApp extends Application {
         javafx.scene.layout.HBox panelRow = new javafx.scene.layout.HBox(16, withinLeft, withinRight);
         VBox withinSection = section("Within Demo", "withinSection", panelRow);
 
-        // ---- Drag & Drop Demo --------------------------------------------
-        // dragSource and dragTarget are two labels inside a Pane.
-        // Drag handlers are attached to the scene root (scrollPane) so that our
-        // fireDragSequence (which fires on the scene root) triggers them reliably.
-        javafx.scene.layout.HBox dragRow = new javafx.scene.layout.HBox(40);
-        dragRow.setId("dragRow");
-        dragRow.setPadding(new Insets(8));
-
-        Label dragSourceLabel = new Label("Drag Me");
-        dragSourceLabel.setId("dragSource");
-        dragSourceLabel.setStyle("-fx-background-color: #4a90d9; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-weight: bold;");
-
-        Label dragTargetLabel = new Label("Drop Here");
-        dragTargetLabel.setId("dragTarget");
-        dragTargetLabel.setStyle("-fx-background-color: #e8ffe8; -fx-border-color: #2a9d2a; -fx-padding: 10 20;");
-
-        dragRow.getChildren().addAll(dragSourceLabel, dragTargetLabel);
-
-        Label dragStatus = new Label("drag_status: idle");
-        dragStatus.setId("dragStatus");
-
-        VBox dragSection = section("Drag & Drop Demo", "dragSection", dragRow, dragStatus);
-
         VBox root = new VBox(
             18,
             toolBarSection,
@@ -421,7 +398,6 @@ public final class AdvancedDemoApp extends Application {
             paginationSection,
             windowSection,
             withinSection,
-            dragSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,
@@ -441,14 +417,6 @@ public final class AdvancedDemoApp extends Application {
         scrollPane.setId("demoScrollPane");
         scrollPane.setFitToWidth(true);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
-
-        // Use addEventFilter (capture phase) so ScrollPane's internal scroll handler
-        // cannot consume MOUSE_DRAGGED/MOUSE_RELEASED before we record the status.
-        // This makes both real user mouse drags and synthetic fireDragSequence events work.
-        scrollPane.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_DRAGGED, e ->
-            dragStatus.setText("drag_status: dragging@" + (int)e.getX() + "," + (int)e.getY()));
-        scrollPane.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_RELEASED, e ->
-            dragStatus.setText("drag_status: released@" + (int)e.getX() + "," + (int)e.getY()));
 
         Scene scene = new Scene(scrollPane, 720, 760);
         primaryStage.setTitle("OmniUI Advanced Demo");
