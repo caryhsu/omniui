@@ -98,7 +98,7 @@
 - [x] **Soft Assertions** — `with client.soft_assert() as sa:` 收集所有失敗後一次回報，不會第一個就中斷
 - [x] **Retry 輔助器** — `@client.retry(times=3, delay=0.5)` 裝飾器，用於不穩定的 assertion 區塊
 - [x] **結構化動作 Trace** — 每個操作自動記錄 timestamp、selector、結果；測試失敗時輸出完整動作時間軸
-- [ ] **平行測試支援** — 說明文件與範例，搭配 `pytest-xdist` 對多個 app 實例執行平行測試
+- [x] **平行測試支援** — `pytest-xdist` 整合；`_worker_port()` helper；`omniui_parallel` session fixture；`conftest_parallel_example.py`；`docs/parallel-testing.zh-TW.md`
 - [x] **pytest fixture 整合** — `@pytest.fixture` 自動 connect/disconnect，減少測試樣板程式碼
 - [x] **失敗自動截圖** — 任何操作拋出例外時自動擷取並儲存截圖
 - [x] **自訂 wait 條件** — `wait_until(fn, timeout)` 接受自訂 lambda，支援任意輪詢邏輯

@@ -41,6 +41,93 @@ from omniui import OmniUI
 
 
 # ---------------------------------------------------------------------------
+# Parallel helper — xdist worker_id → port
+# ---------------------------------------------------------------------------
+
+def _worker_port(worker_id: str, base_port: int) -> int:
+    """Return a per-worker port derived from xdist *worker_id*.
+
+    * ``"master"``  — non-parallel run; use *base_port* unchanged.
+    * ``"gw0"``, ``"gw1"``, … — offset by worker index (gw0 → +0, gw1 → +1 …).
+    """
+    if worker_id == "master":
+        return base_port
+    try:
+        return base_port + int(worker_id[2:])
+    except (ValueError, IndexError):
+        return base_port
+
+
+# ---------------------------------------------------------------------------
+# Session-scoped fixture that launches one app per xdist worker
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def omniui_parallel(request: pytest.FixtureRequest, tmp_path_factory):
+    """Session-scoped OmniUIClient that launches an isolated JavaFX app.
+
+    Designed for use with pytest-xdist.  Each worker gets a unique port so
+    that multiple workers run fully independently without sharing state.
+
+    Usage in conftest.py (project-level)::
+
+        @pytest.fixture(scope="session")
+        def client(omniui_parallel):
+            return omniui_parallel
+
+    Worker port assignment:
+        BASE_PORT = 49000  (configurable via ``omniui_parallel_base_port`` ini)
+        gw0 → 49000, gw1 → 49001, …, master → 49000
+    """
+    base_port: int = int(
+        request.config.getini("omniui_parallel_base_port")
+        if "omniui_parallel_base_port" in (request.config.inicfg or {})
+        else 49000
+    )
+    worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    port = _worker_port(worker_id, base_port)
+
+    from pathlib import Path
+    import platform
+
+    root = Path(__file__).parent
+    java_dir = root / "demo" / "java"
+    agent_jar = root / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT.jar"
+
+    def _javafx_classifier() -> str:
+        s = platform.system().lower()
+        if "windows" in s:
+            return "win"
+        return "mac" if "darwin" in s else "linux"
+
+    m2 = Path.home() / ".m2" / "repository"
+    jfx_ver = "21.0.2"
+    gson_ver = "2.11.0"
+    clf = _javafx_classifier()
+
+    def _jfx(artifact: str) -> str:
+        return str(m2 / "org" / "openjfx" / artifact / jfx_ver / f"{artifact}-{jfx_ver}-{clf}.jar")
+
+    gson = str(m2 / "com" / "google" / "code" / "gson" / "gson" / gson_ver / f"gson-{gson_ver}.jar")
+
+    drag_app = java_dir / "drag-app"
+    classes = drag_app / "target" / "classes"
+
+    cmd = [
+        "java",
+        f"-javaagent:{agent_jar}=port={port}",
+        "-p", os.pathsep.join([
+            str(classes), str(agent_jar),
+            _jfx("javafx-controls"), _jfx("javafx-graphics"), _jfx("javafx-base"), gson,
+        ]),
+        "-m", "dev.omniui.demo.drag/dev.omniui.demo.drag.DragDropApp",
+    ]
+
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+# ---------------------------------------------------------------------------
 # CLI options
 # ---------------------------------------------------------------------------
 

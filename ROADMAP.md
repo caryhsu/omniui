@@ -97,7 +97,8 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Soft assertions** — `with client.soft_assert() as sa:` collects all failures and reports them together instead of stopping at the first
 - [x] **Retry helper** — `@client.retry(times=3, delay=0.5)` decorator for flaky assertion blocks
 - [x] **Structured action trace** — every action logged with timestamp, selector, and result; printed as a timeline on test failure
-- [ ] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`
+- [x] **Parallel test support** — document and example for running multiple `OmniUI` clients against separate app instances with `pytest-xdist`
+  - Worker-aware `omniui_parallel` fixture; `_worker_port()` helper; `tests/conftest_parallel_example.py`; `tests/test_parallel_example.py`; `docs/parallel-testing.md`
 - [x] **pytest fixture integration** — `@pytest.fixture` that auto-connects and disconnects; keeps test boilerplate minimal
 - [x] **Auto-screenshot on failure** — automatically capture and save a screenshot when any action raises an exception
 - [x] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
@@ -128,6 +129,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
   - [x] **Wait injection checkbox** — "Insert wait_for_*" toggle in GUI; setting applied at Record time
 - [ ] **Drag & Drop recording** — capture `MOUSE_PRESSED` + `MOUSE_RELEASED` pairs in the Recorder; infer source/target nodes and emit `client.drag(id=...).to(id=...)` in generated scripts
+  - [x] **Drag & Drop recording** — `MOUSE_PRESSED/RELEASED` filters; `PickResult` for drop target; `dragJustFired` suppresses spurious click; generates `client.drag(...).to(...)`
 - [x] **Drag & Drop recording** — `MOUSE_PRESSED`+`MOUSE_RELEASED` pair with ≥15 px distance emits `drag` event; codegen outputs `client.drag(id=...).to(id=...)`
 
 ---

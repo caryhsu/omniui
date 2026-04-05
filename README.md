@@ -167,6 +167,7 @@ Documentation hub:
 - [docs/index.md](docs/index.md)
 - [Architecture diagrams](docs/architecture.md)
 - [Manual smoke checklist](docs/manual-smoke.md)
+- [Parallel testing guide](docs/parallel-testing.md)
 
 Full API reference:
 
