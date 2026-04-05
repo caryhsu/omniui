@@ -138,7 +138,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     // ── Recorder ─────────────────────────────────────────────────────────────
 
-    ActionResult startRecording() {
+    @Override
+    public ActionResult startRecording() {
         return ReflectiveJavaFxSupport.onFxThread(() -> {
             Object scene = sceneSupplier.get();
             if (scene == null) {
@@ -190,7 +191,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         });
     }
 
-    List<Map<String, Object>> stopRecordingFlush() {
+    @Override
+    public List<Map<String, Object>> stopRecordingFlush() {
         return ReflectiveJavaFxSupport.onFxThread(() -> {
             Object scene = sceneSupplier.get();
             if (scene != null && mouseEventFilter != null) {
