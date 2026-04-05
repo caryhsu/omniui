@@ -25,6 +25,10 @@ client = OmniUI.connect(...)
 - `ActionTrace`
 - `ResolvedElement`
 - `ActionLogEntry`
+- `UISnapshot`
+- `UIDiff`
+- `RecordedEvent`
+- `RecordedScript`
 
 ## Connection
 
@@ -152,6 +156,30 @@ resolve element、取得文字，並與 `expected` 比對。
 回傳目前 client session 的 action log。
 
 列表內容只包含已完成的 action result。
+
+## UI Recorder
+
+錄製使用者與 JavaFX app 的互動，並產生可重播的 Python 腳本。
+
+### `client.start_recording() -> None`
+
+在 JavaFX Scene 上掛 `EventFilter`，開始擷取 `MOUSE_CLICKED` 和 `KEY_TYPED` 事件。設定 `client._recording = True`。
+
+```python
+client.start_recording()
+```
+
+### `client.stop_recording() -> RecordedScript`
+
+移除 EventFilter，從 agent flush 緩衝事件，對每個事件執行 selector inference，並產生 Python 測試腳本。設定 `client._recording = False`。
+
+```python
+script = client.stop_recording()
+print(f"{len(script.events)} 個事件，{len(script.script)} 字元")
+script.save("recorded_test.py")
+```
+
+回傳 `RecordedScript` 實例。
 
 ## Selectors
 
@@ -374,6 +402,50 @@ btn.verify_text("Login")
 - `action: str`
 - `timestamp: datetime`
 - `result: ActionResult`
+
+## `UISnapshot`
+
+由 `client.snapshot()` 擷取的 scene graph 快照。
+
+欄位：
+- `nodes: list[dict[str, Any]]` — 擷取時的完整節點列表
+- `timestamp: float` — Unix timestamp
+
+Method：
+- `save(path: str | Path) -> None` — 寫入 JSON 檔案
+- `UISnapshot.load(path: str | Path) -> UISnapshot` — 從 JSON 還原
+
+## `UIDiff`
+
+比較兩個 `UISnapshot` 的結果，由 `client.diff(before, after)` 回傳。
+
+欄位：
+- `added: list[dict]`
+- `removed: list[dict]`
+- `changed: list[dict]`
+
+## `RecordedEvent`
+
+錄製 session 中擷取的單一互動事件。
+
+欄位：
+- `event_type: str` — `"click"` 或 `"type"`
+- `fx_id: str` — 目標節點的 `fx:id`（未知時為空字串）
+- `text: str` — 輸入文字（`"type"` 事件專用）
+- `node_type: str` — JavaFX class 簡稱（如 `"Button"`）
+- `node_index: int` — 同類型節點中的零起始索引
+- `timestamp: float` — Unix timestamp
+
+## `RecordedScript`
+
+`client.stop_recording()` 的回傳值。
+
+欄位：
+- `events: list[RecordedEvent]`
+- `script: str` — 產生的 Python 測試腳本字串
+
+Method：
+- `save(path: str | Path) -> None` — 將腳本寫入檔案
 
 ## OCR 與 Vision Provider Interface
 

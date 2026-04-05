@@ -25,6 +25,10 @@ Core model types:
 - `ActionTrace`
 - `ResolvedElement`
 - `ActionLogEntry`
+- `UISnapshot`
+- `UIDiff`
+- `RecordedEvent`
+- `RecordedScript`
 
 ## Connection
 
@@ -775,6 +779,30 @@ Alias for `wait_for_text`. Provided for readability in value-assertion contexts.
 client.wait_for_value("totalField", "42")
 ```
 
+## UI Recorder
+
+Records user interactions with the JavaFX app and generates a replayable Python script.
+
+### `client.start_recording() -> None`
+
+Attaches an `EventFilter` to the JavaFX Scene to intercept `MOUSE_CLICKED` and `KEY_TYPED` events. Sets `client._recording = True`.
+
+```python
+client.start_recording()
+```
+
+### `client.stop_recording() -> RecordedScript`
+
+Removes the EventFilter, flushes buffered events from the agent, runs selector inference on each event, and generates a Python test script. Sets `client._recording = False`.
+
+```python
+script = client.stop_recording()
+print(f"{len(script.events)} events, {len(script.script)} chars")
+script.save("recorded_test.py")
+```
+
+Returns a `RecordedScript` instance.
+
 ## Close App
 
 ### `client.close_app() -> ActionResult`
@@ -865,6 +893,50 @@ Fields:
 - `action: str`
 - `timestamp: datetime`
 - `result: ActionResult`
+
+## `UISnapshot`
+
+A frozen snapshot of the scene graph, captured by `client.snapshot()`.
+
+Fields:
+- `nodes: list[dict[str, Any]]` — full node list at capture time
+- `timestamp: float` — Unix timestamp
+
+Methods:
+- `save(path: str | Path) -> None` — write to JSON file
+- `UISnapshot.load(path: str | Path) -> UISnapshot` — restore from JSON file
+
+## `UIDiff`
+
+Result of comparing two `UISnapshot` instances via `client.diff(before, after)`.
+
+Fields:
+- `added: list[dict]`
+- `removed: list[dict]`
+- `changed: list[dict]`
+
+## `RecordedEvent`
+
+A single interaction event captured during a recording session.
+
+Fields:
+- `event_type: str` — `"click"` or `"type"`
+- `fx_id: str` — `fx:id` of the target node (empty string if unknown)
+- `text: str` — typed text (for `"type"` events)
+- `node_type: str` — JavaFX class short name (e.g., `"Button"`)
+- `node_index: int` — zero-based index among same-type siblings
+- `timestamp: float` — Unix timestamp
+
+## `RecordedScript`
+
+Output of `client.stop_recording()`.
+
+Fields:
+- `events: list[RecordedEvent]`
+- `script: str` — generated Python test script string
+
+Methods:
+- `save(path: str | Path) -> None` — write script to file
 
 ## OCR and Vision Provider Interfaces
 
