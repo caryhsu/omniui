@@ -170,7 +170,7 @@ class RecorderApp:
             return
 
         try:
-            self._client = OmniUI(port=agent["port"])
+            self._client = OmniUI.connect(port=agent["port"])
             self._client.start_recording()
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to start recording:\n{exc}")
