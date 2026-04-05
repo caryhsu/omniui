@@ -84,6 +84,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "get_clipboard"   -> doGetClipboard();
             case "set_clipboard"   -> doSetClipboard(payload);
             case "click_at"        -> doClickAt(payload);
+            case "drag"            -> doDrag(selector, payload);
+            case "drag_to"         -> doDragTo(selector, payload);
             case "get_windows"         -> ReflectiveJavaFxSupport.onFxThread(() -> handleGetWindows());
             case "focus_window"        -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
             case "maximize_window"     -> ReflectiveJavaFxSupport.onFxThread(() -> handleWindowAction(action, payload));
@@ -857,10 +859,186 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         });
     }
 
+    // ── Drag & Drop ──────────────────────────────────────────────────────────
+
+    /**
+     * Drag source node to target node by firing MOUSE_PRESSED → MOUSE_DRAGGED (steps) → MOUSE_RELEASED.
+     * Both source and target are resolved by selector; target selector is in payload.target.
+     */
+    private ActionResult doDrag(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            DiscoverySnapshot snap = snapshot();
+
+            Optional<NodeRef> srcRef = resolve(selector, snap);
+            if (srcRef.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "source_not_found"));
+            }
+
+            JsonObject targetSel = payload != null && payload.has("target") && payload.get("target").isJsonObject()
+                ? payload.getAsJsonObject("target") : null;
+            if (targetSel == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "missing_target_selector"));
+            }
+            Optional<NodeRef> dstRef = resolve(targetSel, snap);
+            if (dstRef.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "target_not_found"));
+            }
+
+            double[] srcScene = nodeCenterInScene(srcRef.get().node());
+            double[] dstScene = nodeCenterInScene(dstRef.get().node());
+            if (srcScene == null || dstScene == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "bounds_unavailable"));
+            }
+
+            String srcFxId = asString(srcRef.get().metadata().get("fxId"));
+            String dstFxId = asString(dstRef.get().metadata().get("fxId"));
+            try {
+                fireDragSequence(srcScene[0], srcScene[1], dstScene[0], dstScene[1]);
+                return ActionResult.success("javafx", null,
+                    Map.of("sourceFxId", srcFxId == null ? "" : srcFxId,
+                           "targetFxId", dstFxId == null ? "" : dstFxId), null);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of(
+                    "reason", "drag_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Drag source node to absolute scene coordinates (to_x, to_y).
+     */
+    private ActionResult doDragTo(JsonObject selector, JsonObject payload) {
+        return ReflectiveJavaFxSupport.onFxThread(() -> {
+            DiscoverySnapshot snap = snapshot();
+            Optional<NodeRef> srcRef = resolve(selector, snap);
+            if (srcRef.isEmpty()) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "source_not_found"));
+            }
+            double toX = payload != null && payload.has("to_x") ? payload.get("to_x").getAsDouble() : 0;
+            double toY = payload != null && payload.has("to_y") ? payload.get("to_y").getAsDouble() : 0;
+            double[] srcScene = nodeCenterInScene(srcRef.get().node());
+            if (srcScene == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "bounds_unavailable"));
+            }
+            String srcFxId = asString(srcRef.get().metadata().get("fxId"));
+            try {
+                fireDragSequence(srcScene[0], srcScene[1], toX, toY);
+                return ActionResult.success("javafx", null,
+                    Map.of("sourceFxId", srcFxId == null ? "" : srcFxId,
+                           "toX", toX, "toY", toY), null);
+            } catch (Exception ex) {
+                return ActionResult.failure(List.of("javafx"), Map.of(
+                    "reason", "drag_to_failed", "message", ex.getMessage() == null ? "" : ex.getMessage()));
+            }
+        });
+    }
+
+    /** Returns [sceneX, sceneY] of the node's centre, or null on failure. */
+    private double[] nodeCenterInScene(Object node) {
+        Object bounds = safeInvoke(node, "getBoundsInLocal");
+        if (bounds == null) return null;
+        Object w = safeInvoke(bounds, "getWidth");
+        Object h = safeInvoke(bounds, "getHeight");
+        double localX = (w instanceof Number nw) ? nw.doubleValue() / 2 : 5;
+        double localY = (h instanceof Number nh) ? nh.doubleValue() / 2 : 5;
+        Object scenePt = safeInvoke(node, "localToScene", localX, localY);
+        if (scenePt == null) return null;
+        Object sx = safeInvoke(scenePt, "getX");
+        Object sy = safeInvoke(scenePt, "getY");
+        if (!(sx instanceof Number) || !(sy instanceof Number)) return null;
+        return new double[]{ ((Number) sx).doubleValue(), ((Number) sy).doubleValue() };
+    }
+
+    /** Returns [screenX, screenY] from scene coordinates, or falls back to scene coords. */
+    private double[] sceneToScreen(double sceneX, double sceneY) {
+        Object scene = sceneSupplier.get();
+        if (scene == null) return new double[]{ sceneX, sceneY };
+        Object screenPt = safeInvoke(scene, "localToScreen", sceneX, sceneY);
+        if (screenPt == null) return new double[]{ sceneX, sceneY };
+        Object sx = safeInvoke(screenPt, "getX");
+        Object sy = safeInvoke(screenPt, "getY");
+        if (sx instanceof Number nx && sy instanceof Number ny) {
+            return new double[]{ nx.doubleValue(), ny.doubleValue() };
+        }
+        return new double[]{ sceneX, sceneY };
+    }
+
+    /**
+     * Fires MOUSE_PRESSED → 5 MOUSE_DRAGGED steps → MOUSE_RELEASED on the scene root,
+     * simulating a drag from (fromX, fromY) to (toX, toY) in scene coordinates.
+     */
+    private void fireDragSequence(double fromX, double fromY, double toX, double toY) throws Exception {
+        Object scene = sceneSupplier.get();
+        Object root  = scene != null ? ReflectiveJavaFxSupport.invoke(scene, "getRoot") : null;
+        if (root == null) throw new IllegalStateException("no scene root");
+
+        Class<?> mouseCls  = Class.forName("javafx.scene.input.MouseEvent");
+        Class<?> btnCls    = Class.forName("javafx.scene.input.MouseButton");
+        Class<?> pickCls   = Class.forName("javafx.scene.input.PickResult");
+        Class<?> etCls     = Class.forName("javafx.event.EventType");
+        Class<?> eventCls  = Class.forName("javafx.event.Event");
+        Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+
+        Object primary  = btnCls.getField("PRIMARY").get(null);
+        Object pressed  = mouseCls.getField("MOUSE_PRESSED").get(null);
+        Object dragged  = mouseCls.getField("MOUSE_DRAGGED").get(null);
+        Object released = mouseCls.getField("MOUSE_RELEASED").get(null);
+
+        java.lang.reflect.Constructor<?> ctor = mouseCls.getConstructor(
+            etCls,
+            double.class, double.class, double.class, double.class,
+            btnCls, int.class,
+            boolean.class, boolean.class, boolean.class, boolean.class,
+            boolean.class, boolean.class, boolean.class,
+            boolean.class, boolean.class, boolean.class,
+            pickCls
+        );
+        java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+
+        // MOUSE_PRESSED at source
+        double[] fromScreen = sceneToScreen(fromX, fromY);
+        Object evPressed = ctor.newInstance(pressed,
+            fromX, fromY, fromScreen[0], fromScreen[1],
+            primary, 1,
+            false, false, false, false,
+            true, false, false,          // primaryButtonDown=true
+            false, false, true,
+            (Object) null);
+        fireMethod.invoke(null, root, evPressed);
+
+        // MOUSE_DRAGGED steps (interpolate in 5 steps)
+        int steps = 5;
+        for (int i = 1; i <= steps; i++) {
+            double t = (double) i / steps;
+            double ix = fromX + (toX - fromX) * t;
+            double iy = fromY + (toY - fromY) * t;
+            double[] iScreen = sceneToScreen(ix, iy);
+            Object evDragged = ctor.newInstance(dragged,
+                ix, iy, iScreen[0], iScreen[1],
+                primary, 1,
+                false, false, false, false,
+                true, false, false,      // primaryButtonDown=true
+                false, false, false,     // stillSincePress=false
+                (Object) null);
+            fireMethod.invoke(null, root, evDragged);
+        }
+
+        // MOUSE_RELEASED at target
+        double[] toScreen = sceneToScreen(toX, toY);
+        Object evReleased = ctor.newInstance(released,
+            toX, toY, toScreen[0], toScreen[1],
+            primary, 1,
+            false, false, false, false,
+            false, false, false,         // primaryButtonDown=false (released)
+            false, false, true,
+            (Object) null);
+        fireMethod.invoke(null, root, evReleased);
+    }
+
+
 
     private ActionResult handleDoubleClick(Object node, String fxId, String handle) {
         try {
-            // Compute center of node in local coordinates
             Object bounds = safeInvoke(node, "getBoundsInLocal");
             double localX = 5, localY = 5;
             if (bounds != null) {

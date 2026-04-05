@@ -269,7 +269,33 @@ client.click(text="Login", type="Button")
 
 ---
 
-## ToolBar 操作
+## Drag & Drop
+
+### `client.drag(delay=None, **selector) -> _DragBuilder`
+
+從符合 `selector` 的節點開始拖曳。回傳 fluent builder，接續呼叫 `.to()` 或 `.to_coords()`。
+
+底層會在 JavaFX scene root 上觸發 `MOUSE_PRESSED` → 5 × `MOUSE_DRAGGED`（插值）→ `MOUSE_RELEASED`。
+
+- `delay: float | None` — 動作後的等待時間（秒）。
+
+```python
+# 拖曳到另一個節點
+client.drag(id="sourceItem").to(id="targetItem")
+
+# 拖曳到絕對場景座標
+client.drag(id="handle").to_coords(x=300, y=200)
+```
+
+### `client.drag_to(to_x, to_y, delay=None, **selector) -> ActionResult`
+
+將符合 `selector` 的節點拖曳到場景絕對座標 `(to_x, to_y)`。
+
+```python
+client.drag_to(id="handle", to_x=300, to_y=200)
+```
+
+
 
 ### `client.get_toolbar_items(*, id) -> ActionResult`
 

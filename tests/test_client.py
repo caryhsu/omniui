@@ -1530,3 +1530,75 @@ class RecorderClientTests(unittest.TestCase):
             self.assertIn("client.click", content)
         finally:
             os.unlink(path)
+
+
+class DragAndDropTests(unittest.TestCase):
+    """Tests for drag() / drag_to() and _DragBuilder."""
+
+    def _make_client_and_capture(self, mock_urlopen):
+        calls = []
+
+        def side_effect(req, timeout=None):
+            url = req.full_url
+            body = json.loads(req.data.decode()) if req.data else {}
+            calls.append({"url": url, "body": body})
+            if url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App", "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True,
+                "resolved": {"tier": "javafx", "targetRef": "n1", "matchedAttributes": {}, "confidence": None},
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": None,
+            })
+
+        mock_urlopen.side_effect = side_effect
+        client = OmniUI.connect(port=48100)
+        return client, calls
+
+    @patch("urllib.request.urlopen")
+    def test_drag_to_sends_correct_action(self, mock_urlopen) -> None:
+        client, calls = self._make_client_and_capture(mock_urlopen)
+        client.drag_to(id="handle", to_x=300.0, to_y=200.0)
+        action_call = calls[-1]["body"]
+        self.assertEqual(action_call["action"], "drag_to")
+        self.assertEqual(action_call["selector"], {"id": "handle"})
+        self.assertEqual(action_call["payload"]["to_x"], 300.0)
+        self.assertEqual(action_call["payload"]["to_y"], 200.0)
+
+    @patch("urllib.request.urlopen")
+    def test_drag_builder_to_sends_correct_action(self, mock_urlopen) -> None:
+        client, calls = self._make_client_and_capture(mock_urlopen)
+        client.drag(id="srcItem").to(id="dstItem")
+        action_call = calls[-1]["body"]
+        self.assertEqual(action_call["action"], "drag")
+        self.assertEqual(action_call["selector"], {"id": "srcItem"})
+        self.assertEqual(action_call["payload"]["target"], {"id": "dstItem"})
+
+    @patch("urllib.request.urlopen")
+    def test_drag_builder_to_coords_sends_correct_action(self, mock_urlopen) -> None:
+        client, calls = self._make_client_and_capture(mock_urlopen)
+        client.drag(id="handle").to_coords(x=150.0, y=75.0)
+        action_call = calls[-1]["body"]
+        self.assertEqual(action_call["action"], "drag_to")
+        self.assertEqual(action_call["selector"], {"id": "handle"})
+        self.assertEqual(action_call["payload"]["to_x"], 150.0)
+        self.assertEqual(action_call["payload"]["to_y"], 75.0)
+
+    @patch("time.sleep")
+    @patch("urllib.request.urlopen")
+    def test_drag_respects_step_delay(self, mock_urlopen, mock_sleep) -> None:
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        client.step_delay = 0.3
+        client.drag(id="a").to(id="b")
+        mock_sleep.assert_called_with(0.3)
+
+    @patch("time.sleep")
+    @patch("urllib.request.urlopen")
+    def test_drag_per_call_delay_override(self, mock_urlopen, mock_sleep) -> None:
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        client.step_delay = 0.3
+        client.drag(id="a", delay=1.0).to(id="b")
+        mock_sleep.assert_called_with(1.0)
+

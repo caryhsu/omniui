@@ -105,7 +105,8 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **CI/CD examples** — GitHub Actions workflows: `ci-unit.yml` (pytest only) and `ci-integration.yml` (Xvfb + full demo suite)
 - [x] **HTML test report** — pytest-html integration; screenshots embedded inline on failure; see `docs/html-report.md`
 - [ ] **Video recording** — complement screenshot for richer debug output
-- [ ] **Drag & Drop** — `drag(source_id, target_id)`
+- [x] **Drag & Drop** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`; fires MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
+- [ ] **Dedicated drag-drop demo app** — standalone JavaFX app with two ListViews (left → right item transfer) as a richer, real-world drag & drop showcase; replaces the cramped section inside advanced-app
 - [x] **Hover** — `hover(id=...)` to trigger tooltips or hover states
 - [x] **Clipboard operations** — `copy()`, `paste()`, `get_clipboard()`
 
@@ -125,6 +126,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
 - [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
   - [x] **Wait injection checkbox** — "Insert wait_for_*" toggle in GUI; setting applied at Record time
+- [ ] **Drag & Drop recording** — capture `MOUSE_PRESSED` + `MOUSE_RELEASED` pairs in the Recorder; infer source/target nodes and emit `client.drag(id=...).to(id=...)` in generated scripts
 
 ---
 

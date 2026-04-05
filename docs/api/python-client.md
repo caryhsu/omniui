@@ -273,6 +273,30 @@ client.double_click(id="myTreeItem")
 client.double_click(text="Record 1", type="ListCell")
 ```
 
+### `client.drag(delay=None, **selector) -> _DragBuilder`
+
+Start a drag gesture from the node matched by `selector`. Returns a fluent builder — chain with `.to()` or `.to_coords()`.
+
+Fires `MOUSE_PRESSED` → 5 × `MOUSE_DRAGGED` (interpolated) → `MOUSE_RELEASED` on the JavaFX scene root.
+
+- `delay: float | None` — per-call sleep (seconds) after the action.
+
+```python
+# Drag one node to another
+client.drag(id="sourceItem").to(id="targetItem")
+
+# Drag to absolute scene coordinates
+client.drag(id="handle").to_coords(x=300, y=200)
+```
+
+### `client.drag_to(to_x, to_y, delay=None, **selector) -> ActionResult`
+
+Drag the node matched by `selector` to absolute scene-relative coordinates `(to_x, to_y)`.
+
+```python
+client.drag_to(id="handle", to_x=300, to_y=200)
+```
+
 ### `client.press_key(key, delay=None, **selector) -> ActionResult`
 
 Fire `KEY_PRESSED` + `KEY_RELEASED` for the given key string.
