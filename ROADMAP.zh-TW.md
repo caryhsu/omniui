@@ -126,6 +126,7 @@
 - [ ] **錄製 UI 工具** — ~~互動式 TUI/GUI 應用程式（`python -m omniui.recorder`），提供錄製 / 停止 / 儲存控制，讓非工程師也能不寫程式即可錄製操作~~
 - [x] **錄製 UI 工具** — `python -m omniui.recorder` tkinter GUI；自動掃描執行中的 app，提供錄製 / 停止 / 儲存流程
   - [x] **Wait 插入 checkbox** — GUI 中的「Insert wait_for_*」開關；錄製開始時套用設定
+- [ ] **拖放錄製（Drag & Drop recording）** — Recorder 捕捉 `MOUSE_PRESSED` + `MOUSE_RELEASED` 配對，推導起終點節點，在產出腳本中輸出 `client.drag(id=...).to(id=...)`
 
 ---
 

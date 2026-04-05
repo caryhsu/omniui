@@ -125,6 +125,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
 - [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
   - [x] **Wait injection checkbox** — "Insert wait_for_*" toggle in GUI; setting applied at Record time
+- [ ] **Drag & Drop recording** — capture `MOUSE_PRESSED` + `MOUSE_RELEASED` pairs in the Recorder; infer source/target nodes and emit `client.drag(id=...).to(id=...)` in generated scripts
 
 ---
 
