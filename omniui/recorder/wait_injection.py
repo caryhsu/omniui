@@ -33,6 +33,9 @@ def _wait_line(event: RecordedEvent, timeout: float) -> str | None:
     else:
         return None  # fragile selector — skip wait
 
+    if event.event_type == "drag":
+        # For drag, wait for the source to be visible before dragging
+        return f"client.wait_for_visible({selector}, timeout={timeout})"
     if event.node_type in _ENABLED_TYPES:
         return f"client.wait_for_enabled({selector}, timeout={timeout})"
     return f"client.wait_for_visible({selector}, timeout={timeout})"

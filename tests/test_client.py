@@ -1602,3 +1602,92 @@ class DragAndDropTests(unittest.TestCase):
         client.drag(id="a", delay=1.0).to(id="b")
         mock_sleep.assert_called_with(1.0)
 
+
+class DragRecordingTests(unittest.TestCase):
+    """Tests for drag event recording in script_gen, models, and wait_injection."""
+
+    def _drag_event(self, fx_id="item_apple", text="Apple",
+                    to_fx_id="rightPanel", to_text="Selected"):
+        from omniui.core.models import RecordedEvent
+        return RecordedEvent(
+            event_type="drag",
+            fx_id=fx_id, text=text,
+            node_type="Label", node_index=0,
+            timestamp=1.0,
+            to_fx_id=to_fx_id, to_text=to_text,
+            to_node_type="VBox", to_node_index=0,
+        )
+
+    def test_drag_event_script_gen_by_id(self):
+        from omniui.recorder import generate_script
+        script = generate_script([self._drag_event()])
+        self.assertIn('client.drag(id="item_apple").to(id="rightPanel")', script)
+
+    def test_drag_event_script_gen_by_text_fallback(self):
+        from omniui.recorder import generate_script
+        # No fx_id → fall back to text
+        event = self._drag_event(fx_id="", to_fx_id="")
+        script = generate_script([event])
+        self.assertIn('client.drag(text="Apple").to(text="Selected")', script)
+
+    def test_drag_event_script_gen_fragile(self):
+        from omniui.recorder import generate_script
+        # No fx_id, no text → fragile
+        event = self._drag_event(fx_id="", text="", to_fx_id="", to_text="")
+        script = generate_script([event])
+        self.assertIn("WARN: fragile selector", script)
+
+    def test_drag_wait_injection_uses_wait_for_visible(self):
+        from omniui.recorder import generate_script
+        # Two drag events; wait_injection should insert wait_for_visible before second
+        e1 = self._drag_event(fx_id="item_apple")
+        e2 = self._drag_event(fx_id="item_banana")
+        script = generate_script([e1, e2], wait_injection=True)
+        self.assertIn('client.wait_for_visible(id="item_banana"', script)
+
+    def test_recorded_event_to_fields_populated(self):
+        from omniui.core.models import RecordedEvent
+        e = RecordedEvent(
+            event_type="drag", fx_id="a", text="A",
+            node_type="Label", node_index=0, timestamp=0.0,
+            to_fx_id="b", to_text="B", to_node_type="VBox", to_node_index=1,
+        )
+        self.assertEqual(e.to_fx_id, "b")
+        self.assertEqual(e.to_node_index, 1)
+
+    def test_recorder_client_parses_drag_event(self):
+        from unittest.mock import patch
+        from omniui import OmniUI
+
+        drag_raw = {
+            "type": "drag",
+            "fxId": "item_apple", "text": "Apple",
+            "nodeType": "Label", "nodeIndex": 0, "timestamp": 1.0,
+            "toFxId": "rightPanel", "toText": "Selected",
+            "toNodeType": "VBox", "toNodeIndex": 0,
+        }
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            if req.full_url.endswith("/events/start"):
+                return _FakeResponse({"ok": True})
+            if req.full_url.endswith("/events"):
+                return _FakeResponse({"ok": True, "events": [drag_raw]})
+            return _FakeResponse({"ok": True, "resolved": None,
+                                   "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                                   "value": "ok"})
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            client = OmniUI.connect(port=48100)
+            client.start_recording()
+            result = client.stop_recording()
+
+        self.assertEqual(len(result.events), 1)
+        self.assertEqual(result.events[0].event_type, "drag")
+        self.assertEqual(result.events[0].to_fx_id, "rightPanel")
+        self.assertIn('client.drag(id="item_apple").to(id="rightPanel")', result.script)
+

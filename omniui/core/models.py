@@ -115,12 +115,17 @@ class UIDiff:
 class RecordedEvent:
     """A single user interaction event captured by the Java agent."""
 
-    event_type: str   # "click" | "type"
+    event_type: str   # "click" | "type" | "drag"
     fx_id: str
     text: str
     node_type: str
     node_index: int
     timestamp: float
+    # drag-only fields (populated when event_type == "drag")
+    to_fx_id: str = ""
+    to_text: str = ""
+    to_node_type: str = ""
+    to_node_index: int = 0
 
 
 @dataclass

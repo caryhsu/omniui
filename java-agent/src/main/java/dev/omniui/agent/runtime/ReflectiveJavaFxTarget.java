@@ -33,8 +33,22 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private final ConcurrentLinkedDeque<Map<String, Object>> recorderBuffer = new ConcurrentLinkedDeque<>();
     private final ConcurrentHashMap<String, StringBuilder> keyAccumulator   = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long>          keyTimestamps    = new ConcurrentHashMap<>();
-    private volatile Object mouseEventFilter = null;
-    private volatile Object keyEventFilter   = null;
+    private volatile Object mouseEventFilter    = null;
+    private volatile Object keyEventFilter      = null;
+    private volatile Object mousePressFilter    = null;  // for drag detection
+    private volatile Object mouseReleaseFilter  = null;  // for drag detection
+
+    // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
+    private volatile double  dragPressX         = 0;
+    private volatile double  dragPressY         = 0;
+    private volatile String  dragPressId        = "";
+    private volatile String  dragPressText      = "";
+    private volatile String  dragPressType      = "";
+    private volatile int     dragPressIndex     = 0;
+    private volatile double  dragPressTime      = 0;
+    // Set to true after a drag is recorded; onMouseClicked will skip the next click
+    private volatile boolean dragJustFired      = false;
+    private static final double DRAG_MIN_DIST   = 15.0; // px threshold to distinguish drag from click
 
     public ReflectiveJavaFxTarget(String appName, Supplier<Object> sceneSupplier) {
         this.appName = Objects.requireNonNull(appName, "appName");
@@ -178,13 +192,41 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
             );
 
+            mousePressFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onMousePressed(args[0]);
+                    }
+                    return null;
+                }
+            );
+
+            mouseReleaseFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onMouseReleased(args[0]);
+                    }
+                    return null;
+                }
+            );
+
             try {
-                Object mouseClickedType = mouseEventClass.getField("MOUSE_CLICKED").get(null);
-                Object keyTypedType     = keyEventClass.getField("KEY_TYPED").get(null);
+                Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
+                Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
+                Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
+                Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mouseClickedType, mouseEventFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, keyTypedType, keyEventFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, mousePressedType, mousePressFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, mouseReleasedType, mouseReleaseFilter);
             } catch (Exception ex) {
                 return ActionResult.failure(List.of("javafx"), Map.of("reason", "filter_attach_failed", "message", ex.getMessage()));
             }
@@ -203,16 +245,31 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                     Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
                     Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
                     Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
-                    Object mouseClickedType = mouseEventClass.getField("MOUSE_CLICKED").get(null);
-                    Object keyTypedType     = keyEventClass.getField("KEY_TYPED").get(null);
+                    Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
+                    Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
+                    Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
+                    Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
                     scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
                         .invoke(scene, mouseClickedType, mouseEventFilter);
                     scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
                         .invoke(scene, keyTypedType, keyEventFilter);
+                    if (mousePressFilter != null) {
+                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                            .invoke(scene, mousePressedType, mousePressFilter);
+                    }
+                    if (mouseReleaseFilter != null) {
+                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                            .invoke(scene, mouseReleasedType, mouseReleaseFilter);
+                    }
                 } catch (Exception ignored) { /* best-effort */ }
             }
-            mouseEventFilter = null;
-            keyEventFilter   = null;
+            mouseEventFilter   = null;
+            keyEventFilter     = null;
+            mousePressFilter   = null;
+            mouseReleaseFilter = null;
+            dragPressId        = "";
+            dragPressText      = "";
+            dragJustFired      = false;
 
             // Flush any pending key accumulations
             flushKeyAccumulator();
@@ -227,6 +284,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private void onMouseClicked(Object event) {
         if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        // Suppress click that immediately follows a recorded drag
+        if (dragJustFired) { dragJustFired = false; return; }
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {
@@ -246,6 +305,86 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             entry.put("timestamp",  System.currentTimeMillis() / 1000.0);
             recorderBuffer.addLast(entry);
         } catch (Exception ignored) { /* best-effort: never crash the app */ }
+    }
+
+    private void onMousePressed(Object event) {
+        // Record press info for drag detection (consumed by onMouseReleased)
+        dragJustFired = false;
+        try {
+            Object xObj = ReflectiveJavaFxSupport.invoke(event, "getSceneX");
+            Object yObj = ReflectiveJavaFxSupport.invoke(event, "getSceneY");
+            dragPressX    = xObj instanceof Number n ? n.doubleValue() : 0;
+            dragPressY    = yObj instanceof Number n ? n.doubleValue() : 0;
+            dragPressTime = System.currentTimeMillis() / 1000.0;
+
+            Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+            Object node   = target != null ? nearestNode(target) : null;
+            if (node != null) {
+                dragPressId    = nullToEmpty(safeString(node, "getId"));
+                dragPressText  = nullToEmpty(ReflectiveJavaFxSupport.textOf(node));
+                dragPressType  = node.getClass().getSimpleName();
+                dragPressIndex = nodeIndexOf(node);
+            } else {
+                dragPressId = dragPressText = dragPressType = "";
+                dragPressIndex = 0;
+            }
+        } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    private void onMouseReleased(Object event) {
+        if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        try {
+            Object xObj = ReflectiveJavaFxSupport.invoke(event, "getSceneX");
+            Object yObj = ReflectiveJavaFxSupport.invoke(event, "getSceneY");
+            double relX = xObj instanceof Number n ? n.doubleValue() : 0;
+            double relY = yObj instanceof Number n ? n.doubleValue() : 0;
+            double dist = Math.sqrt(Math.pow(relX - dragPressX, 2) + Math.pow(relY - dragPressY, 2));
+
+            // Only record as drag if movement exceeds threshold
+            if (dist < DRAG_MIN_DIST) return;
+
+            // Use PickResult to get the node actually under the cursor at release time.
+            // MOUSE_RELEASED target is always the original press node in JavaFX, so we
+            // must use getPickResult().getIntersectedNode() for the drop target.
+            Object toNode = null;
+            try {
+                Object pickResult = ReflectiveJavaFxSupport.invoke(event, "getPickResult");
+                if (pickResult != null) {
+                    Object intersected = ReflectiveJavaFxSupport.invoke(pickResult, "getIntersectedNode");
+                    toNode = intersected != null ? nearestNode(intersected) : null;
+                }
+            } catch (Exception ignored2) { /* best-effort */ }
+
+            // Fallback: use event target (original press node — less accurate for drag-to)
+            if (toNode == null) {
+                Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+                toNode = target != null ? nearestNode(target) : null;
+            }
+
+            String toFxId = toNode != null ? nullToEmpty(safeString(toNode, "getId"))           : "";
+            String toText = toNode != null ? nullToEmpty(ReflectiveJavaFxSupport.textOf(toNode)) : "";
+            String toType = toNode != null ? toNode.getClass().getSimpleName()                   : "";
+            int    toIdx  = toNode != null ? nodeIndexOf(toNode)                                 : 0;
+
+            // Flush pending key accumulations before emitting drag
+            flushKeyAccumulator();
+
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("type",        "drag");
+            entry.put("fxId",        dragPressId);
+            entry.put("text",        dragPressText);
+            entry.put("nodeType",    dragPressType);
+            entry.put("nodeIndex",   dragPressIndex);
+            entry.put("toFxId",      toFxId);
+            entry.put("toText",      toText);
+            entry.put("toNodeType",  toType);
+            entry.put("toNodeIndex", toIdx);
+            entry.put("timestamp",   dragPressTime);
+            recorderBuffer.addLast(entry);
+
+            // Signal onMouseClicked to skip the click that JavaFX fires after a drag
+            dragJustFired = true;
+        } catch (Exception ignored) { /* best-effort */ }
     }
 
     private void onKeyTyped(Object event) {

@@ -137,6 +137,10 @@ class OmniUIClient:
                 node_type=e.get("nodeType", ""),
                 node_index=int(e.get("nodeIndex", 0)),
                 timestamp=float(e.get("timestamp", 0)),
+                to_fx_id=e.get("toFxId", ""),
+                to_text=e.get("toText", ""),
+                to_node_type=e.get("toNodeType", ""),
+                to_node_index=int(e.get("toNodeIndex", 0)),
             )
             for e in raw_events
         ]
