@@ -29,11 +29,13 @@ class OmniUIClient:
         session_id: str,
         ocr_engine: SimpleOcrEngine | None = None,
         vision_engine: SimpleVisionEngine | None = None,
+        step_delay: float = 0.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.session_id = session_id
         self.ocr_engine = ocr_engine or SimpleOcrEngine()
         self.vision_engine = vision_engine or SimpleVisionEngine()
+        self.step_delay = step_delay
         self._action_log: list[ActionLogEntry] = []
         self._scope: dict[str, Any] | None = None
         self._recording: bool = False
@@ -47,6 +49,7 @@ class OmniUIClient:
         ocr_engine: SimpleOcrEngine | None = None,
         vision_engine: SimpleVisionEngine | None = None,
         connect_timeout: float = 5.0,
+        step_delay: float = 0.0,
     ) -> "OmniUIClient":
         root = base_url.rstrip("/")
         health = cls._request_json("GET", f"{root}/health", timeout=connect_timeout)
@@ -62,6 +65,7 @@ class OmniUIClient:
             session_id=session["sessionId"],
             ocr_engine=ocr_engine,
             vision_engine=vision_engine,
+            step_delay=step_delay,
         )
 
     def get_nodes(self) -> list[dict[str, Any]]:
@@ -220,32 +224,39 @@ class OmniUIClient:
         finally:
             self._scope = None
 
-    def click(self, modifiers: list[str] | None = None, **selector: Any) -> ActionResult:
+    def click(self, modifiers: list[str] | None = None, delay: float | None = None, **selector: Any) -> ActionResult:
         """Click the target node.
 
         modifiers: optional list of modifier keys held during the click.
         Accepts the same format as press_key: case-insensitive, "Ctrl"="Control", "Win"="Meta".
         Examples: ["Ctrl"], ["Shift"], ["Ctrl", "Shift"]
+
+        delay: optional per-call sleep (seconds) after the action, overrides the
+        global ``step_delay`` set on the client.
         """
         payload = {"modifiers": modifiers} if modifiers else None
-        return self._perform("click", selector, payload)
+        return self._perform("click", selector, payload, step_delay_override=delay)
 
-    def double_click(self, **selector: Any) -> ActionResult:
+    def double_click(self, delay: float | None = None, **selector: Any) -> ActionResult:
         """Fire a double-click (MouseEvent clickCount=2) on the target node.
 
         Use for interactions such as expanding TreeView items, opening detail
         views from ListView/TableView rows, or any custom double-click handler.
-        """
-        return self._perform("double_click", selector)
 
-    def hover(self, **selector: Any) -> ActionResult:
+        delay: optional per-call sleep (seconds) after the action.
+        """
+        return self._perform("double_click", selector, step_delay_override=delay)
+
+    def hover(self, delay: float | None = None, **selector: Any) -> ActionResult:
         """Simulate mouse hover by firing MOUSE_ENTERED + MOUSE_MOVED on the target node.
 
         Triggers tooltip display and :hover CSS pseudo-class changes.
         Note: JavaFX tooltips have a default show delay (~1s); pair with
         wait_for_visible or a short sleep before reading tooltip text.
+
+        delay: optional per-call sleep (seconds) after the action.
         """
-        return self._perform("hover", selector)
+        return self._perform("hover", selector, step_delay_override=delay)
 
     def focus(self, **selector: Any) -> ActionResult:
         """Move keyboard focus to the target node by calling requestFocus().
@@ -503,7 +514,7 @@ class OmniUIClient:
         return soft_assert()
 
 
-    def press_key(self, key: str, **selector: Any) -> ActionResult:
+    def press_key(self, key: str, delay: float | None = None, **selector: Any) -> ActionResult:
         """Fire KEY_PRESSED + KEY_RELEASED for the given key string.
 
         Format: Playwright-style "[Modifier+]*Key" — case-insensitive.
@@ -513,8 +524,10 @@ class OmniUIClient:
 
         If selector is provided, fire on that node.
         If omitted, fire on the scene's current focus owner.
+
+        delay: optional per-call sleep (seconds) after the action.
         """
-        return self._perform("press_key", selector, {"key": key})
+        return self._perform("press_key", selector, {"key": key}, step_delay_override=delay)
 
     def select(self, value: str, **selector: Any) -> ActionResult:
         payload: dict[str, Any] = {"value": value}
@@ -522,8 +535,12 @@ class OmniUIClient:
             payload["column"] = selector.pop("column")
         return self._perform("select", selector, payload)
 
-    def type(self, text: str, **selector: Any) -> ActionResult:
-        return self._perform("type", selector, {"input": text})
+    def type(self, text: str, delay: float | None = None, **selector: Any) -> ActionResult:
+        """Type text into the target node.
+
+        delay: optional per-call sleep (seconds) after the action.
+        """
+        return self._perform("type", selector, {"input": text}, step_delay_override=delay)
 
     def get_text(self, **selector: Any) -> ActionResult:
         return self._perform("get_text", selector)
@@ -543,15 +560,17 @@ class OmniUIClient:
         """Scroll the nearest enclosing ScrollPane so the target node is visible."""
         return self._perform("scroll_to", selector)
 
-    def scroll_by(self, delta_x: float, delta_y: float, **selector: Any) -> ActionResult:
+    def scroll_by(self, delta_x: float, delta_y: float, delay: float | None = None, **selector: Any) -> ActionResult:
         """Scroll a ScrollPane by a relative offset in the 0.0–1.0 range.
 
         delta_x / delta_y are added to the current hvalue / vvalue and clamped
         to [0.0, 1.0].  Positive delta_y scrolls down; negative scrolls up.
 
         If no selector is given the first ScrollPane found in the scene is used.
+
+        delay: optional per-call sleep (seconds) after the action.
         """
-        return self._perform("scroll_by", selector, {"delta_x": delta_x, "delta_y": delta_y})
+        return self._perform("scroll_by", selector, {"delta_x": delta_x, "delta_y": delta_y}, step_delay_override=delay)
 
     # ---- Multi-select ------------------------------------------------------
 
@@ -974,7 +993,7 @@ class OmniUIClient:
         self._record_action(action, result)
         return result
 
-    def _perform(self, action: str, selector_payload: dict[str, Any], payload: dict[str, Any] | None = None) -> ActionResult:
+    def _perform(self, action: str, selector_payload: dict[str, Any], payload: dict[str, Any] | None = None, *, step_delay_override: float | None = None) -> ActionResult:
         selector = self.find(**selector_payload)
         if self._scope:
             selector = {**selector, "scope": self._scope}
@@ -997,10 +1016,13 @@ class OmniUIClient:
                 result = retried
         if result.ok or action != "click":
             self._record_action(action, result)
-            return result
-        fallback = self._fallback_click(selector_payload, result)
-        self._record_action(action, fallback)
-        return fallback
+        else:
+            result = self._fallback_click(selector_payload, result)
+            self._record_action(action, result)
+        delay = step_delay_override if step_delay_override is not None else self.step_delay
+        if delay > 0:
+            time.sleep(delay)
+        return result
 
     def _perform_request(
         self,
