@@ -65,6 +65,8 @@ if __package__ in (None, ""):
     import drag.drag_listview_demo as drag_listview_demo  # type: ignore
     # Progress app demos
     import progress.progress_demo as progress_demo  # type: ignore
+    # Image app demos
+    import image.image_demo as image_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -125,6 +127,7 @@ else:
     )
     from .drag import drag_listview_demo
     from .progress import progress_demo
+    from .image import image_demo
 
 from omniui import OmniUI
 
@@ -421,6 +424,22 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
     with progress_ctx:
         _section("Progress Demo")
         progress_demo.main()
+
+    # ── Image App ───────────────────────────────────────────────────────────────
+    _section("Image App demos (port 48105+)")
+    if auto_launch:
+        image_port = OmniUI.find_free_port(48105, 48999)
+        image_cmd = _build_launch_cmd(
+            java_dir / "image-app", "omniui-image-demo",
+            "dev.omniui.demo.image", "dev.omniui.demo.image.ImageDemoApp", image_port,
+        )
+        image_ctx = OmniUI.launch(cmd=image_cmd, port=image_port, timeout=30.0)
+    else:
+        image_ctx = nullcontext()
+
+    with image_ctx:
+        _section("Image Demo")
+        image_demo.main()
 
 
 if __name__ == "__main__":
