@@ -68,7 +68,7 @@
   - 用列/欄索引存取特定儲存格，不依賴 value 比對；適用於無唯一 id 的動態表格內容
 - [x] **ToolBar** — `get_toolbar_items(id=...)`，透過現有 `click` 操作工具列按鈕
   - 存取與操作 `ToolBar` 容器中的項目
-- [ ] **ScrollBar** — `get_scroll_position(id=...)`、`set_scroll_position(id=..., value=...)`
+- [x] **ScrollBar** — `get_scroll_position(id=...)`、`set_scroll_position(id=..., value=...)`
   - 對獨立 `ScrollBar` 節點進行精細捲動控制
 - [ ] **Pagination（分頁）** — `get_page()`、`set_page(n)`、`next_page()`、`prev_page()`
   - 自動化 JavaFX `Pagination` 控件

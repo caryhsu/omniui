@@ -315,6 +315,20 @@ class OmniUIClient:
         """
         return self._perform("get_toolbar_items", {"id": id})
 
+    def get_scroll_position(self, *, id: str) -> ActionResult:
+        """Return the current scroll position of a ScrollBar.
+
+        ``ActionResult.value`` is a dict with keys ``value``, ``min``, ``max``.
+        """
+        return self._perform("get_scroll_position", {"id": id})
+
+    def set_scroll_position(self, *, id: str, value: float) -> ActionResult:
+        """Set the scroll position of a ScrollBar.
+
+        Values outside ``[min, max]`` are silently clamped by the agent.
+        """
+        return self._perform("set_scroll_position", {"id": id}, {"value": value})
+
     def retry(
         self,
         fn: Callable,

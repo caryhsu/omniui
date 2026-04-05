@@ -68,7 +68,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - Access a specific cell by row/column index, not just by value; needed for dynamic table content without unique ids
 - [x] **ToolBar** — `get_toolbar_items(id=...)`, click toolbar buttons via existing `click`
   - Access and interact with items in a `ToolBar` container
-- [ ] **ScrollBar** — `get_scroll_position(id=...)`, `set_scroll_position(id=..., value=...)`
+- [x] **ScrollBar** — `get_scroll_position(id=...)`, `set_scroll_position(id=..., value=...)`
   - Fine-grained scroll control for standalone `ScrollBar` nodes
 - [ ] **Pagination** — `get_page()`, `set_page(n)`, `next_page()`, `prev_page()`
   - Automate JavaFX `Pagination` control

@@ -322,6 +322,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "click_cell"  -> doClickCell(node, fxId, handle, payload);
             case "edit_cell"   -> doEditCell(node, fxId, handle, payload);
             case "sort_column" -> doSortColumn(node, fxId, handle, payload);
+            case "get_scroll_position" -> handleGetScrollPosition(node, fxId, handle);
+            case "set_scroll_position" -> handleSetScrollPosition(node, fxId, handle, payload);
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }
@@ -2373,6 +2375,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ex) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_toolbar_items_failed", "error", ex.getMessage()));
         }
+    }
+
+    private ActionResult handleGetScrollPosition(Object node, String fxId, String handle) {
+        if (!(node instanceof javafx.scene.control.ScrollBar sb)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+        }
+        Map<String, Object> pos = new LinkedHashMap<>();
+        pos.put("value", sb.getValue());
+        pos.put("min", sb.getMin());
+        pos.put("max", sb.getMax());
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), pos);
+    }
+
+    private ActionResult handleSetScrollPosition(Object node, String fxId, String handle, JsonObject payload) {
+        if (!(node instanceof javafx.scene.control.ScrollBar sb)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
+        }
+        double rawValue = payload != null && payload.has("value") ? payload.get("value").getAsDouble() : 0.0;
+        double clamped = Math.max(sb.getMin(), Math.min(sb.getMax(), rawValue));
+        sb.setValue(clamped);
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), clamped);
     }
 
     private ActionResult handleGetTabs(Object node, String fxId, String handle) {

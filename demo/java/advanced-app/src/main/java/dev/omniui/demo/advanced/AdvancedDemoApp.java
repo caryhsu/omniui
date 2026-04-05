@@ -333,9 +333,24 @@ public final class AdvancedDemoApp extends Application {
 
         VBox toolBarSection = section("ToolBar Demo", "toolBarSection", mainToolBar, tbStatus);
 
+        // ScrollBar Demo
+        javafx.scene.control.ScrollBar demoScrollBar = new javafx.scene.control.ScrollBar();
+        demoScrollBar.setId("demoScrollBar");
+        demoScrollBar.setMin(0);
+        demoScrollBar.setMax(100);
+        demoScrollBar.setValue(30);
+        demoScrollBar.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        demoScrollBar.setMinWidth(200);
+        Label scrollBarValueLabel = new Label("ScrollBar value: 30.0");
+        scrollBarValueLabel.setId("scrollBarValueLabel");
+        demoScrollBar.valueProperty().addListener((obs, oldV, newV) ->
+            scrollBarValueLabel.setText("ScrollBar value: " + String.format("%.1f", newV.doubleValue())));
+        VBox scrollBarSection = section("ScrollBar Demo", "scrollBarSection", demoScrollBar, scrollBarValueLabel);
+
         VBox root = new VBox(
             18,
             toolBarSection,
+            scrollBarSection,
             contextMenuSection,
             menuBarSection,
             dialogSection,

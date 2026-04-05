@@ -909,6 +909,66 @@ class ToolBarTests(unittest.TestCase):
         self.assertTrue(callable(getattr(client, "get_toolbar_items", None)))
 
 
+class ScrollBarTests(unittest.TestCase):
+    """Tests for OmniUIClient.get_scroll_position() and set_scroll_position()."""
+
+    def _make_client_and_capture(self, mock_urlopen, value=50.0):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": {"value": value, "min": 0.0, "max": 100.0},
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_scroll_position_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.get_scroll_position(id="demoScrollBar")
+        self.assertTrue(result.ok)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "get_scroll_position")
+        self.assertEqual(captured[0]["selector"]["id"], "demoScrollBar")
+
+    @patch("urllib.request.urlopen")
+    def test_get_scroll_position_returns_dict(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen, value=30.0)
+        result = client.get_scroll_position(id="demoScrollBar")
+        self.assertIsInstance(result.value, dict)
+        self.assertEqual(result.value["value"], 30.0)
+        self.assertEqual(result.value["min"], 0.0)
+        self.assertEqual(result.value["max"], 100.0)
+
+    @patch("urllib.request.urlopen")
+    def test_set_scroll_position_action(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.set_scroll_position(id="demoScrollBar", value=75.0)
+        self.assertTrue(result.ok)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "set_scroll_position")
+        self.assertEqual(captured[0]["selector"]["id"], "demoScrollBar")
+        self.assertEqual(captured[0]["payload"]["value"], 75.0)
+
+    @patch("urllib.request.urlopen")
+    def test_scrollbar_methods_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        for m in ("get_scroll_position", "set_scroll_position"):
+            self.assertTrue(callable(getattr(client, m, None)), f"Missing: {m}")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 
