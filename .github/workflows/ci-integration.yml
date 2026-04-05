@@ -1,0 +1,50 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Build Java agent and demo apps
+        run: mvn -q install
+
+      - name: Install Xvfb and JavaFX Linux dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            xvfb \
+            libgtk-3-0 \
+            libgl1 \
+            libglib2.0-0
+
+      - name: Run integration tests (headless via Xvfb)
+        run: |
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp &
+          sleep 1
+          cd demo/python
+          python run_all.py
+        timeout-minutes: 10
