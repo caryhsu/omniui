@@ -119,10 +119,13 @@
 - [x] **腳本生成** — Python 端將錄製事件序列化為可執行的測試腳本
   - 輸出 `click`、`type`、`press_key`、`verify_text` 等指令
   - 敏感欄位（如 `PasswordField`）自動遮罩，替換為佔位符
-- [ ] **Wait 自動插入** — 啟發式判斷哪些操作後需要等待非同步 UI 變更，自動插入 `wait_for_*`
-- [x] **錄製 Session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+- [x] **Wait 自動插入** — 啟發式在每個 action 之間插入 `wait_for_*`；`start_recording(wait_injection=True)`
+  - Button/ComboBox/CheckBox/... → `wait_for_enabled`；其他節點 → `wait_for_visible`
+  - 無法穩定表達的 selector（無 `fx:id` / `text`）會略過
+- [x] **錄製 Session API** — `start_recording(wait_injection)` / `stop_recording()` / `save_script(path)`
 - [ ] **錄製 UI 工具** — ~~互動式 TUI/GUI 應用程式（`python -m omniui.recorder`），提供錄製 / 停止 / 儲存控制，讓非工程師也能不寫程式即可錄製操作~~
 - [x] **錄製 UI 工具** — `python -m omniui.recorder` tkinter GUI；自動掃描執行中的 app，提供錄製 / 停止 / 儲存流程
+  - [x] **Wait 插入 checkbox** — GUI 中的「Insert wait_for_*」開關；錄製開始時套用設定
 
 ---
 

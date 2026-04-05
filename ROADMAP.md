@@ -118,10 +118,13 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Script generation** — Python-side generator serialises recorded events into a runnable test script
   - Outputs `click`, `type`, `press_key`, `verify_text`, etc.
   - Sensitive fields (e.g. `PasswordField`) are masked with a placeholder
-- [ ] **Wait injection** — heuristically insert `wait_for_*` calls after actions that trigger async UI changes
-- [x] **Record session API** — `start_recording()` / `stop_recording()` / `save_script(path)`
+- [x] **Wait injection** — heuristically insert `wait_for_*` calls between actions; `start_recording(wait_injection=True)`
+  - Button/ComboBox/CheckBox/... → `wait_for_enabled`; other nodes → `wait_for_visible`
+  - Fragile selectors (no `fx:id` / `text`) are skipped
+- [x] **Record session API** — `start_recording(wait_injection)` / `stop_recording()` / `save_script(path)`
 - [ ] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
 - [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
+  - [x] **Wait injection checkbox** — "Insert wait_for_*" toggle in GUI; setting applied at Record time
 
 ---
 
