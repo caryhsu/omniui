@@ -11,6 +11,7 @@ This is the main documentation entry point for OmniUI Phase 1.
 
 - [Architecture Diagrams](architecture.md)
 - [Manual Smoke Checklist](manual-smoke.md)
+- [HTML Test Report](html-report.md)
 
 ## Components
 

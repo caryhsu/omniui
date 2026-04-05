@@ -11,6 +11,7 @@
 
 - [Architecture Diagrams](architecture.zh-TW.md)
 - [Manual Smoke Checklist](manual-smoke.zh-TW.md)
+- [HTML 測試報告](html-report.zh-TW.md)
 
 ## 元件文件
 

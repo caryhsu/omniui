@@ -103,7 +103,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Custom wait condition** — `wait_until(fn, timeout)` accepts a user-supplied lambda for arbitrary poll logic
 - [x] **Headless mode** — Xvfb virtual display on Linux; `run_all.py` auto-detects OS and selects correct JavaFX JARs; see `docs/headless.md`
 - [x] **CI/CD examples** — GitHub Actions workflows: `ci-unit.yml` (pytest only) and `ci-integration.yml` (Xvfb + full demo suite)
-- [ ] **HTML test report** — pytest-html or Allure integration guide
+- [x] **HTML test report** — pytest-html integration; screenshots embedded inline on failure; see `docs/html-report.md`
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Drag & Drop** — `drag(source_id, target_id)`
 - [x] **Hover** — `hover(id=...)` to trigger tooltips or hover states

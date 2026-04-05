@@ -104,7 +104,7 @@
 - [x] **自訂 wait 條件** — `wait_until(fn, timeout)` 接受自訂 lambda，支援任意輪詢邏輯
 - [x] **Headless 模式** — Linux 使用 Xvfb 虛擬顯示器；`run_all.py` 自動偵測 OS 並選擇對應的 JavaFX JAR；詳見 `docs/headless.zh-TW.md`
 - [x] **CI/CD 範例** — GitHub Actions workflow：`ci-unit.yml`（僅 pytest）與 `ci-integration.yml`（Xvfb + 完整 demo 測試）
-- [ ] **HTML 測試報告** — pytest-html 或 Allure 整合說明
+- [x] **HTML 測試報告** — pytest-html 整合；失敗時截圖自動嵌入報告；詳見 `docs/html-report.zh-TW.md`
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [ ] **拖放（Drag & Drop）** — `drag(source_id, target_id)`
 - [x] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
