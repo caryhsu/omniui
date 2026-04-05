@@ -59,6 +59,7 @@ if __package__ in (None, ""):
     import advanced.pagination_demo as pagination_demo  # type: ignore
     import advanced.window_demo as window_demo  # type: ignore
     import advanced.within_demo as within_demo  # type: ignore
+    import advanced.drag_demo as drag_demo  # type: ignore
     import advanced.snapshot_diff_demo as snapshot_diff_demo  # type: ignore
     import advanced.recorder_demo as recorder_demo  # type: ignore
     import advanced.discover_advanced_controls as discover_advanced_controls  # type: ignore
@@ -117,6 +118,7 @@ else:
         pagination_demo,
         window_demo,
         within_demo,
+        drag_demo,
         snapshot_diff_demo,
         recorder_demo,
         discover_advanced_controls,
@@ -382,6 +384,9 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
 
         _section("Within Demo")
         within_demo.main()
+
+        _section("Drag & Drop Demo")
+        drag_demo.main()
 
         _section("Snapshot/Diff Demo")
         snapshot_diff_demo.main()
