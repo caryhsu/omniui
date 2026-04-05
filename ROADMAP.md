@@ -82,7 +82,8 @@ This file tracks planned features and improvements. Check off items as they are 
   - Fallback for Canvas-rendered or custom-drawn UI elements that have no scene graph node
 - [x] **Scoped selector (`within`)** — `with client.within(id="panel"): client.click(id="btn")`
   - Restrict node search to a subtree; avoids conflicts when multiple panels share the same child IDs
-- [ ] **Scene graph snapshot / diff** — `client.snapshot()` captures full UI state; `client.diff(before, after)` shows which nodes changed
+- [x] **Scene graph snapshot** — `client.snapshot()` captures full UI node state as a structured list
+- [x] **Scene graph diff** — `client.diff(before, after)` compares two snapshots and returns added/removed/changed nodes
   - More thorough than `verify_text`; useful for verifying the side-effects of a single action
 
 ---

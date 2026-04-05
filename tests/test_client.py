@@ -1244,3 +1244,84 @@ class LocatorTests(unittest.TestCase):
     def test_locator_exported_from_package(self) -> None:
         from omniui import Locator
         self.assertIsNotNone(Locator)
+
+
+class SnapshotDiffTests(unittest.TestCase):
+    """Tests for UISnapshot / UIDiff dataclasses and OmniUIClient.snapshot() / diff()."""
+
+    _NODES_A = [
+        {"fxId": "loginBtn", "nodeType": "Button", "text": "Login", "enabled": True, "visible": True, "value": None},
+        {"fxId": "username",  "nodeType": "TextField", "text": "", "enabled": True, "visible": True, "value": ""},
+        {"fxId": "status",    "nodeType": "Label",   "text": "idle", "enabled": True, "visible": True, "value": None},
+    ]
+
+    _NODES_B = [
+        {"fxId": "loginBtn", "nodeType": "Button", "text": "Login", "enabled": True, "visible": True, "value": None},
+        {"fxId": "username",  "nodeType": "TextField", "text": "alice", "enabled": True, "visible": True, "value": "alice"},
+        {"fxId": "status",    "nodeType": "Label",   "text": "logged in", "enabled": True, "visible": True, "value": None},
+        {"fxId": "newWidget", "nodeType": "Label",   "text": "hi", "enabled": True, "visible": True, "value": None},
+    ]
+
+    def _make_client(self, mock_urlopen):
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            if req.full_url.endswith("/discover"):
+                call_count = getattr(fake_urlopen, "_discover_calls", 0)
+                fake_urlopen._discover_calls = call_count + 1
+                if call_count == 0:
+                    return _FakeResponse({"nodes": self._NODES_A})
+                return _FakeResponse({"nodes": self._NODES_B})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": "ok",
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        return OmniUI.connect(port=48100)
+
+    @patch("urllib.request.urlopen")
+    def test_snapshot_returns_nodes(self, mock_urlopen):
+        client = self._make_client(mock_urlopen)
+        snap = client.snapshot()
+        self.assertEqual(len(snap.nodes), 3)
+        self.assertGreater(snap.timestamp, 0)
+
+    @patch("urllib.request.urlopen")
+    def test_diff_added_removed_changed(self, mock_urlopen):
+        client = self._make_client(mock_urlopen)
+        before = client.snapshot()
+        after  = client.snapshot()
+        d = client.diff(before, after)
+        self.assertEqual(len(d.added),   1, "newWidget should be added")
+        self.assertEqual(len(d.removed), 0)
+        self.assertEqual(len(d.changed), 2, "username and status should be changed")
+
+    @patch("urllib.request.urlopen")
+    def test_diff_identical_snapshots_empty(self, mock_urlopen):
+        client = self._make_client(mock_urlopen)
+        snap = client.snapshot()
+        d = client.diff(snap, snap)
+        self.assertEqual(d.added,   [])
+        self.assertEqual(d.removed, [])
+        self.assertEqual(d.changed, [])
+
+    @patch("urllib.request.urlopen")
+    def test_diff_changed_contains_before_and_after(self, mock_urlopen):
+        client = self._make_client(mock_urlopen)
+        before = client.snapshot()
+        after  = client.snapshot()
+        d = client.diff(before, after)
+        for entry in d.changed:
+            self.assertIn("before", entry)
+            self.assertIn("after",  entry)
+
+    @patch("urllib.request.urlopen")
+    def test_snapshot_exported_from_package(self, mock_urlopen):
+        from omniui import UISnapshot, UIDiff
+        self.assertIsNotNone(UISnapshot)
+        self.assertIsNotNone(UIDiff)

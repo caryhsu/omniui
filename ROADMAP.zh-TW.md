@@ -82,7 +82,8 @@
   - Canvas 自繪或無 scene graph 節點的 UI 元素的 fallback 操作方式
 - [x] **範圍限定選擇器（`within`）** — `with client.within(id="panel"): client.click(id="btn")`
   - 將節點搜尋限定在子樹範圍；避免多個 panel 共用相同子節點 ID 時發生衝突
-- [ ] **Scene graph 快照 / 差異比對** — `client.snapshot()` 擷取完整 UI 狀態；`client.diff(before, after)` 顯示哪些節點發生變化
+- [x] **Scene graph 快照** — `client.snapshot()` 擷取完整 UI 節點狀態為結構化 list
+- [x] **Scene graph 差異比對** — `client.diff(before, after)` 比較兩個快照，回傳新增/移除/變更的節點
   - 比 `verify_text` 更全面；適合驗證單一操作的所有副作用
 
 ---

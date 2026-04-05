@@ -74,3 +74,23 @@ class ActionLogEntry:
     @classmethod
     def from_result(cls, action: str, result: ActionResult) -> "ActionLogEntry":
         return cls(action=action, timestamp=datetime.now(UTC), result=result)
+
+
+@dataclass
+class UISnapshot:
+    """Timestamped capture of the full scene graph node list."""
+
+    nodes: list[dict[str, Any]]
+    timestamp: float
+
+
+@dataclass
+class UIDiff:
+    """Result of comparing two UISnapshot objects.
+
+    Each entry in ``changed`` is a dict with keys ``"before"`` and ``"after"``.
+    """
+
+    added: list[dict[str, Any]]
+    removed: list[dict[str, Any]]
+    changed: list[dict[str, Any]]

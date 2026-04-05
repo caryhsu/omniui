@@ -17,7 +17,7 @@ from omniui.ocr_module import OcrMatch, SimpleOcrEngine
 from omniui.selector_engine.resolver import normalize_selector
 from omniui.vision_module import SimpleVisionEngine
 
-from .models import ActionLogEntry, ActionResult, ActionTrace, ResolvedElement, Selector
+from .models import ActionLogEntry, ActionResult, ActionTrace, ResolvedElement, Selector, UISnapshot, UIDiff
 
 
 class OmniUIClient:
@@ -66,6 +66,32 @@ class OmniUIClient:
     def get_nodes(self) -> list[dict[str, Any]]:
         response = self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/discover", {"includeHidden": False})
         return response["nodes"]
+
+    def snapshot(self) -> UISnapshot:
+        """Capture the current scene graph as a UISnapshot."""
+        import time
+        return UISnapshot(nodes=self.get_nodes(), timestamp=time.time())
+
+    def diff(self, before: UISnapshot, after: UISnapshot) -> UIDiff:
+        """Compare two snapshots and return added/removed/changed nodes."""
+        _COMPARED_ATTRS = ("text", "enabled", "visible", "value", "nodeType")
+
+        def _identity(node: dict[str, Any]) -> str:
+            fxid = node.get("fxId") or ""
+            return fxid if fxid else (node.get("handle") or "")
+
+        before_map = {_identity(n): n for n in before.nodes if _identity(n)}
+        after_map  = {_identity(n): n for n in after.nodes  if _identity(n)}
+
+        added   = [n for k, n in after_map.items()  if k not in before_map]
+        removed = [n for k, n in before_map.items() if k not in after_map]
+        changed = [
+            {"before": before_map[k], "after": after_map[k]}
+            for k in before_map
+            if k in after_map
+            and any(before_map[k].get(a) != after_map[k].get(a) for a in _COMPARED_ATTRS)
+        ]
+        return UIDiff(added=added, removed=removed, changed=changed)
 
     def action_history(self) -> list[ActionLogEntry]:
         return list(self._action_log)
