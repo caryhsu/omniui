@@ -179,7 +179,7 @@ def _section(title: str) -> None:
     print(f"=== {title} ===")
 
 
-def main(auto_launch: bool = True) -> None:
+def main(auto_launch: bool = True, verbose: bool = False) -> None:
     java_dir = ROOT / "demo" / "java"
 
     # ── Core App ──────────────────────────────────────────────────────────────
@@ -311,8 +311,9 @@ def main(auto_launch: bool = True) -> None:
         adv_ctx = nullcontext()
 
     with adv_ctx:
-        _section("Discover Advanced Controls")
-        discover_advanced_controls.main()
+        if verbose:
+            _section("Discover Advanced Controls")
+            discover_advanced_controls.main()
 
         _section("ContextMenu Demo")
         context_menu_demo.main()
@@ -356,4 +357,5 @@ def main(auto_launch: bool = True) -> None:
 
 if __name__ == "__main__":
     auto_launch = "--no-launch" not in sys.argv
-    main(auto_launch=auto_launch)
+    verbose = "--verbose" in sys.argv
+    main(auto_launch=auto_launch, verbose=verbose)
