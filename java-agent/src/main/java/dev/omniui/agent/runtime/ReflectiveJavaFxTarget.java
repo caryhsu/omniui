@@ -2378,23 +2378,30 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private ActionResult handleGetScrollPosition(Object node, String fxId, String handle) {
-        if (!(node instanceof javafx.scene.control.ScrollBar sb)) {
+        if (node == null || !node.getClass().getSimpleName().equals("ScrollBar")) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
         }
+        Object val = safeInvoke(node, "getValue");
+        Object min = safeInvoke(node, "getMin");
+        Object max = safeInvoke(node, "getMax");
         Map<String, Object> pos = new LinkedHashMap<>();
-        pos.put("value", sb.getValue());
-        pos.put("min", sb.getMin());
-        pos.put("max", sb.getMax());
+        pos.put("value", val instanceof Number n ? n.doubleValue() : 0.0);
+        pos.put("min",   min instanceof Number n ? n.doubleValue() : 0.0);
+        pos.put("max",   max instanceof Number n ? n.doubleValue() : 100.0);
         return ActionResult.success("javafx", handle, Map.of("fxId", fxId), pos);
     }
 
     private ActionResult handleSetScrollPosition(Object node, String fxId, String handle, JsonObject payload) {
-        if (!(node instanceof javafx.scene.control.ScrollBar sb)) {
+        if (node == null || !node.getClass().getSimpleName().equals("ScrollBar")) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "action_not_supported", "fxId", fxId));
         }
         double rawValue = payload != null && payload.has("value") ? payload.get("value").getAsDouble() : 0.0;
-        double clamped = Math.max(sb.getMin(), Math.min(sb.getMax(), rawValue));
-        sb.setValue(clamped);
+        Object minObj = safeInvoke(node, "getMin");
+        Object maxObj = safeInvoke(node, "getMax");
+        double minVal = minObj instanceof Number n ? n.doubleValue() : 0.0;
+        double maxVal = maxObj instanceof Number n ? n.doubleValue() : 100.0;
+        double clamped = Math.max(minVal, Math.min(maxVal, rawValue));
+        ReflectiveJavaFxSupport.invoke(node, "setValue", clamped);
         return ActionResult.success("javafx", handle, Map.of("fxId", fxId), clamped);
     }
 
