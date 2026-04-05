@@ -783,6 +783,79 @@ class ClickAtTests(unittest.TestCase):
         self.assertTrue(callable(getattr(client, "click_at", None)))
 
 
+class TableViewTests(unittest.TestCase):
+    """Tests for OmniUIClient TableView methods."""
+
+    def _make_client_and_capture(self, mock_urlopen):
+        captured: list[dict] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/actions"):
+                captured.append(json.loads(req.data.decode("utf-8")))
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "s1", "appName": "App",
+                                       "platform": "javafx", "capabilities": []})
+            return _FakeResponse({
+                "ok": True, "resolved": None,
+                "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                "value": "Ava",
+            })
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        captured.clear()
+        return client, captured
+
+    @patch("urllib.request.urlopen")
+    def test_get_cell_sends_correct_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        result = client.get_cell(id="userTable", row=0, column=1)
+        self.assertTrue(result.ok)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["action"], "get_cell")
+        self.assertEqual(captured[0]["selector"]["id"], "userTable")
+        self.assertEqual(captured[0]["payload"]["row"], 0)
+        self.assertEqual(captured[0]["payload"]["column"], 1)
+
+    @patch("urllib.request.urlopen")
+    def test_click_cell_sends_correct_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.click_cell(id="userTable", row=2, column=0)
+        self.assertEqual(captured[0]["action"], "click_cell")
+        self.assertEqual(captured[0]["payload"]["row"], 2)
+        self.assertEqual(captured[0]["payload"]["column"], 0)
+
+    @patch("urllib.request.urlopen")
+    def test_edit_cell_sends_correct_payload(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.edit_cell(id="userTable", row=1, column=0, value="Alice")
+        self.assertEqual(captured[0]["action"], "edit_cell")
+        self.assertEqual(captured[0]["payload"]["row"], 1)
+        self.assertEqual(captured[0]["payload"]["column"], 0)
+        self.assertEqual(captured[0]["payload"]["value"], "Alice")
+
+    @patch("urllib.request.urlopen")
+    def test_sort_column_asc(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.sort_column(id="userTable", column=0, direction="asc")
+        self.assertEqual(captured[0]["action"], "sort_column")
+        self.assertEqual(captured[0]["payload"]["direction"], "asc")
+
+    @patch("urllib.request.urlopen")
+    def test_sort_column_no_direction(self, mock_urlopen):
+        client, captured = self._make_client_and_capture(mock_urlopen)
+        client.sort_column(id="userTable", column=0)
+        self.assertIsNone(captured[0]["payload"]["direction"])
+
+    @patch("urllib.request.urlopen")
+    def test_tableview_methods_present(self, mock_urlopen):
+        client, _ = self._make_client_and_capture(mock_urlopen)
+        for method in ("get_cell", "click_cell", "edit_cell", "sort_column"):
+            self.assertTrue(callable(getattr(client, method, None)), f"Missing: {method}")
+
+
 class LocatorTests(unittest.TestCase):
     """Tests for OmniUIClient.locator() and the Locator class."""
 

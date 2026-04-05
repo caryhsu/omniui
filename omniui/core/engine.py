@@ -258,18 +258,49 @@ class OmniUIClient:
         """
         return self._perform("click_at", {}, {"x": x, "y": y})
 
+    def get_cell(self, *, id: str, row: int, column: int) -> ActionResult:
+        """Read the string value of a TableView cell at zero-based row/column indices.
 
-        """Assert that the node with the given fx:id is currently focused.
+        Example::
 
-        Raises AssertionError if the focused node's fxId does not match.
+            result = client.get_cell(id="myTable", row=0, column=1)
+            print(result.value)  # "Alice"
         """
-        result = self.get_focused()
-        actual = result.value.get("fxId") if result.ok and isinstance(result.value, dict) else None
-        if actual != id:
-            raise AssertionError(
-                f"Expected focused node to be '{id}', but got '{actual}'"
-            )
-        return result
+        return self._perform("get_cell", {"id": id}, {"row": row, "column": column})
+
+    def click_cell(self, *, id: str, row: int, column: int) -> ActionResult:
+        """Fire a single mouse click on a TableView cell at zero-based row/column indices.
+
+        The table scrolls to make the target cell visible before clicking.
+
+        Example::
+
+            client.click_cell(id="myTable", row=2, column=0)
+        """
+        return self._perform("click_cell", {"id": id}, {"row": row, "column": column})
+
+    def edit_cell(self, *, id: str, row: int, column: int, value: str) -> ActionResult:
+        """Trigger in-cell editing for a TableView cell and commit a new value.
+
+        The column must have ``editable`` set to ``true``. Enters edit mode via
+        ``TableView.edit()``, sets the inline editor text, then presses Enter to commit.
+
+        Example::
+
+            client.edit_cell(id="myTable", row=1, column=2, value="newValue")
+        """
+        return self._perform("edit_cell", {"id": id}, {"row": row, "column": column, "value": value})
+
+    def sort_column(self, *, id: str, column: int, direction: str | None = None) -> ActionResult:
+        """Sort a TableView by clicking its column header.
+
+        direction: "asc", "desc", or None (single click, no direction enforced).
+
+        Example::
+
+            client.sort_column(id="myTable", column=0, direction="asc")
+        """
+        return self._perform("sort_column", {"id": id}, {"column": column, "direction": direction})
 
     def retry(
         self,

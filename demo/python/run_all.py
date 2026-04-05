@@ -29,6 +29,7 @@ if __package__ in (None, ""):
     import core.soft_assert_demo as soft_assert_demo  # type: ignore
     import core.clipboard_demo as clipboard_demo  # type: ignore
     import core.click_at_demo as click_at_demo  # type: ignore
+    import core.tableview_demo as tableview_demo  # type: ignore
     # Input app demos
     import input.text_area_demo as text_area_demo  # type: ignore
     import input.password_field_demo as password_field_demo  # type: ignore
@@ -77,6 +78,7 @@ else:
         soft_assert_demo,
         clipboard_demo,
         click_at_demo,
+        tableview_demo,
     )
     from .input import (
         text_area_demo,
@@ -252,6 +254,9 @@ def main(auto_launch: bool = True) -> None:
 
         _section("Click-At Demo")
         click_at_demo.main()
+
+        _section("TableView Demo")
+        tableview_demo.main()
 
     # ── Input App ─────────────────────────────────────────────────────────────
     _section("Input App demos (port 48101+)")

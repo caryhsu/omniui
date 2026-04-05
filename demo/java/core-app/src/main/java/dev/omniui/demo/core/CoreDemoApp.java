@@ -101,10 +101,18 @@ public final class CoreDemoApp extends Application {
         userTable.setId("userTable");
         userTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         userTable.setPrefHeight(180);
+        userTable.setEditable(true);
 
         TableColumn<UserRecord, String> nameColumn = new TableColumn<>("Name");
         nameColumn.setId("userNameColumn");
         nameColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().name()));
+        nameColumn.setEditable(true);
+        nameColumn.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
+        nameColumn.setOnEditCommit(e -> {
+            UserRecord old = e.getRowValue();
+            userTable.getItems().set(e.getTablePosition().getRow(),
+                new UserRecord(e.getNewValue(), old.role(), old.state()));
+        });
 
         TableColumn<UserRecord, String> roleColumn = new TableColumn<>("Role");
         roleColumn.setId("userRoleColumn");

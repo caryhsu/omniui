@@ -317,6 +317,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
                 yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), selected);
             }
+            case "get_cell"    -> doGetCell(node, fxId, handle, payload);
+            case "click_cell"  -> doClickCell(node, fxId, handle, payload);
+            case "edit_cell"   -> doEditCell(node, fxId, handle, payload);
+            case "sort_column" -> doSortColumn(node, fxId, handle, payload);
             default -> ActionResult.failure(List.of("javafx"), Map.of("reason", "unsupported_action", "action", action));
         };
     }
@@ -915,6 +919,224 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             idx.intValue()
         );
         return true;
+    }
+
+    // ---- TableView helpers --------------------------------------------------
+
+    @SuppressWarnings("unchecked")
+    private ActionResult doGetCell(Object node, String fxId, String handle, JsonObject payload) {
+        int row = payload != null && payload.has("row") ? payload.get("row").getAsInt() : -1;
+        int col = payload != null && payload.has("column") ? payload.get("column").getAsInt() : -1;
+        Object items = safeInvoke(node, "getItems");
+        if (!(items instanceof List<?> rows)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "not_a_table", "fxId", fxId));
+        }
+        if (row < 0 || row >= rows.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "row_out_of_bounds", "fxId", fxId, "row", row));
+        }
+        Object columns = safeInvoke(node, "getColumns");
+        if (!(columns instanceof List<?> cols)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_columns", "fxId", fxId));
+        }
+        if (col < 0 || col >= cols.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "column_out_of_bounds", "fxId", fxId, "column", col));
+        }
+        Object rowItem = rows.get(row);
+        Object colObj = cols.get(col);
+        Object observable = safeInvoke(colObj, "getCellObservableValue", rowItem);
+        if (observable == null) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_cell_value", "fxId", fxId));
+        }
+        Object cellValue = safeInvoke(observable, "getValue");
+        String strValue = cellValue == null ? "" : cellValue.toString();
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId), strValue);
+    }
+
+    private ActionResult doClickCell(Object node, String fxId, String handle, JsonObject payload) {
+        int row = payload != null && payload.has("row") ? payload.get("row").getAsInt() : -1;
+        int col = payload != null && payload.has("column") ? payload.get("column").getAsInt() : -1;
+        Object items = safeInvoke(node, "getItems");
+        if (!(items instanceof List<?> rows)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "not_a_table", "fxId", fxId));
+        }
+        if (row < 0 || row >= rows.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "row_out_of_bounds", "fxId", fxId, "row", row));
+        }
+        Object columns = safeInvoke(node, "getColumns");
+        if (!(columns instanceof List<?> cols)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_columns", "fxId", fxId));
+        }
+        if (col < 0 || col >= cols.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "column_out_of_bounds", "fxId", fxId, "column", col));
+        }
+        // Scroll into view
+        safeInvoke(node, "scrollTo", row);
+        Object colObj = cols.get(col);
+        safeInvoke(node, "scrollToColumn", colObj);
+        // Find the visual cell via VirtualFlow
+        try {
+            Object skin = safeInvoke(node, "getSkin");
+            if (skin == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_skin", "fxId", fxId));
+            }
+            // TableViewSkin children contains VirtualFlow
+            Object children = ReflectiveJavaFxSupport.invoke(skin, "getChildren");
+            if (!(children instanceof List<?> childList)) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_children", "fxId", fxId));
+            }
+            Object vflow = null;
+            for (Object child : childList) {
+                if (child.getClass().getSimpleName().equals("VirtualFlow")) {
+                    vflow = child;
+                    break;
+                }
+            }
+            if (vflow == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_virtual_flow", "fxId", fxId));
+            }
+            Object cell = ReflectiveJavaFxSupport.invoke(vflow, "getCell", row);
+            if (cell == null) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "cell_not_visible", "fxId", fxId));
+            }
+            // Get the cell's children (TableCells for each column)
+            Object cellChildren = ReflectiveJavaFxSupport.invoke(cell, "getChildrenUnmodifiable");
+            if (!(cellChildren instanceof List<?> cellChildList)) {
+                return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_cell_children", "fxId", fxId));
+            }
+            // Find the TableCell matching column index
+            Object targetCell = null;
+            int cellIdx = 0;
+            for (Object c : cellChildList) {
+                if (c.getClass().getSimpleName().endsWith("Cell")) {
+                    if (cellIdx == col) { targetCell = c; break; }
+                    cellIdx++;
+                }
+            }
+            if (targetCell == null) targetCell = cell;
+            handleClick(targetCell, fxId, handle, null);
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "row", row, "column", col), null);
+        } catch (Exception e) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "click_cell_failed", "error", e.getMessage(), "fxId", fxId));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private ActionResult doEditCell(Object node, String fxId, String handle, JsonObject payload) {
+        int row = payload != null && payload.has("row") ? payload.get("row").getAsInt() : -1;
+        int col = payload != null && payload.has("column") ? payload.get("column").getAsInt() : -1;
+        String value = payload != null && payload.has("value") ? payload.get("value").getAsString() : "";
+        Object items = safeInvoke(node, "getItems");
+        if (!(items instanceof List<?> rows)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "not_a_table", "fxId", fxId));
+        }
+        if (row < 0 || row >= rows.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "row_out_of_bounds", "fxId", fxId, "row", row));
+        }
+        Object columns = safeInvoke(node, "getColumns");
+        if (!(columns instanceof List<?> cols)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_columns", "fxId", fxId));
+        }
+        if (col < 0 || col >= cols.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "column_out_of_bounds", "fxId", fxId, "column", col));
+        }
+        Object colObj = cols.get(col);
+        Object editable = safeInvoke(colObj, "isEditable");
+        if (Boolean.FALSE.equals(editable)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "not_editable", "fxId", fxId, "column", col));
+        }
+        // Scroll and enter edit mode
+        safeInvoke(node, "scrollTo", row);
+        safeInvoke(node, "scrollToColumn", colObj);
+        safeInvoke(node, "edit", row, colObj);
+        // Find the inline editor: the focused node in the scene should be the TextField
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene != null) {
+                Object focusOwner = safeInvoke(scene, "getFocusOwner");
+                if (focusOwner != null && "TextField".equals(focusOwner.getClass().getSimpleName())) {
+                    safeInvoke(focusOwner, "setText", value);
+                    safeInvoke(focusOwner, "selectAll");
+                }
+            }
+            // Fire Enter key to commit
+            fireEnterKey(node);
+        } catch (Exception e) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "edit_cell_failed", "error", e.getMessage(), "fxId", fxId));
+        }
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "row", row, "column", col), value);
+    }
+
+    private void fireEnterKey(Object target) {
+        try {
+            Class<?> keyCls    = Class.forName("javafx.scene.input.KeyEvent");
+            Class<?> keyCodeCls = Class.forName("javafx.scene.input.KeyCode");
+            Class<?> etCls     = Class.forName("javafx.event.EventType");
+            Object keyPressed  = keyCls.getField("KEY_PRESSED").get(null);
+            Object enterCode   = keyCodeCls.getField("ENTER").get(null);
+            java.lang.reflect.Constructor<?> ctor = keyCls.getConstructor(
+                Object.class, String.class, String.class, keyCodeCls,
+                boolean.class, boolean.class, boolean.class, boolean.class);
+            Object pressEvent = ctor.newInstance(target, "\r", "\r", enterCode,
+                false, false, false, false);
+            Class<?> eventCls  = Class.forName("javafx.event.Event");
+            Class<?> targetCls = Class.forName("javafx.event.EventTarget");
+            java.lang.reflect.Method fireMethod = eventCls.getMethod("fireEvent", targetCls, eventCls);
+            fireMethod.invoke(null, target, pressEvent);
+        } catch (Exception ignored) {}
+    }
+
+    @SuppressWarnings("unchecked")
+    private ActionResult doSortColumn(Object node, String fxId, String handle, JsonObject payload) {
+        int col = payload != null && payload.has("column") ? payload.get("column").getAsInt() : -1;
+        String direction = payload != null && payload.has("direction") && !payload.get("direction").isJsonNull()
+            ? payload.get("direction").getAsString() : null;
+        Object columns = safeInvoke(node, "getColumns");
+        if (!(columns instanceof List<?> cols)) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_columns", "fxId", fxId));
+        }
+        if (col < 0 || col >= cols.size()) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "column_out_of_bounds", "fxId", fxId, "column", col));
+        }
+        Object colObj = cols.get(col);
+        // Find the column header node and click it
+        // Use TableView's sort() infrastructure: add to sortOrder and toggle sort type
+        Object sortOrder = safeInvoke(node, "getSortOrder");
+        if (direction == null) {
+            // Single click: use JavaFX sort API
+            if (sortOrder instanceof List<?> so && !so.contains(colObj)) {
+                ((java.util.List<Object>) so).clear();
+                ((java.util.List<Object>) so).add(colObj);
+            }
+            safeInvoke(node, "sort");
+            return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "column", col), null);
+        }
+        // Set desired sort type
+        boolean wantAsc = "asc".equalsIgnoreCase(direction);
+        Object ascending;
+        Object descending;
+        try {
+            Class<?> sortType = Class.forName("javafx.scene.control.TableColumn$SortType");
+            ascending  = sortType.getField("ASCENDING").get(null);
+            descending = sortType.getField("DESCENDING").get(null);
+        } catch (Exception e) {
+            return ActionResult.failure(List.of("javafx"), Map.of("reason", "sort_type_not_found"));
+        }
+        Object desired = wantAsc ? ascending : descending;
+        safeInvoke(colObj, "setSortType", desired);
+        if (sortOrder instanceof List<?> so) {
+            ((java.util.List<Object>) so).clear();
+            ((java.util.List<Object>) so).add(colObj);
+        }
+        safeInvoke(node, "sort");
+        return ActionResult.success("javafx", handle, Map.of("fxId", fxId, "column", col, "direction", direction), direction);
+    }
+
+    private com.google.gson.JsonObject buildPayload(String json) {
+        return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+    }
+
+    private String escapeJson(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private String getTreeTableCell(Object node, String rowValue, String column) {
