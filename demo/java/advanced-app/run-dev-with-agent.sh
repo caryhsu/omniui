@@ -9,7 +9,7 @@ to_win_path() {
   fi
 }
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 mvn -pl java-agent -am package
 mvn -f demo/java/advanced-app/pom.xml package

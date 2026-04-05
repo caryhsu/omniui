@@ -114,7 +114,7 @@
 
 ## 🎬 完整錄製器（Full Recorder）
 
-- [ ] **事件捕捉** — Java agent 在 Scene 上掛 `EventFilter`，攔截滑鼠點擊、雙擊、按鍵與文字輸入
+- [x] **事件捕捉** — Java agent 在 Scene 上掛 `EventFilter`，攔截滑鼠點擊、雙擊、按鍵與文字輸入
 - [x] **Selector 推導** — 從被點擊的節點自動選出最佳 selector：`fx:id` → `text` → `type + index`
 - [x] **腳本生成** — Python 端將錄製事件序列化為可執行的測試腳本
   - 輸出 `click`、`type`、`press_key`、`verify_text` 等指令
