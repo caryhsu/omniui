@@ -2013,20 +2013,6 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         }
     }
 
-
-        // Schedule System.exit(0) on a daemon thread with a short delay so the
-        // HTTP response can flush before the JVM terminates. Platform.exit() alone
-        // only stops the JavaFX runtime — the HTTP server's non-daemon threads keep
-        // the JVM alive. System.exit(0) kills everything cleanly.
-        Thread shutdownThread = new Thread(() -> {
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-            System.exit(0);
-        });
-        shutdownThread.setDaemon(true);
-        shutdownThread.start();
-        return ActionResult.success("javafx", null, Map.of(), null);
-    }
-
     /**
      * Parse a Playwright-style key string (e.g. "Control+Shift+Z", "ctrl+c", "Enter")
      * into an array where [0..n-2] are modifier names and [n-1] is the key name.
