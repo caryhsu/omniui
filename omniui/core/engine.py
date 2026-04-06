@@ -796,6 +796,20 @@ class OmniUIClient:
         """Return the current progress (0.0–1.0, or -1.0 if indeterminate) of a ProgressBar."""
         return self._perform("get_progress", selector)
 
+    # ---- ImageView ----------------------------------------------------------
+
+    def get_image_url(self, **selector: Any) -> ActionResult:
+        """Return the URL of the image currently displayed in an ImageView node."""
+        return self._perform("get_image_url", selector)
+
+    def is_image_loaded(self, **selector: Any) -> bool:
+        """Return True if the ImageView's image loaded without error (isError() == false)."""
+        result = self._perform("is_image_loaded", selector)
+        if not result.ok:
+            return False
+        v = result.value
+        return v is True or str(v).lower() == "true"
+
     def get_value(self, **selector: Any) -> ActionResult:
         """Return the current value of a Slider, Spinner, or ChoiceBox node."""
         return self._perform("get_value", selector)

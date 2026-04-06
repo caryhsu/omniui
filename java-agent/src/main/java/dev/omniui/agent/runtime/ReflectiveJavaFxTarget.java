@@ -544,6 +544,24 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             case "set_spinner"  -> handleSetSpinner(node, fxId, handle, payload);
             case "step_spinner" -> handleStepSpinner(node, fxId, handle, payload);
             case "get_progress" -> { Object v = ReflectiveJavaFxSupport.invoke(node, "getProgress"); yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), v); }
+            case "get_image_url" -> {
+                Object img = safeInvoke(node, "getImage");
+                String url = "";
+                if (img != null) {
+                    Object u = safeInvoke(img, "getUrl");
+                    url = u != null ? u.toString() : "";
+                }
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), url);
+            }
+            case "is_image_loaded" -> {
+                Object img = safeInvoke(node, "getImage");
+                boolean loaded = false;
+                if (img != null) {
+                    Object err = safeInvoke(img, "isError");
+                    loaded = !Boolean.TRUE.equals(err);
+                }
+                yield ActionResult.success("javafx", handle, Map.of("fxId", fxId), loaded);
+            }
             case "get_tabs"     -> handleGetTabs(node, fxId, handle);
             case "get_toolbar_items" -> handleGetToolbarItems(node, fxId, handle);
             case "select_tab"   -> handleSelectTab(node, fxId, handle, payload);

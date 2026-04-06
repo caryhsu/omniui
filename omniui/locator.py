@@ -95,6 +95,12 @@ class Locator:
     def get_progress(self) -> ActionResult:
         return self._client.get_progress(**self._sel)
 
+    def get_image_url(self) -> ActionResult:
+        return self._client.get_image_url(**self._sel)
+
+    def is_image_loaded(self) -> bool:
+        return self._client.is_image_loaded(**self._sel)
+
     def get_selected(self) -> ActionResult:
         return self._client.get_selected(**self._sel)
 
