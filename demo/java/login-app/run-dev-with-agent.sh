@@ -11,7 +11,7 @@ to_win_path() {
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
-mvn -pl java-agent -am package
+mvn clean -pl java-agent -am package
 mvn -f demo/java/login-app/pom.xml package
 JAVA_FX_CONTROLS="$USERPROFILE/.m2/repository/org/openjfx/javafx-controls/21.0.2/javafx-controls-21.0.2-win.jar"
 JAVA_FX_GRAPHICS="$USERPROFILE/.m2/repository/org/openjfx/javafx-graphics/21.0.2/javafx-graphics-21.0.2-win.jar"

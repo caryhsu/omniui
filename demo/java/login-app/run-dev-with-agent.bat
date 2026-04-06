@@ -3,7 +3,7 @@ setlocal
 
 set ROOT=%~dp0..\..\..
 pushd "%ROOT%"
-call mvn -pl java-agent -am package
+call mvn clean -pl java-agent -am package
 if errorlevel 1 goto :fail
 call mvn -f demo\java\login-app\pom.xml package
 if errorlevel 1 goto :fail
