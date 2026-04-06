@@ -726,6 +726,15 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 recorderBuffer.addLast(de);
                 return;
             }
+            // Skip non-actionable layout nodes (Pane, HBox, VBox, ButtonBar, …).
+            // Walk up to find the nearest actionable ancestor; if none, drop the event.
+            if (!isActionableNode(node)) {
+                Object ancestor = nearestActionableAncestor(node);
+                if (ancestor == null) return;
+                node     = ancestor;
+                fxId     = nullToEmpty(safeString(node, "getId"));
+                nodeType = node.getClass().getSimpleName();
+            }
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -920,6 +929,39 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
         }
         return target;
+    }
+
+    private static final java.util.Set<String> ACTIONABLE_TYPES = java.util.Set.of(
+        "Button", "ButtonBase", "ToggleButton", "CheckBox", "RadioButton",
+        "TextField", "TextArea", "PasswordField",
+        "ComboBox", "ChoiceBox", "Slider", "Spinner",
+        "DatePicker", "ColorPicker",
+        "ListView", "TreeView", "TableView", "TableCell",
+        "Hyperlink", "Label", "MenuButton", "MenuItem"
+    );
+
+    /** Returns true if {@code node} is a directly interactable control (not a layout container). */
+    private boolean isActionableNode(Object node) {
+        if (node == null) return false;
+        String simple = node.getClass().getSimpleName();
+        if (ACTIONABLE_TYPES.contains(simple)) return true;
+        // Any node whose class name ends in "Pane" or "Bar" is layout, not actionable
+        return !simple.endsWith("Pane") && !simple.endsWith("Bar") && !simple.endsWith("Box");
+    }
+
+    /**
+     * Walk up the parent chain (up to 15 levels) and return the nearest actionable ancestor,
+     * or {@code null} if none is found.
+     */
+    private Object nearestActionableAncestor(Object node) {
+        Object current = node;
+        int limit = 15;
+        while (current != null && limit-- > 0) {
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+            if (current != null && isActionableNode(current)) return current;
+        }
+        return null;
     }
 
     /** Returns true if {@code node} is a ColorPicker or an internal child of one. */

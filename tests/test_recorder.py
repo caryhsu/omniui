@@ -5,6 +5,7 @@ import unittest
 from omniui.core.models import ActionLogEntry, ActionResult, ActionTrace, Selector, RecordedEvent
 from omniui.recorder_lite import RecorderLite
 from omniui.recorder.script_gen import generate_script
+from omniui.recorder.selector_inference import infer_selector
 from omniui.recorder.wait_injection import inject_waits
 
 
@@ -97,6 +98,49 @@ class WaitInjectionTests(unittest.TestCase):
         result = inject_waits(events, lines)
         # No wait injected for fragile selector
         self.assertEqual(len(result), 2)
+
+
+class SelectorInferenceTests(unittest.TestCase):
+    """Tests for selector_inference — documents fallback behaviour.
+
+    The Java agent is expected to filter out pure layout nodes (Pane, HBox, …)
+    before they reach Python. These tests document what happens if a layout-node
+    event does arrive (e.g. from an older agent build) and verify the _fragile
+    flag is correctly set so callers can detect it.
+    """
+
+    def test_pane_event_produces_fragile_selector(self) -> None:
+        """A Pane click with no id/text falls back to the fragile selector."""
+        event = _event(fx_id="", node_type="Pane", text="", index=0)
+        sel = infer_selector(event)
+        self.assertTrue(sel.get("_fragile"), "Pane with no id/text must be marked fragile")
+        self.assertEqual(sel.get("type"), "Pane")
+
+    def test_button_with_id_not_fragile(self) -> None:
+        """A Button with an fx:id produces a stable id-based selector."""
+        event = _event(fx_id="loginButton", node_type="Button")
+        sel = infer_selector(event)
+        self.assertFalse(sel.get("_fragile", False))
+        self.assertEqual(sel.get("id"), "loginButton")
+
+    def test_button_with_text_not_fragile(self) -> None:
+        """A Button with visible text (no id) produces a text-based selector."""
+        event = _event(fx_id="", node_type="Button", text="OK")
+        sel = infer_selector(event)
+        self.assertFalse(sel.get("_fragile", False))
+        self.assertEqual(sel.get("text"), "OK")
+
+    def test_generate_script_pane_event_has_warn_comment(self) -> None:
+        """If a Pane event reaches generate_script, it emits a WARN comment."""
+        pane_event = _event(fx_id="", node_type="Pane", text="", index=0)
+        script = generate_script([pane_event])
+        self.assertIn("# WARN: fragile selector", script)
+
+    def test_generate_script_no_warn_for_id_based_click(self) -> None:
+        """Normal id-based clicks produce no WARN comment."""
+        event = _event(fx_id="loginButton", node_type="Button")
+        script = generate_script([event])
+        self.assertNotIn("# WARN", script)
 
     def test_generate_script_with_wait_injection(self) -> None:
         events = [
