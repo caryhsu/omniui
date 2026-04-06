@@ -139,6 +139,12 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ---
 
+## 🧪 Testing Infrastructure
+
+- [ ] **e2e demo scripts not in pytest** — `demo/python/*/` demo scripts are real end-to-end tests that launch apps and exercise the full stack, but they are not collected by `pytest tests/`. Only `test_parallel_example.py` uses `OmniUI.launch()` against a real app. All other `tests/` are Python unit tests (mocks). Fix: wrap each demo script as a pytest integration test with `@pytest.mark.integration`, and add `--integration` flag to CI so the full e2e suite can be opted into separately.
+
+---
+
 ## 💡 Ideas / Future
 
 - [ ] **Multi-app automation** — orchestrate multiple JavaFX apps in a single test flow

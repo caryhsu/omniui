@@ -138,6 +138,12 @@
 
 ---
 
+## 🧪 測試基礎設施（Testing Infrastructure）
+
+- [ ] **e2e demo scripts 未被 pytest 收錄** — `demo/python/*/` 下的 demo scripts 是真正的 end-to-end 測試，會啟動 app 並驗證完整流程，但沒有被 `pytest tests/` 收錄。目前只有 `test_parallel_example.py` 透過 `OmniUI.launch()` 對真實 app 進行整合測試，其餘 `tests/` 都是 Python 單元測試（mock）。修復方向：將每個 demo script 包裝成帶有 `@pytest.mark.integration` 的 pytest 整合測試，並在 CI 加上 `--integration` flag 讓完整 e2e suite 可以獨立選擇執行。
+
+---
+
 ## 💡 構想 / 未來規劃
 
 - [ ] **多 App 自動化（Multi-app automation）** — 在單一測試流程中協調多個 JavaFX app
