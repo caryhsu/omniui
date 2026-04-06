@@ -29,7 +29,7 @@ from omniui import OmniUI
 # Port + launch helpers (duplicated here so this file is self-contained)
 # ---------------------------------------------------------------------------
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(__file__).resolve().parents[2]
 _AGENT_JAR = _ROOT / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT.jar"
 _DRAG_APP_BASE_PORT = 49000
 
