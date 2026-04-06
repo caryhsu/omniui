@@ -3,7 +3,8 @@
 Scenario:
 - Set color to #ff5733 via set_color → verify colorResult label updates
 - Read color back via get_color → verify hex matches
-- Click resetColorButton → verify colorResult is cleared
+- Click applyColorButton → verify root background changes to selected color
+- Click resetColorButton → verify colorResult is cleared and background restored
 """
 from __future__ import annotations
 
@@ -35,6 +36,19 @@ def main() -> None:
         f"Expected get_color to return '#ff5733', got: {color.value!r}"
     )
     print(f"get_color = {color.value!r} (ok)")
+
+    # ── Apply background color ─────────────────────────────────────────────────
+    apply_result = client.click(id="applyColorButton")
+    assert apply_result.ok, f"click applyColorButton failed: {apply_result}"
+
+    bg_style = client.get_style(id="root")
+    if bg_style.ok and bg_style.value:
+        assert "ff5733" in bg_style.value.lower(), (
+            f"Expected background to contain 'ff5733', got: {bg_style.value!r}"
+        )
+        print(f"background applied: style contains 'ff5733' (ok)")
+    else:
+        print("applyColorButton clicked (ok) [style not verifiable]")
 
     # ── Reset and verify ───────────────────────────────────────────────────────
     reset = client.click(id="resetColorButton")

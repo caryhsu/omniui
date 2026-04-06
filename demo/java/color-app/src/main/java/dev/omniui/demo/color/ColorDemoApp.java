@@ -13,6 +13,8 @@ import javafx.stage.Stage;
 
 public class ColorDemoApp extends Application {
 
+    private static final String DEFAULT_BG = "#fafafa";
+
     @Override
     public void start(Stage stage) {
 
@@ -27,9 +29,20 @@ public class ColorDemoApp extends Application {
         colorResult.setId("colorResult");
         colorResult.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;");
 
+        Button applyColorButton = new Button("Apply");
+        applyColorButton.setId("applyColorButton");
+        applyColorButton.setStyle("-fx-font-size: 13px; -fx-padding: 6 18;");
+
         Button resetColorButton = new Button("Reset");
         resetColorButton.setId("resetColorButton");
         resetColorButton.setStyle("-fx-font-size: 13px; -fx-padding: 6 18;");
+
+        javafx.scene.layout.HBox buttons = new javafx.scene.layout.HBox(10, applyColorButton, resetColorButton);
+
+        VBox root = new VBox(16, heading, demoPicker, colorResult, buttons);
+        root.setPadding(new Insets(28));
+        root.setAlignment(Pos.TOP_LEFT);
+        root.setStyle("-fx-background-color: " + DEFAULT_BG + ";");
 
         demoPicker.setOnAction(e -> {
             Color c = demoPicker.getValue();
@@ -42,17 +55,24 @@ public class ColorDemoApp extends Application {
             }
         });
 
+        applyColorButton.setOnAction(e -> {
+            Color c = demoPicker.getValue();
+            if (c != null) {
+                String hex = String.format("#%02x%02x%02x",
+                    (int) (c.getRed() * 255),
+                    (int) (c.getGreen() * 255),
+                    (int) (c.getBlue() * 255));
+                root.setStyle("-fx-background-color: " + hex + ";");
+            }
+        });
+
         resetColorButton.setOnAction(e -> {
             demoPicker.setValue(Color.WHITE);
             colorResult.setText("");
+            root.setStyle("-fx-background-color: " + DEFAULT_BG + ";");
         });
 
-        VBox root = new VBox(16, heading, demoPicker, colorResult, resetColorButton);
-        root.setPadding(new Insets(28));
-        root.setAlignment(Pos.TOP_LEFT);
-        root.setStyle("-fx-background-color: #fafafa;");
-
-        Scene scene = new Scene(root, 340, 220);
+        Scene scene = new Scene(root, 340, 250);
         stage.setTitle("OmniUI Color Demo");
         stage.setScene(scene);
         stage.show();
