@@ -356,8 +356,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             String fxId     = nullToEmpty(safeString(node, "getId"));
             String nodeType = node.getClass().getSimpleName();
             // ColorPicker clicks just open the popup; the actual color change is recorded
-            // via the valueProperty listener registered in attachColorPickerListeners()
-            if ("ColorPicker".equals(nodeType)) return;
+            // via the valueProperty listener registered in attachColorPickerListeners().
+            // Also check ancestor chain: the clicked node may be an internal child of the
+            // ColorPicker (e.g. ColorPickerLabel, a Rectangle) rather than the picker itself.
+            if (isInsideColorPicker(node)) return;
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -501,6 +503,18 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
         }
         return target;
+    }
+
+    /** Returns true if {@code node} is a ColorPicker or an internal child of one. */
+    private boolean isInsideColorPicker(Object node) {
+        Object current = node;
+        int limit = 12;
+        while (current != null && limit-- > 0) {
+            if ("ColorPicker".equals(current.getClass().getSimpleName())) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
     }
 
     private String nodeKeyFor(Object node) {
