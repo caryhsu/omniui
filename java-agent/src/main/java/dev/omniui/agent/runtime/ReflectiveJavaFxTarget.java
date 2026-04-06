@@ -325,6 +325,46 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         return false;
     }
 
+    /**
+     * Returns true if {@code node} is inside a ButtonBar that is inside a DialogPane.
+     * More precise than isInsideDialogPane: excludes non-button nodes (TextField, etc.)
+     * that are also children of the dialog.
+     */
+    private boolean isInsideDialogButton(Object node) {
+        Object current = node;
+        for (int i = 0; i < 15 && current != null; i++) {
+            String simpleName = current.getClass().getSimpleName();
+            if ("ButtonBar".equals(simpleName)) {
+                // Found ButtonBar — verify it is inside a DialogPane
+                Object parent = current;
+                for (int j = 0; j < 6 && parent != null; j++) {
+                    if (parent.getClass().getName().contains("DialogPane")) return true;
+                    try { parent = ReflectiveJavaFxSupport.invoke(parent, "getParent"); }
+                    catch (Exception ex) { break; }
+                }
+                return false; // ButtonBar not inside DialogPane
+            }
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /**
+     * Walk up from {@code node} to find the text of the dialog button that was clicked.
+     * Falls back to "OK" if no text is found.
+     */
+    private String getDialogButtonText(Object node) {
+        Object current = node;
+        for (int i = 0; i < 8 && current != null; i++) {
+            String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
+            if (!t.isEmpty()) return t;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return "OK"; // safe default
+    }
+
     /** Scan scene for ColorPicker nodes and register valueProperty change listeners. */
     private void attachColorPickerListeners() {
         try {
@@ -586,19 +626,19 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // DatePicker clicks open the calendar popup; the actual date is recorded
             // via valueProperty listener in attachDatePickerListeners().
             if (isInsideDatePicker(node)) return;
-            // Dialog button clicks (OK / Cancel) → record as dismiss_dialog
-            if (isInsideDialogPane(node)) {
-                String buttonText = nullToEmpty(ReflectiveJavaFxSupport.textOf(node));
-                if (!buttonText.isEmpty()) {
-                    Map<String, Object> de = new LinkedHashMap<>();
-                    de.put("type",      "dismiss_dialog");
-                    de.put("fxId",      "");
-                    de.put("text",      buttonText);
-                    de.put("nodeType",  "Button");
-                    de.put("nodeIndex", 0);
-                    de.put("timestamp", System.currentTimeMillis() / 1000.0);
-                    recorderBuffer.addLast(de);
-                }
+            // Dialog button clicks (OK / Cancel) → record as dismiss_dialog.
+            // Use isInsideDialogButton (not isInsideDialogPane) to avoid matching
+            // non-button nodes (TextField, etc.) that are also inside the dialog.
+            if (isInsideDialogButton(node)) {
+                String buttonText = getDialogButtonText(node);
+                Map<String, Object> de = new LinkedHashMap<>();
+                de.put("type",      "dismiss_dialog");
+                de.put("fxId",      "");
+                de.put("text",      buttonText);
+                de.put("nodeType",  "Button");
+                de.put("nodeIndex", 0);
+                de.put("timestamp", System.currentTimeMillis() / 1000.0);
+                recorderBuffer.addLast(de);
                 return;
             }
             int    nodeIdx  = nodeIndexOf(node);
