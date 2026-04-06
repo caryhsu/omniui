@@ -132,6 +132,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - [x] **Drag & Drop recording** — `MOUSE_PRESSED/RELEASED` filters; `PickResult` for drop target; `dragJustFired` suppresses spurious click; generates `client.drag(...).to(...)`
 - [x] **Drag & Drop recording** — `MOUSE_PRESSED`+`MOUSE_RELEASED` pair with ≥15 px distance emits `drag` event; codegen outputs `client.drag(id=...).to(id=...)`
 - [ ] **Real-time recording feedback** — currently the Recorder GUI only shows the captured script after pressing Stop. Add a polling mechanism (`GET /sessions/{sessionId}/events/pending` every ~500 ms) so each user action appears in the script preview immediately as it is recorded. Upgrade path: polling first, then SSE if sub-100 ms latency or a browser-based UI is needed later.
+- [ ] **Record & Run** — add a ▶ Run button to the Recorder GUI that executes the recorded script immediately after stopping, without needing to save and run manually. Output (pass/fail, stdout) displayed in the GUI.
 
 ### Known Recorder Issues
 
