@@ -15,6 +15,11 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 omniui_url = "http://127.0.0.1:48100"
 omniui_app = "LoginDemo"
+# Unit tests only — integration tests (launch real JavaFX apps) live in tests/integration/
+# Run unit tests:        pytest tests/
+# Run integration tests: pytest tests/integration/
+testpaths = ["tests"]
+norecursedirs = ["tests/integration"]
 
 [tool.setuptools]
 include-package-data = true
