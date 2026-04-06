@@ -1,6 +1,7 @@
 package dev.omniui.demo.todo;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -78,31 +79,39 @@ public class TodoDemoApp extends Application {
     // ── Handlers ──────────────────────────────────────────────────────────────
 
     private void handleAdd() {
-        showTaskDialog(null).ifPresent(task -> {
-            masterList.add(task);
-            applyFilter();
-        });
+        // Platform.runLater defers dialog so the click HTTP response is returned first,
+        // preventing the onFxThread latch from blocking indefinitely.
+        Platform.runLater(() ->
+            showTaskDialog(null).ifPresent(task -> {
+                masterList.add(task);
+                applyFilter();
+            })
+        );
     }
 
     private void handleEditTask(Task task) {
-        showTaskDialog(task).ifPresent(updated -> {
-            task.setTitle(updated.getTitle());
-            task.setPriority(updated.getPriority());
-            task.setDueDate(updated.getDueDate());
-            applyFilter();
-        });
+        Platform.runLater(() ->
+            showTaskDialog(task).ifPresent(updated -> {
+                task.setTitle(updated.getTitle());
+                task.setPriority(updated.getPriority());
+                task.setDueDate(updated.getDueDate());
+                applyFilter();
+            })
+        );
     }
 
     private void handleDeleteTask(Task task) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete Task");
-        alert.setHeaderText(null);
-        alert.setContentText("Delete \"" + task.getTitle() + "\"?");
-        alert.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.OK) {
-                masterList.remove(task);
-                applyFilter();
-            }
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Delete Task");
+            alert.setHeaderText(null);
+            alert.setContentText("Delete \"" + task.getTitle() + "\"?");
+            alert.showAndWait().ifPresent(btn -> {
+                if (btn == ButtonType.OK) {
+                    masterList.remove(task);
+                    applyFilter();
+                }
+            });
         });
     }
 

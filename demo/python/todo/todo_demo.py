@@ -31,6 +31,7 @@ def main() -> None:
     # ── Add task 1: Buy groceries (High, 2026-04-30) ──────────────────────────
     r = client.click(id="addButton")
     assert r.ok, f"click addButton: {r}"
+    time.sleep(0.3)  # wait for Platform.runLater dialog to open
 
     r = client.type("Buy groceries", id="dialogTitleField")
     assert r.ok, f"type dialogTitleField: {r}"
@@ -48,6 +49,7 @@ def main() -> None:
     # ── Add task 2: Call doctor (Medium, 2026-05-01) ──────────────────────────
     r = client.click(id="addButton")
     assert r.ok, f"click addButton (task 2): {r}"
+    time.sleep(0.3)  # wait for dialog
 
     r = client.type("Call doctor", id="dialogTitleField")
     assert r.ok, f"type dialogTitleField: {r}"
@@ -64,6 +66,7 @@ def main() -> None:
     # ── Edit task 0: rename "Buy groceries" → "Buy groceries & vegetables" ────
     r = client.click(id="edit_0")
     assert r.ok, f"click edit_0: {r}"
+    time.sleep(0.3)  # wait for dialog
 
     r = client.press_key("Control+A", id="dialogTitleField")
     assert r.ok, f"Ctrl+A on dialogTitleField: {r}"
@@ -107,6 +110,7 @@ def main() -> None:
     # ── Delete task 0: "Buy groceries & vegetables" ───────────────────────────
     r = client.click(id="delete_0")
     assert r.ok, f"click delete_0: {r}"
+    time.sleep(0.3)  # wait for confirmation dialog
     r = client.dismiss_dialog(button="OK")  # confirm deletion
     assert r.ok, f"dismiss_dialog OK (delete): {r}"
 

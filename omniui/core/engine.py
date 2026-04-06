@@ -1037,12 +1037,17 @@ class OmniUIClient:
         v = result.value
         return v is True or str(v).lower() == "true"
 
+    # Default timeout (seconds) for each action HTTP request.
+    # Override per-instance if needed: client.action_timeout = 60
+    action_timeout: float = 30.0
+
     def _direct_action(self, action: str, payload: dict[str, Any]) -> ActionResult:
         """Send an action with no selector normalization or OCR/vision fallback."""
         response = self._request_json(
             "POST",
             f"{self.base_url}/sessions/{self.session_id}/actions",
             {"action": action, "payload": payload},
+            self.action_timeout,
         )
         result = self._action_result({}, response)
         self._record_action(action, result)
@@ -1090,6 +1095,7 @@ class OmniUIClient:
             "POST",
             f"{self.base_url}/sessions/{self.session_id}/actions",
             {"action": action, "selector": selector, "payload": payload},
+            self.action_timeout,
         )
         return self._action_result(selector_payload, response)
 
@@ -1222,7 +1228,17 @@ class OmniUIClient:
             except json.JSONDecodeError:
                 message = body or exc.reason
             raise RuntimeError(f"OmniUI request failed: {exc.code} {message}") from exc
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"OmniUI action timed out after {timeout}s — is the app UI blocked? "
+                f"(url={url})"
+            ) from exc
         except URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise TimeoutError(
+                    f"OmniUI action timed out after {timeout}s — is the app UI blocked? "
+                    f"(url={url})"
+                ) from exc
             raise RuntimeError(f"OmniUI request failed: {exc.reason}") from exc
 
 
