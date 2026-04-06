@@ -4,7 +4,6 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -12,6 +11,7 @@ import javafx.stage.Stage;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class TodoDemoApp extends Application {
@@ -19,25 +19,16 @@ public class TodoDemoApp extends Application {
     private final ObservableList<Task> masterList  = FXCollections.observableArrayList();
     private final ObservableList<Task> displayList = FXCollections.observableArrayList();
 
-    private ListView<Task>   taskList;
-    private Button           editButton;
-    private Button           deleteButton;
-    private ToggleButton     showCompleted;
-    private TextField        searchField;
-    private TextField        taskTitleField;
-    private ComboBox<String> priorityCombo;
-    private DatePicker       dueDatePicker;
-    private Button           addButton;
+    private ListView<Task> taskList;
+    private ToggleButton   showCompleted;
+    private TextField      searchField;
 
     @Override
     public void start(Stage stage) {
 
         // ── ToolBar ───────────────────────────────────────────────────────────
-        editButton = new Button("✎ Edit");
-        editButton.setId("editButton");
-
-        deleteButton = new Button("🗑 Delete");
-        deleteButton.setId("deleteButton");
+        Button addButton = new Button("＋ Add");
+        addButton.setId("addButton");
 
         Button clearButton = new Button("⊘ Clear All");
         clearButton.setId("clearButton");
@@ -51,7 +42,7 @@ public class TodoDemoApp extends Application {
         searchField.setPrefWidth(180);
 
         ToolBar toolBar = new ToolBar(
-            editButton, deleteButton, clearButton,
+            addButton, clearButton,
             new Separator(),
             showCompleted, searchField
         );
@@ -59,52 +50,22 @@ public class TodoDemoApp extends Application {
         // ── Center: ListView ──────────────────────────────────────────────────
         taskList = new ListView<>(displayList);
         taskList.setId("taskList");
-        taskList.setCellFactory(lv -> new TaskCell(this::applyFilter));
-
-        // ── Bottom: Input Panel ───────────────────────────────────────────────
-        taskTitleField = new TextField();
-        taskTitleField.setId("taskTitleField");
-        taskTitleField.setPromptText("Task title...");
-        taskTitleField.setPrefWidth(230);
-
-        priorityCombo = new ComboBox<>();
-        priorityCombo.setId("priorityCombo");
-        priorityCombo.getItems().addAll("Low", "Medium", "High");
-        priorityCombo.setValue("Medium");
-
-        dueDatePicker = new DatePicker();
-        dueDatePicker.setId("dueDatePicker");
-        dueDatePicker.setPromptText("Due date");
-
-        addButton = new Button("＋ Add");
-        addButton.setId("addButton");
-        addButton.setDefaultButton(true);
-        // Disable Add when title is empty
-        addButton.disableProperty().bind(
-            taskTitleField.textProperty().isEmpty()
-        );
-
-        HBox inputPanel = new HBox(8, taskTitleField, priorityCombo, dueDatePicker, addButton);
-        inputPanel.setPadding(new Insets(10, 12, 10, 12));
-        inputPanel.setAlignment(Pos.CENTER_LEFT);
-        inputPanel.setStyle(
-            "-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1 0 0 0;");
+        taskList.setCellFactory(lv -> new TaskCell(
+            this::applyFilter,
+            this::handleEditTask,
+            this::handleDeleteTask
+        ));
 
         // ── Root layout ───────────────────────────────────────────────────────
         BorderPane root = new BorderPane();
         root.setTop(toolBar);
         root.setCenter(taskList);
-        root.setBottom(inputPanel);
 
         // ── Wiring ────────────────────────────────────────────────────────────
         addButton.setOnAction(e -> handleAdd());
-        editButton.setOnAction(e -> handleEdit());
-        deleteButton.setOnAction(e -> handleDelete());
         clearButton.setOnAction(e -> handleClearAll());
         showCompleted.setOnAction(e -> applyFilter());
         searchField.textProperty().addListener((obs, o, n) -> applyFilter());
-        taskList.getSelectionModel().selectedItemProperty()
-            .addListener((obs, o, n) -> prefillInputPanel(n));
 
         applyFilter();
 
@@ -112,49 +73,95 @@ public class TodoDemoApp extends Application {
         stage.setTitle("OmniUI Todo Demo");
         stage.setScene(scene);
         stage.show();
-
     }
 
     // ── Handlers ──────────────────────────────────────────────────────────────
 
     private void handleAdd() {
-        String title = taskTitleField.getText().trim();
-        if (title.isEmpty()) return;
-        String priority = priorityCombo.getValue() != null ? priorityCombo.getValue() : "Medium";
-        String dueDate  = dueDatePicker.getValue() != null ? dueDatePicker.getValue().toString() : "";
-        masterList.add(new Task(title, priority, dueDate));
-        clearInputPanel();
-        applyFilter();
+        showTaskDialog(null).ifPresent(task -> {
+            masterList.add(task);
+            applyFilter();
+        });
     }
 
-    private void handleEdit() {
-        Task selected = taskList.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-        String title = taskTitleField.getText().trim();
-        if (title.isEmpty()) return;
-        selected.setTitle(title);
-        if (priorityCombo.getValue() != null) selected.setPriority(priorityCombo.getValue());
-        if (dueDatePicker.getValue() != null)  selected.setDueDate(dueDatePicker.getValue().toString());
-        applyFilter();
+    private void handleEditTask(Task task) {
+        showTaskDialog(task).ifPresent(updated -> {
+            task.setTitle(updated.getTitle());
+            task.setPriority(updated.getPriority());
+            task.setDueDate(updated.getDueDate());
+            applyFilter();
+        });
     }
 
-    private void handleDelete() {
-        Task selected = taskList.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-        masterList.remove(selected);
-        clearInputPanel();
-        applyFilter();
+    private void handleDeleteTask(Task task) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Task");
+        alert.setHeaderText(null);
+        alert.setContentText("Delete \"" + task.getTitle() + "\"?");
+        alert.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                masterList.remove(task);
+                applyFilter();
+            }
+        });
     }
 
     private void handleClearAll() {
         masterList.clear();
         showCompleted.setSelected(false);
         searchField.clear();
-        clearInputPanel();
         applyFilter();
     }
 
-    // Package-private so TaskCell can call it via the Runnable lambda
+    // ── Dialog ────────────────────────────────────────────────────────────────
+
+    private Optional<Task> showTaskDialog(Task existing) {
+        Dialog<Task> dialog = new Dialog<>();
+        dialog.setTitle(existing == null ? "Add Task" : "Edit Task");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(existing != null ? existing.getTitle() : "");
+        titleField.setId("dialogTitleField");
+        titleField.setPromptText("Task title...");
+
+        ComboBox<String> priorityBox = new ComboBox<>();
+        priorityBox.setId("dialogPriorityCombo");
+        priorityBox.getItems().addAll("Low", "Medium", "High");
+        priorityBox.setValue(existing != null ? existing.getPriority() : "Medium");
+
+        DatePicker datePicker = new DatePicker();
+        datePicker.setId("dialogDatePicker");
+        if (existing != null && !existing.getDueDate().isEmpty()) {
+            try { datePicker.setValue(LocalDate.parse(existing.getDueDate())); }
+            catch (Exception ignored) {}
+        }
+
+        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.disableProperty().bind(titleField.textProperty().isEmpty());
+
+        VBox content = new VBox(6,
+            new Label("Title:"),    titleField,
+            new Label("Priority:"), priorityBox,
+            new Label("Due Date:"), datePicker
+        );
+        content.setPadding(new Insets(12));
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(320);
+
+        dialog.setResultConverter(btn -> {
+            if (btn != ButtonType.OK) return null;
+            String title = titleField.getText().trim();
+            if (title.isEmpty()) return null;
+            String priority = priorityBox.getValue() != null ? priorityBox.getValue() : "Medium";
+            String date = datePicker.getValue() != null ? datePicker.getValue().toString() : "";
+            return new Task(title, priority, date);
+        });
+
+        return dialog.showAndWait();
+    }
+
+    // ── Filter ────────────────────────────────────────────────────────────────
+
     void applyFilter() {
         String  query    = searchField != null ? searchField.getText().toLowerCase() : "";
         boolean showDone = showCompleted != null && showCompleted.isSelected();
@@ -165,25 +172,8 @@ public class TodoDemoApp extends Application {
         displayList.setAll(filtered);
     }
 
-    private void prefillInputPanel(Task task) {
-        if (task == null) return;
-        taskTitleField.setText(task.getTitle());
-        priorityCombo.setValue(task.getPriority());
-        if (task.getDueDate() != null && !task.getDueDate().isEmpty()) {
-            try { dueDatePicker.setValue(LocalDate.parse(task.getDueDate())); }
-            catch (Exception ignored) { dueDatePicker.setValue(null); }
-        } else {
-            dueDatePicker.setValue(null);
-        }
-    }
-
-    private void clearInputPanel() {
-        taskTitleField.clear();
-        priorityCombo.setValue("Medium");
-        dueDatePicker.setValue(null);
-    }
-
     public static void main(String[] args) {
         launch(args);
     }
 }
+
