@@ -136,6 +136,10 @@ This file tracks planned features and improvements. Check off items as they are 
   - **▶ Run All** — execute the entire recorded script
   - **▶ Run Selection** — execute only the lines currently selected/highlighted in the script preview
   - Output (pass/fail, stdout/stderr) displayed inline in the GUI
+- [ ] **Assertion recording** — while recording, right-click any element to insert a `verify_text` / `verify_visible` / `verify_enabled` assertion step; recorded assertions appear inline in the generated script alongside interaction steps.
+- [ ] **Step editor in Recorder** — after stopping, allow deleting or reordering individual steps in the script preview before saving; drag-to-reorder rows or select + delete unwanted steps.
+- [ ] **Screenshot on failure** — when a script step raises an exception, automatically capture a screenshot and attach it to the error output; pairs with Record & Run and CI reporting.
+- [ ] **Locator Inspector** — click any element in the running app to display all available selectors (`fx:id`, `text`, `type+index`) ranked by stability; lets developers verify or copy the best selector without writing code.
 
 ### Known Recorder Issues
 

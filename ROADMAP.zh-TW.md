@@ -135,6 +135,10 @@
   - **▶ Run All** — 執行完整腳本
   - **▶ Run Selection** — 僅執行腳本預覽區中目前選取的行
   - 執行結果（pass/fail、stdout/stderr）顯示於 GUI 中
+- [ ] **錄製時加入 Assertion** — 錄製過程中可對任意元素按右鍵，插入 `verify_text` / `verify_visible` / `verify_enabled` 驗證步驟；產出腳本中驗證步驟與操作步驟並列。
+- [ ] **Recorder 步驟編輯** — 停止錄製後，可在腳本預覽區刪除或重新排序個別步驟再儲存；支援拖拉排序或選取後刪除不需要的步驟。
+- [ ] **失敗時自動截圖** — 腳本步驟發生例外時自動擷取截圖並附加至錯誤輸出；與 Record & Run 及 CI 報告整合。
+- [ ] **Locator Inspector** — 點擊執行中 app 的任意元素，顯示所有可用 selector（`fx:id`、`text`、`type+index`）並依穩定性排序；讓開發者無需寫程式即可確認或複製最佳 selector。
 
 ### 已知錄製器問題（Known Recorder Issues）
 
