@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,11 +37,20 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private final ConcurrentHashMap<String, Long>          keyTimestamps    = new ConcurrentHashMap<>();
     private volatile Object mouseEventFilter    = null;
     private volatile Object keyEventFilter      = null;
+    private volatile Object keyPressFilter      = null;  // Enter/Space in dialogs
     private volatile Object mousePressFilter    = null;  // for drag detection
     private volatile Object mouseReleaseFilter  = null;  // for drag detection
 
     // ColorPicker value listeners registered during recording (pairs of [valueProp, listener])
     private final List<Object[]> colorPickerListeners = new ArrayList<>();
+    // ComboBox value listeners registered during recording (pairs of [valueProp, listener])
+    private final List<Object[]> comboBoxListeners    = new ArrayList<>();
+    // DatePicker value listeners registered during recording (pairs of [valueProp, listener])
+    private final List<Object[]> datePickerListeners  = new ArrayList<>();
+    // Last recorded value per ComboBox fxId (deduplication)
+    private final Map<String, String> lastComboValues = new java.util.HashMap<>();
+    // Scenes (including overlays) that already have recorder event filters attached
+    private final Set<Object> registeredWindowScenes  = Collections.newSetFromMap(new IdentityHashMap<>());
 
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
     private volatile double  dragPressX         = 0;
@@ -195,6 +206,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
             );
 
+            keyPressFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onKeyPressed(args[0]);
+                    }
+                    return null;
+                }
+            );
+
             mousePressFilter = java.lang.reflect.Proxy.newProxyInstance(
                 eventHandlerClass.getClassLoader(),
                 new Class<?>[]{ eventHandlerClass },
@@ -222,10 +244,13 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
                 Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
                 Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
+                Object keyPressedType    = keyEventClass.getField("KEY_PRESSED").get(null);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mouseClickedType, mouseEventFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, keyTypedType, keyEventFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, keyPressedType, keyPressFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mousePressedType, mousePressFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
@@ -235,8 +260,194 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
 
             attachColorPickerListeners();
+            attachComboBoxListeners();
+            attachDatePickerListeners();
+            // Track primary scene and any already-open overlay windows
+            registeredWindowScenes.clear();
+            registeredWindowScenes.add(scene);
+            checkAndAttachNewWindows();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
+    }
+
+    /** Attach recording event filters to an arbitrary scene (reuses existing proxy objects). */
+    private void attachFiltersToScene(Object scene) {
+        if (mouseEventFilter == null) return;
+        try {
+            Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+            Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+        } catch (Exception ignored) {}
+    }
+
+    /** Remove recording event filters from a scene. */
+    private void detachFiltersFromScene(Object scene) {
+        if (mouseEventFilter == null) return;
+        try {
+            Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+            Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Scan all open windows and attach recording filters + property listeners to any
+     * not yet registered. Called via double Platform.runLater after each click so that
+     * dialogs opened by button handlers are captured.
+     */
+    private void checkAndAttachNewWindows() {
+        if (mouseEventFilter == null) return;
+        for (Object window : getAllWindows()) {
+            Object scene = safeInvoke(window, "getScene");
+            if (scene == null) continue;
+            if (!registeredWindowScenes.add(scene)) continue; // already registered
+            attachFiltersToScene(scene);
+            Object root = safeInvoke(scene, "getRoot");
+            if (root != null) {
+                attachComboBoxListenersForRoot(root);
+                attachDatePickerListenersForRoot(root);
+            }
+        }
+    }
+
+    /** Schedule {@code r} to run on the JavaFX Application Thread. */
+    private static void runLaterFx(Runnable r) {
+        try {
+            Class.forName("javafx.application.Platform")
+                 .getMethod("runLater", Runnable.class)
+                 .invoke(null, r);
+        } catch (Exception ignored) {}
+    }
+
+    /** Returns true if {@code node} is inside a JavaFX DialogPane (modal dialog). */
+    private boolean isInsideDialogPane(Object node) {
+        Object current = node;
+        for (int i = 0; i < 15 && current != null; i++) {
+            if (current.getClass().getName().contains("DialogPane")) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if {@code node} is inside a button area of a DialogPane.
+     * Matches Button, ButtonBase, or ButtonBar (and their skin containers) anywhere
+     * in the ancestor chain that also has a DialogPane ancestor.
+     */
+    private boolean isInsideDialogButton(Object node) {
+        boolean foundButtonArea = false;
+        boolean foundDialogPane = false;
+        Object current = node;
+        for (int i = 0; i < 20 && current != null; i++) {
+            String simpleName = current.getClass().getSimpleName();
+            String fullName   = current.getClass().getName();
+            if (!foundButtonArea && (
+                    "Button".equals(simpleName)
+                    || "ButtonBase".equals(simpleName)
+                    || fullName.contains("ButtonBar"))) {
+                foundButtonArea = true;
+            }
+            if (!foundDialogPane && fullName.contains("DialogPane")) {
+                foundDialogPane = true;
+            }
+            if (foundButtonArea && foundDialogPane) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /**
+     * Determine the dialog button text for a mouse click event.
+     * Strategy:
+     *   1. Walk up from node to find a Button ancestor (works when node is inside button skin).
+     *   2. Walk up to find ButtonBar, then use click coordinates to hit-test its buttons.
+     *   3. Any text in ancestor chain.
+     *   4. Default "OK".
+     */
+    private String getDialogButtonTextFromEvent(Object node, Object event) {
+        // Pass 1: Button ancestor
+        Object current = node;
+        for (int i = 0; i < 20 && current != null; i++) {
+            String simpleName = current.getClass().getSimpleName();
+            if ("Button".equals(simpleName) || "ButtonBase".equals(simpleName)) {
+                String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
+                if (!t.isEmpty()) return t;
+            }
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        // Pass 2: ButtonBar coordinate hit-test
+        try {
+            double sceneX = ((Number) ReflectiveJavaFxSupport.invoke(event, "getSceneX")).doubleValue();
+            double sceneY = ((Number) ReflectiveJavaFxSupport.invoke(event, "getSceneY")).doubleValue();
+            current = node;
+            for (int i = 0; i < 20 && current != null; i++) {
+                if (current.getClass().getName().contains("ButtonBar")) {
+                    String t = hitTestButtonBarButtons(current, sceneX, sceneY);
+                    if (!t.isEmpty()) return t;
+                    break;
+                }
+                try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+                catch (Exception ex) { break; }
+            }
+        } catch (Exception ignored) {}
+        // Pass 3: any text in ancestor chain
+        current = node;
+        for (int i = 0; i < 20 && current != null; i++) {
+            String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
+            if (!t.isEmpty()) return t;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return "OK";
+    }
+
+    /**
+     * Walk ButtonBar's button list and return the text of the button whose scene bounds
+     * contain (sceneX, sceneY). Returns empty string if none matches.
+     */
+    @SuppressWarnings("unchecked")
+    private String hitTestButtonBarButtons(Object buttonBar, double sceneX, double sceneY) {
+        try {
+            Object buttons = ReflectiveJavaFxSupport.invoke(buttonBar, "getButtons");
+            if (!(buttons instanceof List<?> list)) return "";
+            Class<?> boundsClass = ReflectiveJavaFxSupport.loadClass("javafx.geometry.Bounds");
+            for (Object btn : list) {
+                try {
+                    Object localBounds = ReflectiveJavaFxSupport.invoke(btn, "getBoundsInLocal");
+                    Object sceneBounds = btn.getClass().getMethod("localToScene", boundsClass)
+                                           .invoke(btn, localBounds);
+                    double minX = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMinX")).doubleValue();
+                    double maxX = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMaxX")).doubleValue();
+                    double minY = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMinY")).doubleValue();
+                    double maxY = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMaxY")).doubleValue();
+                    if (sceneX >= minX && sceneX <= maxX && sceneY >= minY && sceneY <= maxY) {
+                        String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(btn));
+                        if (!t.isEmpty()) return t;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    /** Walk up from {@code node} to find dialog button text. Used for Enter/Space key path. */
+    private String getDialogButtonText(Object node) {
+        return getDialogButtonTextFromEvent(node, null);
     }
 
     /** Scan scene for ColorPicker nodes and register valueProperty change listeners. */
@@ -285,6 +496,111 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ignored) {}
     }
 
+    /** Scan scene for ComboBox nodes and register valueProperty change listeners. */
+    private void attachComboBoxListeners() {
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene == null) return;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) return;
+            lastComboValues.clear();
+            attachComboBoxListenersForRoot(root);
+        } catch (Exception ignored) {}
+    }
+
+    /** Attach ComboBox valueProperty listeners to all ComboBoxes under {@code root}. */
+    private void attachComboBoxListenersForRoot(Object root) {
+        try {
+            List<Object> combos = findChildrenByType(root, "ComboBox");
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object combo : combos) {
+                Object valueProp = ReflectiveJavaFxSupport.invoke(combo, "valueProperty");
+                String fxId = nullToEmpty(safeString(combo, "getId"));
+                int idx = nodeIndexOf(combo);
+                Object curVal = ReflectiveJavaFxSupport.invoke(combo, "getValue");
+                if (curVal != null) lastComboValues.put(fxId, curVal.toString());
+                Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    changeListenerClass.getClassLoader(),
+                    new Class<?>[]{ changeListenerClass },
+                    (proxy, method, args) -> {
+                        if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
+                            try {
+                                String selected = args[2].toString();
+                                String last = lastComboValues.get(fxId);
+                                if (selected.equals(last)) return null;
+                                lastComboValues.put(fxId, selected);
+                                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("type",      "select_combo");
+                                    entry.put("fxId",      fxId);
+                                    entry.put("text",      selected);
+                                    entry.put("nodeType",  "ComboBox");
+                                    entry.put("nodeIndex", idx);
+                                    entry.put("timestamp", System.currentTimeMillis() / 1000.0);
+                                    recorderBuffer.addLast(entry);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                );
+                ReflectiveJavaFxSupport.invokeExact(valueProp, "addListener",
+                    new Class<?>[]{ changeListenerClass }, listener);
+                comboBoxListeners.add(new Object[]{ valueProp, listener });
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Scan scene for DatePicker nodes and register valueProperty change listeners. */
+    private void attachDatePickerListeners() {
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene == null) return;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) return;
+            attachDatePickerListenersForRoot(root);
+        } catch (Exception ignored) {}
+    }
+
+    /** Attach DatePicker valueProperty listeners to all DatePickers under {@code root}. */
+    private void attachDatePickerListenersForRoot(Object root) {
+        try {
+            List<Object> pickers = findChildrenByType(root, "DatePicker");
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object picker : pickers) {
+                Object valueProp = ReflectiveJavaFxSupport.invoke(picker, "valueProperty");
+                String fxId = nullToEmpty(safeString(picker, "getId"));
+                int idx = nodeIndexOf(picker);
+                Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    changeListenerClass.getClassLoader(),
+                    new Class<?>[]{ changeListenerClass },
+                    (proxy, method, args) -> {
+                        if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
+                            try {
+                                String dateStr = args[2].toString();
+                                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("type",      "set_date");
+                                    entry.put("fxId",      fxId);
+                                    entry.put("text",      dateStr);
+                                    entry.put("nodeType",  "DatePicker");
+                                    entry.put("nodeIndex", idx);
+                                    entry.put("timestamp", System.currentTimeMillis() / 1000.0);
+                                    recorderBuffer.addLast(entry);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                );
+                ReflectiveJavaFxSupport.invokeExact(valueProp, "addListener",
+                    new Class<?>[]{ changeListenerClass }, listener);
+                datePickerListeners.add(new Object[]{ valueProp, listener });
+            }
+        } catch (Exception ignored) {}
+    }
+
+
     @Override
     public List<Map<String, Object>> stopRecordingFlush() {
         return ReflectiveJavaFxSupport.onFxThread(() -> {
@@ -331,6 +647,35 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             } catch (Exception ignored) {}
             colorPickerListeners.clear();
 
+            // Detach ComboBox value listeners
+            try {
+                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+                for (Object[] pair : comboBoxListeners) {
+                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                        new Class<?>[]{ changeListenerClass }, pair[1]);
+                }
+            } catch (Exception ignored) {}
+            comboBoxListeners.clear();
+            lastComboValues.clear();
+
+            // Detach DatePicker value listeners
+            try {
+                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+                for (Object[] pair : datePickerListeners) {
+                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                        new Class<?>[]{ changeListenerClass }, pair[1]);
+                }
+            } catch (Exception ignored) {}
+            datePickerListeners.clear();
+
+            // Detach filters from overlay windows registered during recording
+            for (Object regScene : registeredWindowScenes) {
+                Object primaryScene = sceneSupplier.get();
+                if (regScene == primaryScene) continue;
+                detachFiltersFromScene(regScene);
+            }
+            registeredWindowScenes.clear();
+
             // Flush any pending key accumulations
             flushKeyAccumulator();
 
@@ -360,6 +705,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // Also check ancestor chain: the clicked node may be an internal child of the
             // ColorPicker (e.g. ColorPickerLabel, a Rectangle) rather than the picker itself.
             if (isInsideColorPicker(node)) return;
+            // ComboBox clicks (arrow-button etc.) just open the dropdown; the actual selection
+            // is recorded via valueProperty listener in attachComboBoxListeners().
+            if (isInsideComboBox(node)) return;
+            // DatePicker clicks open the calendar popup; the actual date is recorded
+            // via valueProperty listener in attachDatePickerListeners().
+            if (isInsideDatePicker(node)) return;
+            // Dialog button clicks (OK / Cancel) → record as dismiss_dialog.
+            // Use isInsideDialogButton (not isInsideDialogPane) to avoid matching
+            // non-button nodes (TextField, etc.) that are also inside the dialog.
+            if (isInsideDialogButton(node)) {
+                String buttonText = getDialogButtonTextFromEvent(node, event);
+                Map<String, Object> de = new LinkedHashMap<>();
+                de.put("type",      "dismiss_dialog");
+                de.put("fxId",      "");
+                de.put("text",      buttonText);
+                de.put("nodeType",  "Button");
+                de.put("nodeIndex", 0);
+                de.put("timestamp", System.currentTimeMillis() / 1000.0);
+                recorderBuffer.addLast(de);
+                return;
+            }
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -369,6 +735,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             entry.put("nodeIndex",  nodeIdx);
             entry.put("timestamp",  System.currentTimeMillis() / 1000.0);
             recorderBuffer.addLast(entry);
+            // After every click, schedule a delayed window scan to pick up newly opened dialogs
+            runLaterFx(() -> runLaterFx(this::checkAndAttachNewWindows));
         } catch (Exception ignored) { /* best-effort: never crash the app */ }
     }
 
@@ -468,6 +836,55 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ignored) { /* best-effort */ }
     }
 
+    /**
+     * Handle KEY_PRESSED events. Only acts on Enter/Space inside a dialog scene,
+     * recording dismiss_dialog with the focused button's text. This covers the common
+     * case where the user presses Enter rather than clicking the OK/Cancel button.
+     */
+    private void onKeyPressed(Object event) {
+        if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        try {
+            // Only handle Enter and Space
+            Object codeObj = ReflectiveJavaFxSupport.invoke(event, "getCode");
+            if (codeObj == null) return;
+            String code = codeObj.toString();
+            if (!"ENTER".equals(code) && !"SPACE".equals(code)) return;
+
+            // Only act inside a dialog scene (scene root contains/is a DialogPane)
+            Object source = ReflectiveJavaFxSupport.invoke(event, "getSource");
+            if (!isDialogScene(source)) return;
+
+            // Find text from focused node (should be the focused Button)
+            String buttonText = "OK";
+            try {
+                Object focusedNode = ReflectiveJavaFxSupport.invoke(source, "getFocusOwner");
+                if (focusedNode != null) {
+                    String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(focusedNode));
+                    if (!t.isEmpty()) buttonText = t;
+                }
+            } catch (Exception ignored) {}
+
+            flushKeyAccumulator();
+            Map<String, Object> de = new LinkedHashMap<>();
+            de.put("type",      "dismiss_dialog");
+            de.put("fxId",      "");
+            de.put("text",      buttonText);
+            de.put("nodeType",  "Button");
+            de.put("nodeIndex", 0);
+            de.put("timestamp", System.currentTimeMillis() / 1000.0);
+            recorderBuffer.addLast(de);
+        } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    /** Returns true if {@code scene} is a JavaFX scene whose root is (or contains) a DialogPane. */
+    private boolean isDialogScene(Object scene) {
+        if (scene == null) return false;
+        try {
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            return root != null && root.getClass().getName().contains("DialogPane");
+        } catch (Exception ex) { return false; }
+    }
+
     private void flushKeyAccumulator() {
         for (Map.Entry<String, StringBuilder> kv : keyAccumulator.entrySet()) {
             if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) break;
@@ -511,6 +928,33 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         int limit = 12;
         while (current != null && limit-- > 0) {
             if ("ColorPicker".equals(current.getClass().getSimpleName())) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /** Returns true if {@code node} is a ComboBox or an internal child of one. */
+    private boolean isInsideComboBox(Object node) {
+        Object current = node;
+        int limit = 20;
+        while (current != null && limit-- > 0) {
+            // Match ComboBox class or any skin/bridge class containing "ComboBox" in name
+            String name = current.getClass().getName();
+            if (name.contains("ComboBox")) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /** Returns true if {@code node} is a DatePicker or an internal child of one. */
+    private boolean isInsideDatePicker(Object node) {
+        Object current = node;
+        int limit = 20;
+        while (current != null && limit-- > 0) {
+            String name = current.getClass().getName();
+            if (name.contains("DatePicker")) return true;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
@@ -1946,6 +2390,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         IdentityHashMap<Object, String> handles = new IdentityHashMap<>();
         AtomicInteger counter = new AtomicInteger();
         List<NodeRef> nodes = new ArrayList<>();
+
+        // Walk primary scene
         Deque<TraversalFrame> stack = new ArrayDeque<>();
         stack.push(new TraversalFrame(root, "/Scene"));
         while (!stack.isEmpty()) {
@@ -1959,6 +2405,29 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 stack.push(new TraversalFrame(child, frame.path() + "/" + child.getClass().getSimpleName() + "[" + (i + 1) + "]"));
             }
         }
+
+        // Also walk overlay windows (dialogs, popups, etc.) so actions can target dialog nodes
+        Object primaryWindow = safeInvoke(scene, "getWindow");
+        for (Object window : getAllWindows()) {
+            if (window == primaryWindow) continue;
+            Object overlayScene = safeInvoke(window, "getScene");
+            if (overlayScene == null) continue;
+            Object overlayRoot = safeInvoke(overlayScene, "getRoot");
+            if (overlayRoot == null) continue;
+            stack.push(new TraversalFrame(overlayRoot, "/Overlay"));
+            while (!stack.isEmpty()) {
+                TraversalFrame frame = stack.pop();
+                String handle = handles.computeIfAbsent(frame.node(), ignored -> "node-" + counter.incrementAndGet());
+                Map<String, Object> metadata = toNodeMap(frame.node(), frame.path(), handle);
+                nodes.add(new NodeRef(frame.node(), metadata));
+                List<Object> children = childrenOf(frame.node());
+                for (int i = children.size() - 1; i >= 0; i--) {
+                    Object child = children.get(i);
+                    stack.push(new TraversalFrame(child, frame.path() + "/" + child.getClass().getSimpleName() + "[" + (i + 1) + "]"));
+                }
+            }
+        }
+
         return new DiscoverySnapshot(nodes);
     }
 

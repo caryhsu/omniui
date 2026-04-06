@@ -69,6 +69,8 @@ if __package__ in (None, ""):
     import image.image_demo as image_demo  # type: ignore
     # Color app demos
     import color.color_demo as color_demo  # type: ignore
+    # Todo app demos
+    import todo.todo_demo as todo_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -131,6 +133,7 @@ else:
     from .progress import progress_demo
     from .image import image_demo
     from .color import color_demo
+    from .todo import todo_demo
 
 from omniui import OmniUI
 
@@ -459,6 +462,22 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
     with color_ctx:
         _section("Color Demo")
         color_demo.main()
+
+    # ── Todo App ─────────────────────────────────────────────────────────────
+    _section("Todo App demos (port 48107+)")
+    if auto_launch:
+        todo_port = OmniUI.find_free_port(48107, 48999)
+        todo_cmd = _build_launch_cmd(
+            java_dir / "todo-app", "omniui-todo-demo",
+            "dev.omniui.demo.todo", "dev.omniui.demo.todo.TodoDemoApp", todo_port,
+        )
+        todo_ctx = OmniUI.launch(cmd=todo_cmd, port=todo_port, timeout=30.0)
+    else:
+        todo_ctx = nullcontext()
+
+    with todo_ctx:
+        _section("Todo Demo")
+        todo_demo.main()
 
 
 if __name__ == "__main__":

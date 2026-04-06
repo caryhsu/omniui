@@ -115,7 +115,7 @@ class UIDiff:
 class RecordedEvent:
     """A single user interaction event captured by the Java agent."""
 
-    event_type: str   # "click" | "type" | "drag" | "set_color"
+    event_type: str   # "click" | "type" | "drag" | "set_color" | "select_combo" | "set_date"
     fx_id: str
     text: str
     node_type: str
