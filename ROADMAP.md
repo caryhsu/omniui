@@ -160,7 +160,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - App identification by port, PID, or named alias
   - API design TBD: `client.use("app1").click(...)` and/or multiple `OmniUI` instances
   - Cross-app workflows: e.g. fill form in app A, verify result in app B
-- [ ] **Visual regression** — screenshot baseline comparison for detecting unintended UI changes
+- [ ] **VS Code Extension (Recorder)** — a VS Code extension providing a sidebar panel with Record / Stop / Run controls. Communicates with the Java agent via the existing HTTP API (no agent changes needed). Key capabilities over the Tkinter GUI: insert recorded code at the current cursor position in the active editor; Run Selection maps to VS Code's native terminal execution; syntax highlighting and IntelliSense for the generated script immediately available. The Tkinter GUI and VS Code extension can coexist — the extension targets developers already in VS Code.
 - [x] **Focus management** — `tab_focus()`, `verify_focused(id=...)`
 - [ ] **Accessibility checks** — verify ARIA roles / labels
 - [ ] **WebView** automation (JavaScript execution)

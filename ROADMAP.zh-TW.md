@@ -159,6 +159,7 @@
   - App 識別方式：port、PID 或具名 alias
   - API 設計待定：`client.use("app1").click(...)` 或多個 `OmniUI` 實例，或兩者皆支援
   - 跨 App 工作流：例如在 app A 填寫表單，在 app B 驗證結果
+- [ ] **VS Code Extension（Recorder）** — 提供側邊欄面板，內含錄製 / 停止 / 執行控制項的 VS Code 擴充功能。透過現有 HTTP API 與 Java Agent 溝通（不需修改 agent）。相較 Tkinter GUI 的關鍵優勢：可將錄製程式碼插入目前游標位置；Run Selection 直接對應 VS Code 原生的終端機執行功能；產出的腳本立即享有語法高亮與 IntelliSense。Tkinter GUI 與 VS Code Extension 可並存，extension 主要服務已在 VS Code 開發的工程師。
 - [ ] **視覺回歸測試** — 截圖 baseline 比對，偵測非預期的 UI 變更
 - [x] **焦點管理** — `tab_focus()`、`verify_focused(id=...)`
 - [ ] **無障礙檢查** — 驗證 ARIA 角色與標籤
