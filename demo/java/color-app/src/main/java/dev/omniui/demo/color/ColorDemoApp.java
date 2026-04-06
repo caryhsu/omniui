@@ -44,13 +44,12 @@ public class ColorDemoApp extends Application {
         root.setAlignment(Pos.TOP_LEFT);
         root.setStyle("-fx-background-color: " + DEFAULT_BG + ";");
 
-        demoPicker.setOnAction(e -> {
-            Color c = demoPicker.getValue();
-            if (c != null) {
+        demoPicker.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
                 String hex = String.format("#%02x%02x%02x",
-                    (int) (c.getRed() * 255),
-                    (int) (c.getGreen() * 255),
-                    (int) (c.getBlue() * 255));
+                    (int) (newVal.getRed() * 255),
+                    (int) (newVal.getGreen() * 255),
+                    (int) (newVal.getBlue() * 255));
                 colorResult.setText("Selected: " + hex);
             }
         });
