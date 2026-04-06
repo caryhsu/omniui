@@ -207,6 +207,17 @@ The system SHALL support `TreeTableView` as an automation target with five actio
 - **WHEN** `perform("collapse_tree_table_item", selector, payload)` is called
 - **THEN** the matching TreeItem's `setExpanded(false)` is called on the FX thread
 
+### Requirement: Java agent handles ColorPicker commands
+The Java agent SHALL handle `set_color`, `get_color`, `open_colorpicker`, and `dismiss_colorpicker` commands in the top-level `perform()` switch and the `performOnFxThread()` switch of `ReflectiveJavaFxTarget`.
+
+#### Scenario: set_color routes to doSetColor
+- **WHEN** the agent receives a `set_color` command
+- **THEN** the action is dispatched to `doSetColor(selector, payload)` on the FX thread
+
+#### Scenario: open_colorpicker uses performWithOverlayWait
+- **WHEN** the agent receives an `open_colorpicker` command
+- **THEN** the action uses `performWithOverlayWait` with an `isColorPickerWindow` predicate consistent with other overlay-based controls
+
 ### Requirement: ColorPicker direct interaction
 The system SHALL support `set_color` and `get_color` actions for `ColorPicker` nodes, and `open_colorpicker` / `dismiss_colorpicker` for popup interaction, consistent with the DatePicker action pattern.
 
