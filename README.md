@@ -219,10 +219,23 @@ Unsupported interactions are intentionally skipped instead of falling back to ra
 
 ## Testing
 
-Run the Python test suite:
+OmniUI has two test tiers:
+
+| Command | What runs | Launches UI? | Speed |
+|---------|-----------|--------------|-------|
+| `pytest` or `pytest tests/` | Unit tests only (mocks, no real app) | ❌ | Fast (~0.5 s) |
+| `pytest tests/integration/` | Integration tests (launches real JavaFX apps) | ✅ | Slow |
+
+Run the unit test suite:
 
 ```bash
 python -m pytest tests/
+```
+
+Run integration tests (requires built Java agent + demo apps):
+
+```bash
+python -m pytest tests/integration/
 ```
 
 Build the Java agent and demo apps:

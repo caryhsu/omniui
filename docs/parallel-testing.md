@@ -107,18 +107,25 @@ def test_verify_apple_dropped(client):
 
 ## Running Tests
 
+> **Two test tiers:**
+> - `pytest tests/` — unit tests only (mocks, no real app, ~0.5 s)
+> - `pytest tests/integration/` — integration tests that launch real JavaFX apps
+
 ```bash
-# Auto-detect CPU count
-pytest tests/ --numprocesses auto
+# Unit tests only (default, no UI)
+pytest tests/
+
+# Integration tests — auto-detect CPU count (launches real apps)
+pytest tests/integration/ --numprocesses auto
 
 # Explicit worker count
-pytest tests/ --numprocesses 4
+pytest tests/integration/ --numprocesses 4
 
 # Combine with HTML report
-pytest tests/ --numprocesses auto --html=report.html --self-contained-html
+pytest tests/integration/ --numprocesses auto --html=report.html --self-contained-html
 
-# Sequential (no xdist)
-pytest tests/
+# Sequential integration tests
+pytest tests/integration/
 ```
 
 ---
@@ -159,7 +166,7 @@ jobs:
       - name: Run parallel tests
         run: |
           Xvfb :99 -screen 0 1280x1024x24 &
-          DISPLAY=:99 pytest tests/test_parallel_example.py \
+          DISPLAY=:99 pytest tests/integration/ \
             --numprocesses auto \
             --html=report.html --self-contained-html
         env:
@@ -189,7 +196,7 @@ jobs:
 
 ## See Also
 
-- [`tests/conftest_parallel_example.py`](../tests/conftest_parallel_example.py) — fully annotated fixture
-- [`tests/test_parallel_example.py`](../tests/test_parallel_example.py) — parallel-safe test examples
+- [`tests/integration/conftest_parallel_example.py`](../tests/integration/conftest_parallel_example.py) — fully annotated fixture
+- [`tests/integration/test_parallel_example.py`](../tests/integration/test_parallel_example.py) — parallel-safe test examples
 - [`docs/html-report.md`](html-report.md) — combining with HTML reports
 - [`docs/headless.md`](headless.md) — running headless on Linux/CI

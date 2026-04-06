@@ -210,10 +210,23 @@ click(text="Login")
 
 ## 測試
 
-執行 Python 測試：
+OmniUI 測試分兩層：
+
+| 指令 | 執行內容 | 啟動 UI？ | 速度 |
+|------|----------|-----------|------|
+| `pytest` 或 `pytest tests/` | 純單元測試（mock，無真實 app） | ❌ | 快（~0.5 秒）|
+| `pytest tests/integration/` | 整合測試（啟動真實 JavaFX app） | ✅ | 慢 |
+
+執行單元測試：
 
 ```bash
-python -m unittest tests.test_agent_contracts tests.test_client tests.test_demo_script tests.test_recorder tests.test_benchmark tests.test_markdown_i18n
+python -m pytest tests/
+```
+
+執行整合測試（需先建置 Java agent 與 demo app）：
+
+```bash
+python -m pytest tests/integration/
 ```
 
 建置 Java agent 與 demo app：

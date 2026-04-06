@@ -91,15 +91,22 @@ def test_verify_dropped(client):
 
 ## 執行指令
 
+> **測試分兩層：**
+> - `pytest tests/` — 純單元測試（mock，無真實 app，約 0.5 秒）
+> - `pytest tests/integration/` — 整合測試（啟動真實 JavaFX app）
+
 ```bash
-# 自動偵測 CPU 核心數
-pytest tests/ --numprocesses auto
+# 只跑單元測試（預設，不會跳出 UI）
+pytest tests/
+
+# 整合測試 — 自動偵測 CPU 核心數（會啟動真實 app）
+pytest tests/integration/ --numprocesses auto
 
 # 指定 worker 數量
-pytest tests/ --numprocesses 4
+pytest tests/integration/ --numprocesses 4
 
 # 搭配 HTML 報告
-pytest tests/ --numprocesses auto --html=report.html --self-contained-html
+pytest tests/integration/ --numprocesses auto --html=report.html --self-contained-html
 ```
 
 ---
@@ -123,7 +130,7 @@ jobs:
       - run: sudo apt-get install -y xvfb
       - run: |
           Xvfb :99 -screen 0 1280x1024x24 &
-          DISPLAY=:99 pytest tests/test_parallel_example.py \
+          DISPLAY=:99 pytest tests/integration/ \
             --numprocesses auto --html=report.html --self-contained-html
         env: { DISPLAY: ":99" }
       - uses: actions/upload-artifact@v4
@@ -135,7 +142,7 @@ jobs:
 
 ## 參考資料
 
-- [`tests/conftest_parallel_example.py`](../tests/conftest_parallel_example.py) — 完整注解的 fixture 範例
-- [`tests/test_parallel_example.py`](../tests/test_parallel_example.py) — 平行安全測試範例
+- [`tests/integration/conftest_parallel_example.py`](../tests/integration/conftest_parallel_example.py) — 完整注解的 fixture 範例
+- [`tests/integration/test_parallel_example.py`](../tests/integration/test_parallel_example.py) — 平行安全測試範例
 - [`docs/html-report.md`](html-report.md) — 搭配 HTML 報告
 - [`docs/headless.md`](headless.md) — Linux/CI 無頭模式
