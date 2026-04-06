@@ -147,6 +147,8 @@
 ## 💡 構想 / 未來規劃
 
 - [ ] **login-app 從 core-app 拆分** — `core-app` 目前將登入 Demo 與其他核心控制元件（ListView、TableView、ComboBox 等）混在一起。將登入表單獨立為 `demo/java/login-app`，使 `core-app` 專注於控制元件覆蓋範圍，`login-app` 則成為認證流程自動化（`click`、`type`、`verify_text`）的獨立範例。
+- [ ] **Mini Explorer demo app** — 假檔案瀏覽器（`demo/java/explorer-app`），用於測試 TreeView 導覽與水平 SplitPane 分隔調整。佈局：左側 = TreeView（模擬資料夾/檔案層級）；右側 = 選取資料夾後顯示對應檔案清單；使用者可拖曳調整分隔線。覆蓋：`select_tree_item`、`get_tree_items`、`get_divider_positions`、`set_divider_position`。
+- [ ] **Settings Panel demo app** — 設定表單 App（`demo/java/settings-app`），用於測試多種輸入控制元件的綜合場景。建議控制元件：TextField、PasswordField、ComboBox、CheckBox、RadioButton、Slider、Spinner、ToggleButton，加上 Save / Reset 按鈕。可單頁展示或用 TabPane 分區（如 Account / Appearance / Notifications）。
 - [ ] **多 App 自動化（Multi-app automation）** — 在單一測試流程中協調多個 JavaFX app
   - Python 端管理多條 agent 連線（每個 JavaFX app 各自嵌入一個 agent）
   - App 生命週期管理：啟動、連線、切換、斷線、關閉
