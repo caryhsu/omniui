@@ -386,6 +386,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
 
+    @Override
+    public List<Map<String, Object>> stopRecordingFlush() {
         return ReflectiveJavaFxSupport.onFxThread(() -> {
             Object scene = sceneSupplier.get();
             if (scene != null && mouseEventFilter != null) {
