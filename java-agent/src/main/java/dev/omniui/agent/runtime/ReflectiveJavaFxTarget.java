@@ -40,6 +40,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     // ColorPicker value listeners registered during recording (pairs of [valueProp, listener])
     private final List<Object[]> colorPickerListeners = new ArrayList<>();
+    // ComboBox value listeners registered during recording (pairs of [valueProp, listener])
+    private final List<Object[]> comboBoxListeners    = new ArrayList<>();
 
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
     private volatile double  dragPressX         = 0;
@@ -235,6 +237,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
 
             attachColorPickerListeners();
+            attachComboBoxListeners();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
     }
@@ -285,8 +288,49 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ignored) {}
     }
 
-    @Override
-    public List<Map<String, Object>> stopRecordingFlush() {
+    /** Scan scene for ComboBox nodes and register valueProperty change listeners. */
+    private void attachComboBoxListeners() {
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene == null) return;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) return;
+            List<Object> combos = findChildrenByType(root, "ComboBox");
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object combo : combos) {
+                Object valueProp = ReflectiveJavaFxSupport.invoke(combo, "valueProperty");
+                String fxId = nullToEmpty(safeString(combo, "getId"));
+                int idx = nodeIndexOf(combo);
+                Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    changeListenerClass.getClassLoader(),
+                    new Class<?>[]{ changeListenerClass },
+                    (proxy, method, args) -> {
+                        if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
+                            try {
+                                String selected = args[2].toString();
+                                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("type",      "select_combo");
+                                    entry.put("fxId",      fxId);
+                                    entry.put("text",      selected);
+                                    entry.put("nodeType",  "ComboBox");
+                                    entry.put("nodeIndex", idx);
+                                    entry.put("timestamp", System.currentTimeMillis() / 1000.0);
+                                    recorderBuffer.addLast(entry);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                );
+                ReflectiveJavaFxSupport.invokeExact(valueProp, "addListener",
+                    new Class<?>[]{ changeListenerClass }, listener);
+                comboBoxListeners.add(new Object[]{ valueProp, listener });
+            }
+        } catch (Exception ignored) {}
+    }
+
+
         return ReflectiveJavaFxSupport.onFxThread(() -> {
             Object scene = sceneSupplier.get();
             if (scene != null && mouseEventFilter != null) {
@@ -331,6 +375,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             } catch (Exception ignored) {}
             colorPickerListeners.clear();
 
+            // Detach ComboBox value listeners
+            try {
+                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+                for (Object[] pair : comboBoxListeners) {
+                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                        new Class<?>[]{ changeListenerClass }, pair[1]);
+                }
+            } catch (Exception ignored) {}
+            comboBoxListeners.clear();
+
             // Flush any pending key accumulations
             flushKeyAccumulator();
 
@@ -360,6 +414,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // Also check ancestor chain: the clicked node may be an internal child of the
             // ColorPicker (e.g. ColorPickerLabel, a Rectangle) rather than the picker itself.
             if (isInsideColorPicker(node)) return;
+            // ComboBox clicks (arrow-button etc.) just open the dropdown; the actual selection
+            // is recorded via valueProperty listener in attachComboBoxListeners().
+            if (isInsideComboBox(node)) return;
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -511,6 +568,18 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         int limit = 12;
         while (current != null && limit-- > 0) {
             if ("ColorPicker".equals(current.getClass().getSimpleName())) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /** Returns true if {@code node} is a ComboBox or an internal child of one. */
+    private boolean isInsideComboBox(Object node) {
+        Object current = node;
+        int limit = 12;
+        while (current != null && limit-- > 0) {
+            if ("ComboBox".equals(current.getClass().getSimpleName())) return true;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
