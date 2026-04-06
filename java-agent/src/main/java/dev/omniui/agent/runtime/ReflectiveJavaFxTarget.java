@@ -2101,6 +2101,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         IdentityHashMap<Object, String> handles = new IdentityHashMap<>();
         AtomicInteger counter = new AtomicInteger();
         List<NodeRef> nodes = new ArrayList<>();
+
+        // Walk primary scene
         Deque<TraversalFrame> stack = new ArrayDeque<>();
         stack.push(new TraversalFrame(root, "/Scene"));
         while (!stack.isEmpty()) {
@@ -2114,6 +2116,29 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 stack.push(new TraversalFrame(child, frame.path() + "/" + child.getClass().getSimpleName() + "[" + (i + 1) + "]"));
             }
         }
+
+        // Also walk overlay windows (dialogs, popups, etc.) so actions can target dialog nodes
+        Object primaryWindow = safeInvoke(scene, "getWindow");
+        for (Object window : getAllWindows()) {
+            if (window == primaryWindow) continue;
+            Object overlayScene = safeInvoke(window, "getScene");
+            if (overlayScene == null) continue;
+            Object overlayRoot = safeInvoke(overlayScene, "getRoot");
+            if (overlayRoot == null) continue;
+            stack.push(new TraversalFrame(overlayRoot, "/Overlay"));
+            while (!stack.isEmpty()) {
+                TraversalFrame frame = stack.pop();
+                String handle = handles.computeIfAbsent(frame.node(), ignored -> "node-" + counter.incrementAndGet());
+                Map<String, Object> metadata = toNodeMap(frame.node(), frame.path(), handle);
+                nodes.add(new NodeRef(frame.node(), metadata));
+                List<Object> children = childrenOf(frame.node());
+                for (int i = children.size() - 1; i >= 0; i--) {
+                    Object child = children.get(i);
+                    stack.push(new TraversalFrame(child, frame.path() + "/" + child.getClass().getSimpleName() + "[" + (i + 1) + "]"));
+                }
+            }
+        }
+
         return new DiscoverySnapshot(nodes);
     }
 
