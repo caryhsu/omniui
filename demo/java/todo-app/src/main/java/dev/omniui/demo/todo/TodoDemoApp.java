@@ -39,6 +39,9 @@ public class TodoDemoApp extends Application {
         deleteButton = new Button("🗑 Delete");
         deleteButton.setId("deleteButton");
 
+        Button clearButton = new Button("⊘ Clear All");
+        clearButton.setId("clearButton");
+
         showCompleted = new ToggleButton("☑ Show Completed");
         showCompleted.setId("showCompleted");
 
@@ -48,7 +51,7 @@ public class TodoDemoApp extends Application {
         searchField.setPrefWidth(180);
 
         ToolBar toolBar = new ToolBar(
-            editButton, deleteButton,
+            editButton, deleteButton, clearButton,
             new Separator(),
             showCompleted, searchField
         );
@@ -97,6 +100,7 @@ public class TodoDemoApp extends Application {
         addButton.setOnAction(e -> handleAdd());
         editButton.setOnAction(e -> handleEdit());
         deleteButton.setOnAction(e -> handleDelete());
+        clearButton.setOnAction(e -> handleClearAll());
         showCompleted.setOnAction(e -> applyFilter());
         searchField.textProperty().addListener((obs, o, n) -> applyFilter());
         taskList.getSelectionModel().selectedItemProperty()
@@ -138,6 +142,14 @@ public class TodoDemoApp extends Application {
         Task selected = taskList.getSelectionModel().getSelectedItem();
         if (selected == null) return;
         masterList.remove(selected);
+        clearInputPanel();
+        applyFilter();
+    }
+
+    private void handleClearAll() {
+        masterList.clear();
+        showCompleted.setSelected(false);
+        searchField.clear();
         clearInputPanel();
         applyFilter();
     }

@@ -24,6 +24,10 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
+    # ── Reset state (idempotent across multiple runs) ─────────────────────────
+    r = client.click(id="clearButton")
+    assert r.ok, f"clearButton failed: {r}"
+
     # ── Add task 1 ────────────────────────────────────────────────────────────
     client.press_key("Control+A", id="taskTitleField")
     client.type("Buy groceries", id="taskTitleField")
