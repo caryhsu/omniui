@@ -40,6 +40,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private volatile Object keyPressFilter      = null;  // Enter/Space in dialogs
     private volatile Object mousePressFilter    = null;  // for drag detection
     private volatile Object mouseReleaseFilter  = null;  // for drag detection
+    private volatile Object dialogActionFilter  = null;  // ActionEvent on dialog buttons
 
     // ColorPicker value listeners registered during recording (pairs of [valueProp, listener])
     private final List<Object[]> colorPickerListeners = new ArrayList<>();
@@ -239,12 +240,25 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
             );
 
+            dialogActionFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onDialogAction(args[0]);
+                    }
+                    return null;
+                }
+            );
+
             try {
+                Class<?> actionEventClass = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
                 Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
                 Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
                 Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
                 Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
                 Object keyPressedType    = keyEventClass.getField("KEY_PRESSED").get(null);
+                Object actionType        = actionEventClass.getField("ACTION").get(null);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mouseClickedType, mouseEventFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
@@ -255,6 +269,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                     .invoke(scene, mousePressedType, mousePressFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mouseReleasedType, mouseReleaseFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, actionType, dialogActionFilter);
             } catch (Exception ex) {
                 return ActionResult.failure(List.of("javafx"), Map.of("reason", "filter_attach_failed", "message", ex.getMessage()));
             }
@@ -277,12 +293,14 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
             Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
             Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> aec = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
             Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, aec.getField("ACTION").get(null),         dialogActionFilter);
         } catch (Exception ignored) {}
     }
 
@@ -293,12 +311,14 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
             Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
             Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> aec = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
             Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, aec.getField("ACTION").get(null),         dialogActionFilter);
         } catch (Exception ignored) {}
     }
 
@@ -318,8 +338,48 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             if (root != null) {
                 attachComboBoxListenersForRoot(root);
                 attachDatePickerListenersForRoot(root);
+                if (root.getClass().getSimpleName().equals("DialogPane")) {
+                    attachDialogButtonListeners(root);
+                }
             }
         }
+    }
+
+    /** Directly attach ACTION event handlers to all buttons inside a DialogPane's ButtonBar. */
+    private void attachDialogButtonListeners(Object dialogPaneRoot) {
+        if (dialogActionFilter == null) return;
+        try {
+            Object buttonBar = findFirstNodeBySimpleName(dialogPaneRoot, "ButtonBar");
+            if (buttonBar == null) return;
+            Object buttons = ReflectiveJavaFxSupport.invoke(buttonBar, "getButtons");
+            if (!(buttons instanceof java.util.List<?> list) || list.isEmpty()) return;
+            Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> aec = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
+            Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+            Object actionType = aec.getField("ACTION").get(null);
+            for (Object btn : list) {
+                try {
+                    btn.getClass().getMethod("addEventHandler", etc, ehc)
+                       .invoke(btn, actionType, dialogActionFilter);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Walk the scene graph and return the first node whose simple class name matches {@code name}. */
+    private Object findFirstNodeBySimpleName(Object root, String name) {
+        if (root == null) return null;
+        if (root.getClass().getSimpleName().equals(name)) return root;
+        try {
+            Object children = ReflectiveJavaFxSupport.invoke(root, "getChildrenUnmodifiable");
+            if (children instanceof java.util.List<?> list) {
+                for (Object child : list) {
+                    Object found = findFirstNodeBySimpleName(child, name);
+                    if (found != null) return found;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     /** Schedule {@code r} to run on the JavaFX Application Thread. */
@@ -610,11 +670,13 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                     Class<?> eventHandlerClass = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
                     Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
                     Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+                    Class<?> actionEventClass  = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
                     Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
                     Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
                     Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
                     Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
                     Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
+                    Object actionType        = actionEventClass.getField("ACTION").get(null);
                     scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
                         .invoke(scene, mouseClickedType, mouseEventFilter);
                     scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
@@ -627,12 +689,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                         scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
                             .invoke(scene, mouseReleasedType, mouseReleaseFilter);
                     }
+                    if (dialogActionFilter != null) {
+                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                            .invoke(scene, actionType, dialogActionFilter);
+                    }
                 } catch (Exception ignored) { /* best-effort */ }
             }
             mouseEventFilter   = null;
             keyEventFilter     = null;
             mousePressFilter   = null;
             mouseReleaseFilter = null;
+            dialogActionFilter = null;
             dragPressId        = "";
             dragPressText      = "";
             dragJustFired      = false;
@@ -747,6 +814,37 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // After every click, schedule a delayed window scan to pick up newly opened dialogs
             runLaterFx(() -> runLaterFx(this::checkAndAttachNewWindows));
         } catch (Exception ignored) { /* best-effort: never crash the app */ }
+    }
+
+    /**
+     * ActionEvent filter — fires when any action is performed (button click, Enter on button, etc.).
+     * We only care about buttons inside a DialogPane (OK / Cancel / custom dialog buttons).
+     */
+    private void onDialogAction(Object event) {
+        if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        try {
+            Object source = ReflectiveJavaFxSupport.invoke(event, "getSource");
+            if (source == null) return;
+            if (!isInsideDialogButton(source)) return;
+            // Deduplicate: ignore if the very last buffered event is already this dismiss_dialog
+            // (can happen if both MOUSE_CLICKED and ACTION fire for the same button press)
+            if (!recorderBuffer.isEmpty()) {
+                Map<String, Object> last = recorderBuffer.peekLast();
+                if ("dismiss_dialog".equals(last.get("type"))) return;
+            }
+            String buttonText = nullToEmpty(ReflectiveJavaFxSupport.textOf(source));
+            if (buttonText.isEmpty()) buttonText = "OK";
+            Map<String, Object> de = new LinkedHashMap<>();
+            de.put("type",      "dismiss_dialog");
+            de.put("fxId",      "");
+            de.put("text",      buttonText);
+            de.put("nodeType",  "Button");
+            de.put("nodeIndex", 0);
+            de.put("timestamp", System.currentTimeMillis() / 1000.0);
+            recorderBuffer.addLast(de);
+            // Schedule window scan to pick up any new dialogs opened by the action
+            runLaterFx(() -> runLaterFx(this::checkAndAttachNewWindows));
+        } catch (Exception ignored) { /* best-effort */ }
     }
 
     private void onMousePressed(Object event) {

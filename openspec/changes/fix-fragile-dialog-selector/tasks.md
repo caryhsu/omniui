@@ -7,9 +7,9 @@
 ## 2. Build & 手動驗證
 
 - [x] 2.1 Build agent JAR：`mvn clean package -pl java-agent -am -q`
-- [ ] 2.2 啟動 todo-app with agent（`run-dev-with-agent.bat`），用 Recorder 錄製「Add task → 填欄位 → OK」
-- [ ] 2.3 確認錄製腳本中無任何 `# WARN: fragile selector` 行
-- [ ] 2.4 確認 OK / Cancel 仍被錄製為 `dismiss_dialog(button="OK")`（由既有 `isInsideDialogButton` 處理，不受影響）
+- [x] 2.2 啟動 todo-app with agent（`run-dev-with-agent.bat`），用 Recorder 錄製「Add task → 填欄位 → OK」
+- [x] 2.3 確認錄製腳本中無任何 `# WARN: fragile selector` 行
+- [x] 2.4 確認 OK / Cancel 仍被錄製為 `dismiss_dialog(button="確定")`（由 attachDialogButtonListeners 直接 attach 處理）
 
 ## 3. Unit tests
 
