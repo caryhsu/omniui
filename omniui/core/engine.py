@@ -141,6 +141,7 @@ class OmniUIClient:
                 to_text=e.get("toText", ""),
                 to_node_type=e.get("toNodeType", ""),
                 to_node_index=int(e.get("toNodeIndex", 0)),
+                color=e.get("color", ""),
             )
             for e in raw_events
         ]

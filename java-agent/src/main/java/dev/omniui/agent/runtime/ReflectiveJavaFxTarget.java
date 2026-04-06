@@ -38,6 +38,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private volatile Object mousePressFilter    = null;  // for drag detection
     private volatile Object mouseReleaseFilter  = null;  // for drag detection
 
+    // ColorPicker value listeners registered during recording (pairs of [valueProp, listener])
+    private final List<Object[]> colorPickerListeners = new ArrayList<>();
+
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
     private volatile double  dragPressX         = 0;
     private volatile double  dragPressY         = 0;
@@ -231,8 +234,55 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 return ActionResult.failure(List.of("javafx"), Map.of("reason", "filter_attach_failed", "message", ex.getMessage()));
             }
 
+            attachColorPickerListeners();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
+    }
+
+    /** Scan scene for ColorPicker nodes and register valueProperty change listeners. */
+    private void attachColorPickerListeners() {
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene == null) return;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) return;
+            List<Object> pickers = findChildrenByType(root, "ColorPicker");
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object picker : pickers) {
+                Object valueProp = ReflectiveJavaFxSupport.invoke(picker, "valueProperty");
+                String fxId = nullToEmpty(safeString(picker, "getId"));
+                int idx = nodeIndexOf(picker);
+                Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    changeListenerClass.getClassLoader(),
+                    new Class<?>[]{ changeListenerClass },
+                    (proxy, method, args) -> {
+                        if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
+                            try {
+                                double r = (double) ReflectiveJavaFxSupport.invokeExact(args[2], "getRed", new Class<?>[0]);
+                                double g = (double) ReflectiveJavaFxSupport.invokeExact(args[2], "getGreen", new Class<?>[0]);
+                                double b = (double) ReflectiveJavaFxSupport.invokeExact(args[2], "getBlue", new Class<?>[0]);
+                                String hex = String.format("#%02x%02x%02x", (int)(r * 255), (int)(g * 255), (int)(b * 255));
+                                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("type",      "set_color");
+                                    entry.put("fxId",      fxId);
+                                    entry.put("text",      "");
+                                    entry.put("nodeType",  "ColorPicker");
+                                    entry.put("nodeIndex", idx);
+                                    entry.put("timestamp", System.currentTimeMillis() / 1000.0);
+                                    entry.put("color",     hex);
+                                    recorderBuffer.addLast(entry);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                );
+                ReflectiveJavaFxSupport.invokeExact(valueProp, "addListener",
+                    new Class<?>[]{ changeListenerClass }, listener);
+                colorPickerListeners.add(new Object[]{ valueProp, listener });
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -271,6 +321,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             dragPressText      = "";
             dragJustFired      = false;
 
+            // Detach ColorPicker value listeners
+            try {
+                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+                for (Object[] pair : colorPickerListeners) {
+                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                        new Class<?>[]{ changeListenerClass }, pair[1]);
+                }
+            } catch (Exception ignored) {}
+            colorPickerListeners.clear();
+
             // Flush any pending key accumulations
             flushKeyAccumulator();
 
@@ -295,6 +355,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             if (node == null) return;
             String fxId     = nullToEmpty(safeString(node, "getId"));
             String nodeType = node.getClass().getSimpleName();
+            // ColorPicker clicks just open the popup; the actual color change is recorded
+            // via the valueProperty listener registered in attachColorPickerListeners()
+            if ("ColorPicker".equals(nodeType)) return;
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
