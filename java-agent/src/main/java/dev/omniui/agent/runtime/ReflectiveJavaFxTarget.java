@@ -37,6 +37,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private final ConcurrentHashMap<String, Long>          keyTimestamps    = new ConcurrentHashMap<>();
     private volatile Object mouseEventFilter    = null;
     private volatile Object keyEventFilter      = null;
+    private volatile Object keyPressFilter      = null;  // Enter/Space in dialogs
     private volatile Object mousePressFilter    = null;  // for drag detection
     private volatile Object mouseReleaseFilter  = null;  // for drag detection
 
@@ -205,6 +206,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
             );
 
+            keyPressFilter = java.lang.reflect.Proxy.newProxyInstance(
+                eventHandlerClass.getClassLoader(),
+                new Class<?>[]{ eventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("handle".equals(method.getName()) && args != null && args.length == 1) {
+                        onKeyPressed(args[0]);
+                    }
+                    return null;
+                }
+            );
+
             mousePressFilter = java.lang.reflect.Proxy.newProxyInstance(
                 eventHandlerClass.getClassLoader(),
                 new Class<?>[]{ eventHandlerClass },
@@ -232,10 +244,13 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
                 Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
                 Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
+                Object keyPressedType    = keyEventClass.getField("KEY_PRESSED").get(null);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mouseClickedType, mouseEventFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, keyTypedType, keyEventFilter);
+                scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, keyPressedType, keyPressFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
                     .invoke(scene, mousePressedType, mousePressFilter);
                 scene.getClass().getMethod("addEventFilter", eventTypeClass, eventHandlerClass)
@@ -265,6 +280,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
             scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
         } catch (Exception ignored) {}
@@ -280,6 +296,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_PRESSED").get(null),    keyPressFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
             scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
         } catch (Exception ignored) {}
@@ -326,24 +343,25 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     /**
-     * Returns true if {@code node} is inside a ButtonBar that is inside a DialogPane.
-     * More precise than isInsideDialogPane: excludes non-button nodes (TextField, etc.)
-     * that are also children of the dialog.
+     * Returns true if {@code node} is a Button (or inside one) that is also inside a
+     * DialogPane. Avoids matching non-button nodes (TextField, Label, etc.) that are also
+     * children of the dialog. More robust than checking for "ButtonBar" specifically, since
+     * the ButtonBar skin may insert intermediate Pane containers.
      */
     private boolean isInsideDialogButton(Object node) {
+        boolean foundButton    = false;
+        boolean foundDialogPane = false;
         Object current = node;
-        for (int i = 0; i < 15 && current != null; i++) {
+        for (int i = 0; i < 20 && current != null; i++) {
             String simpleName = current.getClass().getSimpleName();
-            if ("ButtonBar".equals(simpleName)) {
-                // Found ButtonBar — verify it is inside a DialogPane
-                Object parent = current;
-                for (int j = 0; j < 6 && parent != null; j++) {
-                    if (parent.getClass().getName().contains("DialogPane")) return true;
-                    try { parent = ReflectiveJavaFxSupport.invoke(parent, "getParent"); }
-                    catch (Exception ex) { break; }
-                }
-                return false; // ButtonBar not inside DialogPane
+            String fullName   = current.getClass().getName();
+            if (!foundButton && ("Button".equals(simpleName) || "ButtonBase".equals(simpleName))) {
+                foundButton = true;
             }
+            if (!foundDialogPane && fullName.contains("DialogPane")) {
+                foundDialogPane = true;
+            }
+            if (foundButton && foundDialogPane) return true;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
@@ -352,11 +370,23 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     /**
      * Walk up from {@code node} to find the text of the dialog button that was clicked.
-     * Falls back to "OK" if no text is found.
+     * Prioritises the Button node's text; falls back to "OK" if nothing is found.
      */
     private String getDialogButtonText(Object node) {
+        // First pass: look for a Button and return its text
         Object current = node;
-        for (int i = 0; i < 8 && current != null; i++) {
+        for (int i = 0; i < 20 && current != null; i++) {
+            String simpleName = current.getClass().getSimpleName();
+            if ("Button".equals(simpleName) || "ButtonBase".equals(simpleName)) {
+                String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
+                if (!t.isEmpty()) return t;
+            }
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        // Second pass: accept any text from ancestor chain
+        current = node;
+        for (int i = 0; i < 20 && current != null; i++) {
             String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
             if (!t.isEmpty()) return t;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
@@ -749,6 +779,55 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             keyAccumulator.computeIfAbsent(nodeKey, k -> new StringBuilder()).append(ch);
             keyTimestamps.put(nodeKey, System.currentTimeMillis());
         } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    /**
+     * Handle KEY_PRESSED events. Only acts on Enter/Space inside a dialog scene,
+     * recording dismiss_dialog with the focused button's text. This covers the common
+     * case where the user presses Enter rather than clicking the OK/Cancel button.
+     */
+    private void onKeyPressed(Object event) {
+        if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
+        try {
+            // Only handle Enter and Space
+            Object codeObj = ReflectiveJavaFxSupport.invoke(event, "getCode");
+            if (codeObj == null) return;
+            String code = codeObj.toString();
+            if (!"ENTER".equals(code) && !"SPACE".equals(code)) return;
+
+            // Only act inside a dialog scene (scene root contains/is a DialogPane)
+            Object source = ReflectiveJavaFxSupport.invoke(event, "getSource");
+            if (!isDialogScene(source)) return;
+
+            // Find text from focused node (should be the focused Button)
+            String buttonText = "OK";
+            try {
+                Object focusedNode = ReflectiveJavaFxSupport.invoke(source, "getFocusOwner");
+                if (focusedNode != null) {
+                    String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(focusedNode));
+                    if (!t.isEmpty()) buttonText = t;
+                }
+            } catch (Exception ignored) {}
+
+            flushKeyAccumulator();
+            Map<String, Object> de = new LinkedHashMap<>();
+            de.put("type",      "dismiss_dialog");
+            de.put("fxId",      "");
+            de.put("text",      buttonText);
+            de.put("nodeType",  "Button");
+            de.put("nodeIndex", 0);
+            de.put("timestamp", System.currentTimeMillis() / 1000.0);
+            recorderBuffer.addLast(de);
+        } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    /** Returns true if {@code scene} is a JavaFX scene whose root is (or contains) a DialogPane. */
+    private boolean isDialogScene(Object scene) {
+        if (scene == null) return false;
+        try {
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            return root != null && root.getClass().getName().contains("DialogPane");
+        } catch (Exception ex) { return false; }
     }
 
     private void flushKeyAccumulator() {
