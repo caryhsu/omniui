@@ -130,6 +130,7 @@
   - [x] **Wait 插入 checkbox** — GUI 中的「Insert wait_for_*」開關；錄製開始時套用設定
 - [ ] **拖放錄製（Drag & Drop recording）** — Recorder 捕捉 `MOUSE_PRESSED` + `MOUSE_RELEASED` 配對，推導起終點節點，在產出腳本中輸出 `client.drag(id=...).to(id=...)`
 - [x] **拖放錄製（Drag & Drop recording）** — `MOUSE_PRESSED`+`MOUSE_RELEASED` 距離 ≥15px 即記錄 drag 事件；codegen 輸出 `client.drag(id=...).to(id=...)`
+- [ ] **即時錄製回饋（Real-time recording feedback）** — 目前 Recorder GUI 需等到按下 Stop 後才會顯示錄製腳本。計畫加入 polling 機制（每 ~500ms 呼叫 `GET /sessions/{sessionId}/events/pending`），讓每個使用者操作在錄製時立即顯示於腳本預覽區。升級路徑：先實作 polling，若需要低於 100ms 延遲或支援瀏覽器 UI 再改用 SSE。
 
 ### 已知錄製器問題（Known Recorder Issues）
 
