@@ -2,6 +2,7 @@ package dev.omniui.demo.image;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -158,16 +159,11 @@ public class ImageDemoApp extends Application {
             srcView.setOnMouseExited(e -> srcView.setCursor(Cursor.DEFAULT));
             srcView.setOnMousePressed(e -> srcView.getScene().setCursor(Cursor.CLOSED_HAND));
 
-            // On mouse release: restore cursor, then check drop target
+            // On mouse release: restore cursor, then check drop target by bounds
             srcView.setOnMouseReleased(e -> {
                 srcView.getScene().setCursor(Cursor.DEFAULT);
-                Node pickNode = e.getPickResult().getIntersectedNode();
-                Node n = pickNode;
-                boolean overDrop = false;
-                while (n != null) {
-                    if (n == dropPane) { overDrop = true; break; }
-                    n = n.getParent();
-                }
+                Bounds dropBounds = dropPane.localToScene(dropPane.getBoundsInLocal());
+                boolean overDrop = dropBounds.contains(e.getSceneX(), e.getSceneY());
                 if (overDrop) {
                     Image img = srcView.getImage();
                     Platform.runLater(() -> {
@@ -176,7 +172,6 @@ public class ImageDemoApp extends Application {
                         dropResult.setText("source" + idx + " dropped!");
                     });
                 }
-                e.consume();
             });
 
             sourcesRow.getChildren().add(srcView);
