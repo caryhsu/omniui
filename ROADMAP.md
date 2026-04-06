@@ -134,7 +134,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ### Known Recorder Issues
 
-- [ ] **fragile selector in dialogs** — Clicks on internal layout nodes (e.g. spacing `Pane` inside a dialog) are recorded as `click(type="Pane", index=0)` because they have no `fx:id` or stable text. These are marked with `# WARN: fragile selector` but still produce unreliable scripts. Fix: suppress recording non-actionable layout nodes that are not Button/Label/TextField/etc.
+- [x] **fragile selector in dialogs** — Clicks on internal layout nodes (e.g. spacing `Pane` inside a dialog) are recorded as `click(type="Pane", index=0)` because they have no `fx:id` or stable text. These are marked with `# WARN: fragile selector` but still produce unreliable scripts. Fix: suppress recording non-actionable layout nodes that are not Button/Label/TextField/etc. Also fixed `dismiss_dialog` not being recorded for Dialog OK/Cancel buttons by directly attaching ACTION event handlers to ButtonBar buttons. *(merged PR #19)*
 
 ---
 

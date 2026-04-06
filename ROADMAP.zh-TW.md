@@ -133,7 +133,7 @@
 
 ### 已知錄製器問題（Known Recorder Issues）
 
-- [ ] **Dialog 內部脆弱 selector** — 點擊 dialog 內部的 layout 節點（如 spacing `Pane`）時，因無 `fx:id` 或穩定文字，會被錄製為 `click(type="Pane", index=0)` 並標注 `# WARN: fragile selector`，產出腳本不穩定。修復方向：在錄製時略過非互動性的 layout 節點（非 Button/Label/TextField 等）。
+- [x] **Dialog 內部脆弱 selector** — 點擊 dialog 內部的 layout 節點（如 spacing `Pane`）時，因無 `fx:id` 或穩定文字，會被錄製為 `click(type="Pane", index=0)` 並標注 `# WARN: fragile selector`，產出腳本不穩定。修復：錄製時略過非互動性的 layout 節點，並直接對 ButtonBar 內的按鈕附加 ACTION handler，使 `dismiss_dialog` 能正確錄製。*(已 merge PR #19)*
 
 ---
 
