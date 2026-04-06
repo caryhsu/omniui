@@ -30,6 +30,8 @@
 
 ## 5. Cleanup and commit
 
-- [ ] 5.1 Update ROADMAP.md — mark `split-login-app` as done
-- [ ] 5.2 Commit all changes with message `feat: extract login-app from core-app`
-- [ ] 5.3 Open PR and merge to main
+- [ ] 5.1 Update `README.md` and `README.zh-TW.md` — add login-app to demo apps table/list
+- [ ] 5.2 Update `docs/parallel-testing.md` / `docs/parallel-testing.zh-TW.md` if login-app port appears in examples
+- [ ] 5.3 Update `ROADMAP.md` / `ROADMAP.zh-TW.md` — mark `split-login-app` as done (move to ✅ Done)
+- [ ] 5.4 Commit all changes with message `feat: extract login-app from core-app`
+- [ ] 5.5 Open PR and merge to main
