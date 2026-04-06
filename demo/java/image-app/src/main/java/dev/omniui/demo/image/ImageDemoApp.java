@@ -12,11 +12,13 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ImageDemoApp extends Application {
 
@@ -137,10 +139,13 @@ public class ImageDemoApp extends Application {
         HBox sourcesRow = new HBox(16);
         sourcesRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Track which source is being dragged (index 1/2/3, or 0 = none)
+        AtomicInteger dragIdx = new AtomicInteger(0);
+        AtomicReference<Image> dragImage = new AtomicReference<>(null);
+
         for (int i = 0; i < 3; i++) {
             final String srcUrl = sourceUrls[i];
             final String srcId  = sourceIds[i];
-            final int idx = i + 1;
 
             Image srcImg = new Image(srcUrl, 100, 100, true, true, true);
             ImageView srcView = new ImageView(srcImg);
@@ -154,22 +159,9 @@ public class ImageDemoApp extends Application {
                 "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 4, 0, 0, 1);"
             );
 
-            // Cursor: open hand on hover, closed hand while dragging
+            // Cursor: open hand on hover
             srcView.setOnMouseEntered(e -> srcView.setCursor(Cursor.OPEN_HAND));
             srcView.setOnMouseExited(e -> srcView.setCursor(Cursor.DEFAULT));
-            srcView.setOnMousePressed(e -> srcView.getScene().setCursor(Cursor.CLOSED_HAND));
-
-            // On mouse release: restore cursor, then check drop target by bounds
-            srcView.setOnMouseReleased(e -> {
-                srcView.getScene().setCursor(Cursor.DEFAULT);
-                Bounds dropBounds = dropPane.localToScene(dropPane.getBoundsInLocal());
-                boolean overDrop = dropBounds.contains(e.getSceneX(), e.getSceneY());
-                if (overDrop) {
-                    dropTargetImage.setImage(srcView.getImage());
-                    dropTarget.setText("");
-                    dropResult.setText("source" + idx + " dropped!");
-                }
-            });
 
             sourcesRow.getChildren().add(srcView);
         }
@@ -187,6 +179,58 @@ public class ImageDemoApp extends Application {
         root.setPadding(new Insets(24));
 
         Scene scene = new Scene(root, 650, 580);
+
+        // ── Drag logic using scene-level capture-phase filters ────────────────
+        // Works for both real mouse events and OmniUI synthetic events.
+        scene.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            dragIdx.set(0);
+            dragImage.set(null);
+            // Try target-walk first (real mouse events set a proper target)
+            if (e.getTarget() instanceof Node node) {
+                Node n = node;
+                for (int depth = 0; n != null && depth < 5; depth++, n = n.getParent()) {
+                    String id = n.getId();
+                    if (id != null && id.startsWith("dragSource")) {
+                        int idx = Integer.parseInt(id.replace("dragSource", ""));
+                        dragIdx.set(idx);
+                        dragImage.set(((ImageView) sourcesRow.getChildren().get(idx - 1)).getImage());
+                        scene.setCursor(Cursor.CLOSED_HAND);
+                        break;
+                    }
+                }
+            }
+            // Coordinate fallback for synthetic events (target may be root/scene)
+            if (dragIdx.get() == 0) {
+                for (Node child : sourcesRow.getChildren()) {
+                    String id = child.getId();
+                    if (id == null || !id.startsWith("dragSource")) continue;
+                    Bounds b = child.localToScene(child.getBoundsInLocal());
+                    if (b.contains(e.getSceneX(), e.getSceneY())) {
+                        int idx = Integer.parseInt(id.replace("dragSource", ""));
+                        dragIdx.set(idx);
+                        dragImage.set(((ImageView) child).getImage());
+                        scene.setCursor(Cursor.CLOSED_HAND);
+                        break;
+                    }
+                }
+            }
+        });
+
+        scene.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            scene.setCursor(Cursor.DEFAULT);
+            if (dragIdx.get() == 0) return;
+            Bounds dropBounds = dropPane.localToScene(dropPane.getBoundsInLocal());
+            if (dropBounds.contains(e.getSceneX(), e.getSceneY())) {
+                int idx = dragIdx.get();
+                Image img = dragImage.get();
+                dropTargetImage.setImage(img);
+                dropTarget.setText("");
+                dropResult.setText("source" + idx + " dropped!");
+            }
+            dragIdx.set(0);
+            dragImage.set(null);
+        });
+
         stage.setTitle("OmniUI Image Demo");
         stage.setScene(scene);
         stage.show();
