@@ -50,14 +50,11 @@ jobs:
         timeout-minutes: 10
 
       - name: Run pytest integration suite
-        if: always()
         run: |
           export DISPLAY=:99
-          python -m pytest tests/ -v \
-            --html=report.html --self-contained-html \
-            -m "not unit" --ignore=tests/test_demo_launchers.py \
-            --omniui-url http://127.0.0.1:48100 || true
-        timeout-minutes: 5
+          python -m pytest tests/integration/ -v \
+            --html=report.html --self-contained-html
+        timeout-minutes: 15
 
       - name: Upload HTML report
         if: always()
