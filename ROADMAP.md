@@ -147,6 +147,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ## 💡 Ideas / Future
 
+- [ ] **Split login-app from core-app** — `core-app` currently bundles the login demo with other core controls (ListView, TableView, ComboBox, etc.). Extract the login form into a dedicated `demo/java/login-app` so that `core-app` stays focused on control coverage and `login-app` becomes a standalone example of authentication flow automation (`click`, `type`, `verify_text`).
 - [ ] **Multi-app automation** — orchestrate multiple JavaFX apps in a single test flow
   - Multiple agent connections managed from Python (each JavaFX app embeds its own agent)
   - App lifecycle: launch, connect, switch, disconnect, close

@@ -146,6 +146,7 @@
 
 ## 💡 構想 / 未來規劃
 
+- [ ] **login-app 從 core-app 拆分** — `core-app` 目前將登入 Demo 與其他核心控制元件（ListView、TableView、ComboBox 等）混在一起。將登入表單獨立為 `demo/java/login-app`，使 `core-app` 專注於控制元件覆蓋範圍，`login-app` 則成為認證流程自動化（`click`、`type`、`verify_text`）的獨立範例。
 - [ ] **多 App 自動化（Multi-app automation）** — 在單一測試流程中協調多個 JavaFX app
   - Python 端管理多條 agent 連線（每個 JavaFX app 各自嵌入一個 agent）
   - App 生命週期管理：啟動、連線、切換、斷線、關閉
