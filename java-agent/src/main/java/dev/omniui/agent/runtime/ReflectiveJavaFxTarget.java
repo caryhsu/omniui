@@ -42,6 +42,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private final List<Object[]> colorPickerListeners = new ArrayList<>();
     // ComboBox value listeners registered during recording (pairs of [valueProp, listener])
     private final List<Object[]> comboBoxListeners    = new ArrayList<>();
+    // DatePicker value listeners registered during recording (pairs of [valueProp, listener])
+    private final List<Object[]> datePickerListeners  = new ArrayList<>();
+    // Last recorded value per ComboBox fxId (deduplication)
+    private final Map<String, String> lastComboValues = new java.util.HashMap<>();
 
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
     private volatile double  dragPressX         = 0;
@@ -238,6 +242,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
             attachColorPickerListeners();
             attachComboBoxListeners();
+            attachDatePickerListeners();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
     }
@@ -297,10 +302,14 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             if (root == null) return;
             List<Object> combos = findChildrenByType(root, "ComboBox");
             Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            lastComboValues.clear();
             for (Object combo : combos) {
                 Object valueProp = ReflectiveJavaFxSupport.invoke(combo, "valueProperty");
                 String fxId = nullToEmpty(safeString(combo, "getId"));
                 int idx = nodeIndexOf(combo);
+                // Seed last-known value so the first selection (same as default) is suppressed
+                Object curVal = ReflectiveJavaFxSupport.invoke(combo, "getValue");
+                if (curVal != null) lastComboValues.put(fxId, curVal.toString());
                 Object listener = java.lang.reflect.Proxy.newProxyInstance(
                     changeListenerClass.getClassLoader(),
                     new Class<?>[]{ changeListenerClass },
@@ -308,6 +317,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                         if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
                             try {
                                 String selected = args[2].toString();
+                                // Deduplicate: only record when value actually changes
+                                String last = lastComboValues.get(fxId);
+                                if (selected.equals(last)) return null;
+                                lastComboValues.put(fxId, selected);
                                 if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
                                     Map<String, Object> entry = new LinkedHashMap<>();
                                     entry.put("type",      "select_combo");
@@ -330,9 +343,49 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ignored) {}
     }
 
+    /** Scan scene for DatePicker nodes and register valueProperty change listeners. */
+    private void attachDatePickerListeners() {
+        try {
+            Object scene = sceneSupplier.get();
+            if (scene == null) return;
+            Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
+            if (root == null) return;
+            List<Object> pickers = findChildrenByType(root, "DatePicker");
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object picker : pickers) {
+                Object valueProp = ReflectiveJavaFxSupport.invoke(picker, "valueProperty");
+                String fxId = nullToEmpty(safeString(picker, "getId"));
+                int idx = nodeIndexOf(picker);
+                Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    changeListenerClass.getClassLoader(),
+                    new Class<?>[]{ changeListenerClass },
+                    (proxy, method, args) -> {
+                        if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
+                            try {
+                                String dateStr = args[2].toString(); // LocalDate.toString() → "YYYY-MM-DD"
+                                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("type",      "set_date");
+                                    entry.put("fxId",      fxId);
+                                    entry.put("text",      dateStr);
+                                    entry.put("nodeType",  "DatePicker");
+                                    entry.put("nodeIndex", idx);
+                                    entry.put("timestamp", System.currentTimeMillis() / 1000.0);
+                                    recorderBuffer.addLast(entry);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                );
+                ReflectiveJavaFxSupport.invokeExact(valueProp, "addListener",
+                    new Class<?>[]{ changeListenerClass }, listener);
+                datePickerListeners.add(new Object[]{ valueProp, listener });
+            }
+        } catch (Exception ignored) {}
+    }
 
-    @Override
-    public List<Map<String, Object>> stopRecordingFlush() {
+
         return ReflectiveJavaFxSupport.onFxThread(() -> {
             Object scene = sceneSupplier.get();
             if (scene != null && mouseEventFilter != null) {
@@ -386,6 +439,17 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 }
             } catch (Exception ignored) {}
             comboBoxListeners.clear();
+            lastComboValues.clear();
+
+            // Detach DatePicker value listeners
+            try {
+                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+                for (Object[] pair : datePickerListeners) {
+                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                        new Class<?>[]{ changeListenerClass }, pair[1]);
+                }
+            } catch (Exception ignored) {}
+            datePickerListeners.clear();
 
             // Flush any pending key accumulations
             flushKeyAccumulator();
@@ -419,6 +483,9 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // ComboBox clicks (arrow-button etc.) just open the dropdown; the actual selection
             // is recorded via valueProperty listener in attachComboBoxListeners().
             if (isInsideComboBox(node)) return;
+            // DatePicker clicks open the calendar popup; the actual date is recorded
+            // via valueProperty listener in attachDatePickerListeners().
+            if (isInsideDatePicker(node)) return;
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -579,9 +646,24 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     /** Returns true if {@code node} is a ComboBox or an internal child of one. */
     private boolean isInsideComboBox(Object node) {
         Object current = node;
-        int limit = 12;
+        int limit = 20;
         while (current != null && limit-- > 0) {
-            if ("ComboBox".equals(current.getClass().getSimpleName())) return true;
+            // Match ComboBox class or any skin/bridge class containing "ComboBox" in name
+            String name = current.getClass().getName();
+            if (name.contains("ComboBox")) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
+    }
+
+    /** Returns true if {@code node} is a DatePicker or an internal child of one. */
+    private boolean isInsideDatePicker(Object node) {
+        Object current = node;
+        int limit = 20;
+        while (current != null && limit-- > 0) {
+            String name = current.getClass().getName();
+            if (name.contains("DatePicker")) return true;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }

@@ -85,6 +85,13 @@ def generate_script(
             else:
                 action_lines.append(f'client.select("{value_str}")')
             action_events.append(event)
+        elif event.event_type == "set_date":
+            date_val = event.text or ""
+            if event.fx_id:
+                action_lines.append(f'client.set_date("{date_val}", id="{event.fx_id}")')
+            else:
+                action_lines.append(f'client.set_date("{date_val}")')
+            action_events.append(event)
 
     if wait_injection:
         body_lines = inject_waits(action_events, action_lines, timeout=wait_timeout)
