@@ -92,6 +92,10 @@ def generate_script(
             else:
                 action_lines.append(f'client.set_date("{date_val}")')
             action_events.append(event)
+        elif event.event_type == "dismiss_dialog":
+            button_text = event.text or "OK"
+            action_lines.append(f'client.dismiss_dialog(button="{button_text}")')
+            action_events.append(event)
 
     if wait_injection:
         body_lines = inject_waits(action_events, action_lines, timeout=wait_timeout)

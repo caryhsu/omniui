@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,6 +48,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private final List<Object[]> datePickerListeners  = new ArrayList<>();
     // Last recorded value per ComboBox fxId (deduplication)
     private final Map<String, String> lastComboValues = new java.util.HashMap<>();
+    // Scenes (including overlays) that already have recorder event filters attached
+    private final Set<Object> registeredWindowScenes  = Collections.newSetFromMap(new IdentityHashMap<>());
 
     // Pending drag press info (set on MOUSE_PRESSED, consumed on MOUSE_RELEASED)
     private volatile double  dragPressX         = 0;
@@ -243,8 +247,82 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             attachColorPickerListeners();
             attachComboBoxListeners();
             attachDatePickerListeners();
+            // Track primary scene and any already-open overlay windows
+            registeredWindowScenes.clear();
+            registeredWindowScenes.add(scene);
+            checkAndAttachNewWindows();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
+    }
+
+    /** Attach recording event filters to an arbitrary scene (reuses existing proxy objects). */
+    private void attachFiltersToScene(Object scene) {
+        if (mouseEventFilter == null) return;
+        try {
+            Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+            Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
+            scene.getClass().getMethod("addEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+        } catch (Exception ignored) {}
+    }
+
+    /** Remove recording event filters from a scene. */
+    private void detachFiltersFromScene(Object scene) {
+        if (mouseEventFilter == null) return;
+        try {
+            Class<?> ehc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+            Class<?> mec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+            Class<?> kec = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+            Class<?> etc = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_CLICKED").get(null),  mouseEventFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, kec.getField("KEY_TYPED").get(null),      keyEventFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_PRESSED").get(null),  mousePressFilter);
+            scene.getClass().getMethod("removeEventFilter", etc, ehc).invoke(scene, mec.getField("MOUSE_RELEASED").get(null), mouseReleaseFilter);
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Scan all open windows and attach recording filters + property listeners to any
+     * not yet registered. Called via double Platform.runLater after each click so that
+     * dialogs opened by button handlers are captured.
+     */
+    private void checkAndAttachNewWindows() {
+        if (mouseEventFilter == null) return;
+        for (Object window : getAllWindows()) {
+            Object scene = safeInvoke(window, "getScene");
+            if (scene == null) continue;
+            if (!registeredWindowScenes.add(scene)) continue; // already registered
+            attachFiltersToScene(scene);
+            Object root = safeInvoke(scene, "getRoot");
+            if (root != null) {
+                attachComboBoxListenersForRoot(root);
+                attachDatePickerListenersForRoot(root);
+            }
+        }
+    }
+
+    /** Schedule {@code r} to run on the JavaFX Application Thread. */
+    private static void runLaterFx(Runnable r) {
+        try {
+            Class.forName("javafx.application.Platform")
+                 .getMethod("runLater", Runnable.class)
+                 .invoke(null, r);
+        } catch (Exception ignored) {}
+    }
+
+    /** Returns true if {@code node} is inside a JavaFX DialogPane (modal dialog). */
+    private boolean isInsideDialogPane(Object node) {
+        Object current = node;
+        for (int i = 0; i < 15 && current != null; i++) {
+            if (current.getClass().getName().contains("DialogPane")) return true;
+            try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+            catch (Exception ex) { break; }
+        }
+        return false;
     }
 
     /** Scan scene for ColorPicker nodes and register valueProperty change listeners. */
@@ -300,14 +378,20 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             if (scene == null) return;
             Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
             if (root == null) return;
+            lastComboValues.clear();
+            attachComboBoxListenersForRoot(root);
+        } catch (Exception ignored) {}
+    }
+
+    /** Attach ComboBox valueProperty listeners to all ComboBoxes under {@code root}. */
+    private void attachComboBoxListenersForRoot(Object root) {
+        try {
             List<Object> combos = findChildrenByType(root, "ComboBox");
             Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
-            lastComboValues.clear();
             for (Object combo : combos) {
                 Object valueProp = ReflectiveJavaFxSupport.invoke(combo, "valueProperty");
                 String fxId = nullToEmpty(safeString(combo, "getId"));
                 int idx = nodeIndexOf(combo);
-                // Seed last-known value so the first selection (same as default) is suppressed
                 Object curVal = ReflectiveJavaFxSupport.invoke(combo, "getValue");
                 if (curVal != null) lastComboValues.put(fxId, curVal.toString());
                 Object listener = java.lang.reflect.Proxy.newProxyInstance(
@@ -317,7 +401,6 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                         if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
                             try {
                                 String selected = args[2].toString();
-                                // Deduplicate: only record when value actually changes
                                 String last = lastComboValues.get(fxId);
                                 if (selected.equals(last)) return null;
                                 lastComboValues.put(fxId, selected);
@@ -350,6 +433,13 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             if (scene == null) return;
             Object root = ReflectiveJavaFxSupport.invoke(scene, "getRoot");
             if (root == null) return;
+            attachDatePickerListenersForRoot(root);
+        } catch (Exception ignored) {}
+    }
+
+    /** Attach DatePicker valueProperty listeners to all DatePickers under {@code root}. */
+    private void attachDatePickerListenersForRoot(Object root) {
+        try {
             List<Object> pickers = findChildrenByType(root, "DatePicker");
             Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
             for (Object picker : pickers) {
@@ -362,7 +452,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                     (proxy, method, args) -> {
                         if ("changed".equals(method.getName()) && args != null && args.length == 3 && args[2] != null) {
                             try {
-                                String dateStr = args[2].toString(); // LocalDate.toString() → "YYYY-MM-DD"
+                                String dateStr = args[2].toString();
                                 if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
                                     Map<String, Object> entry = new LinkedHashMap<>();
                                     entry.put("type",      "set_date");
@@ -453,6 +543,14 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             } catch (Exception ignored) {}
             datePickerListeners.clear();
 
+            // Detach filters from overlay windows registered during recording
+            for (Object regScene : registeredWindowScenes) {
+                Object primaryScene = sceneSupplier.get();
+                if (regScene == primaryScene) continue;
+                detachFiltersFromScene(regScene);
+            }
+            registeredWindowScenes.clear();
+
             // Flush any pending key accumulations
             flushKeyAccumulator();
 
@@ -488,6 +586,21 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // DatePicker clicks open the calendar popup; the actual date is recorded
             // via valueProperty listener in attachDatePickerListeners().
             if (isInsideDatePicker(node)) return;
+            // Dialog button clicks (OK / Cancel) → record as dismiss_dialog
+            if (isInsideDialogPane(node)) {
+                String buttonText = nullToEmpty(ReflectiveJavaFxSupport.textOf(node));
+                if (!buttonText.isEmpty()) {
+                    Map<String, Object> de = new LinkedHashMap<>();
+                    de.put("type",      "dismiss_dialog");
+                    de.put("fxId",      "");
+                    de.put("text",      buttonText);
+                    de.put("nodeType",  "Button");
+                    de.put("nodeIndex", 0);
+                    de.put("timestamp", System.currentTimeMillis() / 1000.0);
+                    recorderBuffer.addLast(de);
+                }
+                return;
+            }
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("type",       "click");
@@ -497,6 +610,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             entry.put("nodeIndex",  nodeIdx);
             entry.put("timestamp",  System.currentTimeMillis() / 1000.0);
             recorderBuffer.addLast(entry);
+            // After every click, schedule a delayed window scan to pick up newly opened dialogs
+            runLaterFx(() -> runLaterFx(this::checkAndAttachNewWindows));
         } catch (Exception ignored) { /* best-effort: never crash the app */ }
     }
 
