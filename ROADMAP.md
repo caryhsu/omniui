@@ -146,7 +146,7 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ## 💡 Ideas / Future
 
-- [ ] **Split login-app from core-app** — `core-app` currently bundles the login demo with other core controls (ListView, TableView, ComboBox, etc.). Extract the login form into a dedicated `demo/java/login-app` so that `core-app` stays focused on control coverage and `login-app` becomes a standalone example of authentication flow automation (`click`, `type`, `verify_text`).
+- [x] **Split login-app from core-app** — `core-app` currently bundles the login demo with other core controls (ListView, TableView, ComboBox, etc.). Extract the login form into a dedicated `demo/java/login-app` so that `core-app` stays focused on control coverage and `login-app` becomes a standalone example of authentication flow automation (`click`, `type`, `verify_text`). ✅
 - [ ] **Mini Explorer demo app** — a fake file-browser app (`demo/java/explorer-app`) to exercise TreeView navigation and horizontal SplitPane divider control. Layout: left panel = TreeView with mock folder/file hierarchy; right panel = file list updating on selection; user-adjustable divider. Covers: `select_tree_item`, `get_tree_items`, `get_divider_positions`, `set_divider_position`.
 - [ ] **Settings Panel demo app** — a settings form app (`demo/java/settings-app`) to exercise multiple input controls in a realistic layout. Suggested controls: TextField, PasswordField, ComboBox, CheckBox, RadioButton, Slider, Spinner, ToggleButton, plus Save / Reset buttons. Can be single-page or organized with TabPane (e.g. Account / Appearance / Notifications tabs).
 - [ ] **Multi-app automation** — orchestrate multiple JavaFX apps in a single test flow

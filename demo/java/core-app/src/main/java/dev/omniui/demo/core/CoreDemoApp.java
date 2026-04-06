@@ -5,19 +5,16 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
-import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
@@ -28,30 +25,6 @@ import javafx.stage.Stage;
 public final class CoreDemoApp extends Application {
     @Override
     public void start(Stage primaryStage) {
-        TextField username = new TextField();
-        username.setId("username");
-        username.setPromptText("Username");
-
-        PasswordField password = new PasswordField();
-        password.setId("password");
-        password.setPromptText("Password");
-
-        Label status = new Label("Idle");
-        status.setId("status");
-
-        Button loginButton = new Button("Login");
-        loginButton.setId("loginButton");
-        loginButton.setTooltip(new Tooltip("Enter credentials and click to log in"));
-        loginButton.setOnAction(event -> {
-            String value = "admin".equals(username.getText()) && "1234".equals(password.getText())
-                ? "Success"
-                : "Failed";
-            status.setText(value);
-        });
-
-        Label loginSectionTitle = new Label("Login Flow");
-        loginSectionTitle.setId("loginSectionTitle");
-
         ComboBox<String> roleCombo = new ComboBox<>(FXCollections.observableArrayList("Admin", "Operator", "Viewer"));
         roleCombo.setId("roleCombo");
         roleCombo.setPromptText("Select role");
@@ -195,11 +168,6 @@ public final class CoreDemoApp extends Application {
 
         VBox root = new VBox(
             18,
-            loginSectionTitle,
-            username,
-            password,
-            loginButton,
-            status,
             selectionSection,
             hierarchySection,
             tableSection,

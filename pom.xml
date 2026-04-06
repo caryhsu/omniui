@@ -13,5 +13,6 @@
     <module>demo/java/core-app</module>
     <module>demo/java/input-app</module>
     <module>demo/java/advanced-app</module>
+    <module>demo/java/login-app</module>
   </modules>
 </project>
