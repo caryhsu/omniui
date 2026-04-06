@@ -134,7 +134,6 @@ This file tracks planned features and improvements. Check off items as they are 
 
 ### Known Recorder Issues
 
-- [ ] **type event splitting** — If the user clicks another node (e.g. a DatePicker) mid-typing, `flushKeyAccumulator` is triggered and the text is split into multiple `type` events for the same field (e.g. `type(text="a")` + `type(text="aa")` instead of `type(text="aaa")`). Fix: merge consecutive `type` events targeting the same `fxId` in `script_gen.py`.
 - [ ] **fragile selector in dialogs** — Clicks on internal layout nodes (e.g. spacing `Pane` inside a dialog) are recorded as `click(type="Pane", index=0)` because they have no `fx:id` or stable text. These are marked with `# WARN: fragile selector` but still produce unreliable scripts. Fix: suppress recording non-actionable layout nodes that are not Button/Label/TextField/etc.
 
 ---

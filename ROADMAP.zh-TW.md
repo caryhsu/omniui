@@ -133,7 +133,6 @@
 
 ### 已知錄製器問題（Known Recorder Issues）
 
-- [ ] **type 事件分裂** — 如果使用者在輸入文字過程中點了另一個節點（例如 DatePicker），`flushKeyAccumulator` 會被觸發，同一欄位的文字會被分成多個 `type` 事件（如 `type(text="a")` + `type(text="aa")`，而非 `type(text="aaa")`）。修復方向：在 `script_gen.py` 合併連續指向相同 `fxId` 的 `type` 事件。
 - [ ] **Dialog 內部脆弱 selector** — 點擊 dialog 內部的 layout 節點（如 spacing `Pane`）時，因無 `fx:id` 或穩定文字，會被錄製為 `click(type="Pane", index=0)` 並標注 `# WARN: fragile selector`，產出腳本不穩定。修復方向：在錄製時略過非互動性的 layout 節點（非 Button/Label/TextField 等）。
 
 ---
