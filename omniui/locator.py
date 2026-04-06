@@ -101,6 +101,15 @@ class Locator:
     def is_image_loaded(self) -> bool:
         return self._client.is_image_loaded(**self._sel)
 
+    def open_colorpicker(self) -> ActionResult:
+        return self._client.open_colorpicker(**self._sel)
+
+    def set_color(self, color: str) -> ActionResult:
+        return self._client.set_color(color, **self._sel)
+
+    def get_color(self) -> ActionResult:
+        return self._client.get_color(**self._sel)
+
     def get_selected(self) -> ActionResult:
         return self._client.get_selected(**self._sel)
 

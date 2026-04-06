@@ -71,6 +71,13 @@ def generate_script(
         elif event.event_type == "drag":
             action_lines.append(_drag_line(event))
             action_events.append(event)
+        elif event.event_type == "set_color":
+            color_val = event.color or "#000000"
+            if event.fx_id:
+                action_lines.append(f'client.set_color("{color_val}", id="{event.fx_id}")')
+            else:
+                action_lines.append(f'client.set_color("{color_val}")')
+            action_events.append(event)
 
     if wait_injection:
         body_lines = inject_waits(action_events, action_lines, timeout=wait_timeout)
