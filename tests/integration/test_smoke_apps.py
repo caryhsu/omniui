@@ -27,7 +27,7 @@ from omniui import OmniUI
 _ROOT = Path(__file__).resolve().parents[2]
 _AGENT_JAR = _ROOT / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT.jar"
 
-# Smoke test ports — distinct from demo (48100-48107) and parallel-example (49000+)
+# Smoke test ports — distinct from demo (48100-48108) and parallel-example (49000+)
 _PORTS = {
     "core":     49100,
     "input":    49101,
@@ -36,6 +36,7 @@ _PORTS = {
     "image":    49105,
     "color":    49106,
     "todo":     49107,
+    "login":    49108,
 }
 
 
@@ -143,31 +144,29 @@ def todo_client():
         yield client
 
 
+@pytest.fixture(scope="session")
+def login_client():
+    port = _PORTS["login"]
+    cmd = _build_app_cmd("login-app", "dev.omniui.demo.login/dev.omniui.demo.login.LoginApp", port)
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
 # ---------------------------------------------------------------------------
 # core-app smoke tests
 # ---------------------------------------------------------------------------
 
-def test_core_login_success(core_client):
-    """Type credentials and verify login succeeds."""
-    core_client.click(id="username")
-    core_client.type("admin", id="username")
-    core_client.click(id="password")
-    core_client.type("1234", id="password")
-    core_client.click(id="loginButton")
-    result = core_client.verify_text(id="status", expected="Success")
-    assert result.ok, f"Login status not 'Success': {result}"
+def test_core_server_list_exists(core_client):
+    """serverList is present and has at least one item."""
+    result = core_client.get_items(id="serverList")
+    assert result.ok, f"get_items(serverList) failed: {result}"
+    assert len(result.value or []) > 0, "serverList should not be empty"
 
 
-def test_core_login_failure(core_client):
-    """Wrong password shows failure status."""
-    core_client.click(id="username")
-    core_client.type("admin", id="username")
-    core_client.click(id="password")
-    core_client.type("wrong", id="password")
-    core_client.click(id="loginButton")
-    status = core_client.get_text(id="status")
-    assert status.ok, f"get_text(status) failed: {status}"
-    assert "Success" not in status.value, f"Expected failure, got: {status.value!r}"
+def test_core_role_combo_select(core_client):
+    """Can select a role from roleCombo."""
+    result = core_client.select("Admin", id="roleCombo")
+    assert result.ok, f"select(Admin, roleCombo) failed: {result}"
 
 
 # ---------------------------------------------------------------------------
@@ -306,3 +305,30 @@ def test_todo_add_task(todo_client):
 
     # cleanup
     todo_client.click(id="clearButton")
+
+
+# ---------------------------------------------------------------------------
+# login-app smoke tests
+# ---------------------------------------------------------------------------
+
+def test_login_success(login_client):
+    """Type correct credentials and verify login succeeds."""
+    login_client.click(id="username")
+    login_client.type("admin", id="username")
+    login_client.click(id="password")
+    login_client.type("1234", id="password")
+    login_client.click(id="loginButton")
+    result = login_client.verify_text(id="status", expected="Success")
+    assert result.ok, f"Login status not 'Success': {result}"
+
+
+def test_login_failure(login_client):
+    """Wrong password shows failure status."""
+    login_client.click(id="username")
+    login_client.type("admin", id="username")
+    login_client.click(id="password")
+    login_client.type("wrong", id="password")
+    login_client.click(id="loginButton")
+    status = login_client.get_text(id="status")
+    assert status.ok, f"get_text(status) failed: {status}"
+    assert "Success" not in status.value, f"Expected failure, got: {status.value!r}"

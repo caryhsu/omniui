@@ -12,7 +12,7 @@ OmniUI 是一個 multi-modal UI automation framework，Phase 1 採用 JavaFX-fir
 這個 repo 目前已經包含：
 - Python client: [omniui](omniui)
 - 本機 HTTP Java agent: [java-agent](java-agent)
-- JavaFX 參考登入程式: [demo/javafx-login-app](demo/javafx-login-app)
+- JavaFX 參考 demo 程式: [demo/java](demo/java) (`core-app`、`input-app`、`advanced-app`、`login-app`)
 - demo 與 benchmark script: [scripts](scripts)
 
 ## 目前狀態
@@ -91,7 +91,17 @@ omniui/
   vision_module/
   recorder_lite/
 java-agent/
-demo/javafx-login-app/
+demo/
+  java/
+    core-app/    ← ComboBox、ListView、TreeView、TableView、GridPane  (port 48100)
+    input-app/   ← TextArea、Checkboxes、Slider、ColorPicker、DatePicker …  (port 48101)
+    advanced-app/← ContextMenu、MenuBar、Dialog、TabPane、Accordion …       (port 48102)
+    login-app/   ← 登入表單（username、password、loginButton、status）       (port 48108)
+  python/
+    core/        ← core-app demo 腳本
+    input/       ← input-app demo 腳本
+    advanced/    ← advanced-app demo 腳本
+    login/       ← login-app demo 腳本
 scripts/
 openspec/
 ```
