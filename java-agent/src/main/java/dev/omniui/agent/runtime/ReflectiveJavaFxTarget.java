@@ -343,25 +343,27 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     /**
-     * Returns true if {@code node} is a Button (or inside one) that is also inside a
-     * DialogPane. Avoids matching non-button nodes (TextField, Label, etc.) that are also
-     * children of the dialog. More robust than checking for "ButtonBar" specifically, since
-     * the ButtonBar skin may insert intermediate Pane containers.
+     * Returns true if {@code node} is inside a button area of a DialogPane.
+     * Matches Button, ButtonBase, or ButtonBar (and their skin containers) anywhere
+     * in the ancestor chain that also has a DialogPane ancestor.
      */
     private boolean isInsideDialogButton(Object node) {
-        boolean foundButton    = false;
+        boolean foundButtonArea = false;
         boolean foundDialogPane = false;
         Object current = node;
         for (int i = 0; i < 20 && current != null; i++) {
             String simpleName = current.getClass().getSimpleName();
             String fullName   = current.getClass().getName();
-            if (!foundButton && ("Button".equals(simpleName) || "ButtonBase".equals(simpleName))) {
-                foundButton = true;
+            if (!foundButtonArea && (
+                    "Button".equals(simpleName)
+                    || "ButtonBase".equals(simpleName)
+                    || fullName.contains("ButtonBar"))) {
+                foundButtonArea = true;
             }
             if (!foundDialogPane && fullName.contains("DialogPane")) {
                 foundDialogPane = true;
             }
-            if (foundButton && foundDialogPane) return true;
+            if (foundButtonArea && foundDialogPane) return true;
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
@@ -369,11 +371,15 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     /**
-     * Walk up from {@code node} to find the text of the dialog button that was clicked.
-     * Prioritises the Button node's text; falls back to "OK" if nothing is found.
+     * Determine the dialog button text for a mouse click event.
+     * Strategy:
+     *   1. Walk up from node to find a Button ancestor (works when node is inside button skin).
+     *   2. Walk up to find ButtonBar, then use click coordinates to hit-test its buttons.
+     *   3. Any text in ancestor chain.
+     *   4. Default "OK".
      */
-    private String getDialogButtonText(Object node) {
-        // First pass: look for a Button and return its text
+    private String getDialogButtonTextFromEvent(Object node, Object event) {
+        // Pass 1: Button ancestor
         Object current = node;
         for (int i = 0; i < 20 && current != null; i++) {
             String simpleName = current.getClass().getSimpleName();
@@ -384,7 +390,22 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
-        // Second pass: accept any text from ancestor chain
+        // Pass 2: ButtonBar coordinate hit-test
+        try {
+            double sceneX = ((Number) ReflectiveJavaFxSupport.invoke(event, "getSceneX")).doubleValue();
+            double sceneY = ((Number) ReflectiveJavaFxSupport.invoke(event, "getSceneY")).doubleValue();
+            current = node;
+            for (int i = 0; i < 20 && current != null; i++) {
+                if (current.getClass().getName().contains("ButtonBar")) {
+                    String t = hitTestButtonBarButtons(current, sceneX, sceneY);
+                    if (!t.isEmpty()) return t;
+                    break;
+                }
+                try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
+                catch (Exception ex) { break; }
+            }
+        } catch (Exception ignored) {}
+        // Pass 3: any text in ancestor chain
         current = node;
         for (int i = 0; i < 20 && current != null; i++) {
             String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(current));
@@ -392,7 +413,41 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             try { current = ReflectiveJavaFxSupport.invoke(current, "getParent"); }
             catch (Exception ex) { break; }
         }
-        return "OK"; // safe default
+        return "OK";
+    }
+
+    /**
+     * Walk ButtonBar's button list and return the text of the button whose scene bounds
+     * contain (sceneX, sceneY). Returns empty string if none matches.
+     */
+    @SuppressWarnings("unchecked")
+    private String hitTestButtonBarButtons(Object buttonBar, double sceneX, double sceneY) {
+        try {
+            Object buttons = ReflectiveJavaFxSupport.invoke(buttonBar, "getButtons");
+            if (!(buttons instanceof List<?> list)) return "";
+            Class<?> boundsClass = ReflectiveJavaFxSupport.loadClass("javafx.geometry.Bounds");
+            for (Object btn : list) {
+                try {
+                    Object localBounds = ReflectiveJavaFxSupport.invoke(btn, "getBoundsInLocal");
+                    Object sceneBounds = btn.getClass().getMethod("localToScene", boundsClass)
+                                           .invoke(btn, localBounds);
+                    double minX = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMinX")).doubleValue();
+                    double maxX = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMaxX")).doubleValue();
+                    double minY = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMinY")).doubleValue();
+                    double maxY = ((Number) ReflectiveJavaFxSupport.invoke(sceneBounds, "getMaxY")).doubleValue();
+                    if (sceneX >= minX && sceneX <= maxX && sceneY >= minY && sceneY <= maxY) {
+                        String t = nullToEmpty(ReflectiveJavaFxSupport.textOf(btn));
+                        if (!t.isEmpty()) return t;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    /** Walk up from {@code node} to find dialog button text. Used for Enter/Space key path. */
+    private String getDialogButtonText(Object node) {
+        return getDialogButtonTextFromEvent(node, null);
     }
 
     /** Scan scene for ColorPicker nodes and register valueProperty change listeners. */
@@ -660,7 +715,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             // Use isInsideDialogButton (not isInsideDialogPane) to avoid matching
             // non-button nodes (TextField, etc.) that are also inside the dialog.
             if (isInsideDialogButton(node)) {
-                String buttonText = getDialogButtonText(node);
+                String buttonText = getDialogButtonTextFromEvent(node, event);
                 Map<String, Object> de = new LinkedHashMap<>();
                 de.put("type",      "dismiss_dialog");
                 de.put("fxId",      "");
