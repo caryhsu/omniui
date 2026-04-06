@@ -165,12 +165,9 @@ public class ImageDemoApp extends Application {
                 Bounds dropBounds = dropPane.localToScene(dropPane.getBoundsInLocal());
                 boolean overDrop = dropBounds.contains(e.getSceneX(), e.getSceneY());
                 if (overDrop) {
-                    Image img = srcView.getImage();
-                    Platform.runLater(() -> {
-                        dropTargetImage.setImage(img);
-                        dropTarget.setText("");
-                        dropResult.setText("source" + idx + " dropped!");
-                    });
+                    dropTargetImage.setImage(srcView.getImage());
+                    dropTarget.setText("");
+                    dropResult.setText("source" + idx + " dropped!");
                 }
             });
 
