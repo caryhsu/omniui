@@ -18,12 +18,16 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class OmniUiAgentServer {
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
@@ -71,11 +75,51 @@ public final class OmniUiAgentServer {
                     ? mainClass.substring(mainClass.lastIndexOf('.') + 1)
                     : mainClass;
 
-            writeJson(exchange, 200, Map.of(
-                "port", port,
-                "appName", simpleAppName,
-                "version", "0.1.0"
-            ));
+            // Best-effort: get the primary JavaFX stage title (500 ms timeout)
+            String windowTitle = null;
+            try {
+                // Try multiple classloaders to find javafx.application.Platform
+                Class<?> platformClass = null;
+                Class<?> windowClass   = null;
+                for (ClassLoader cl : new ClassLoader[]{
+                        Thread.currentThread().getContextClassLoader(),
+                        OmniUiAgentServer.class.getClassLoader(),
+                        ClassLoader.getSystemClassLoader()}) {
+                    if (cl == null) continue;
+                    try {
+                        platformClass = cl.loadClass("javafx.application.Platform");
+                        windowClass   = cl.loadClass("javafx.stage.Window");
+                        break;
+                    } catch (ClassNotFoundException ignored) {}
+                }
+                if (platformClass != null) {
+                    AtomicReference<String> ref = new AtomicReference<>();
+                    CountDownLatch latch = new CountDownLatch(1);
+                    final Class<?> wc = windowClass;
+                    platformClass.getMethod("runLater", Runnable.class).invoke(null, (Runnable) () -> {
+                        try {
+                            Object wins = wc.getMethod("getWindows").invoke(null);
+                            for (Object w : (java.util.List<?>) wins) {
+                                if (!"Stage".equals(w.getClass().getSimpleName())) continue;
+                                Object t = w.getClass().getMethod("getTitle").invoke(w);
+                                if (t != null && !t.toString().isBlank()) { ref.set(t.toString()); break; }
+                            }
+                        } catch (Exception ignored) {}
+                        latch.countDown();
+                    });
+                    latch.await(500, TimeUnit.MILLISECONDS);
+                    windowTitle = ref.get();
+                }
+            } catch (Exception ignored) {}
+
+            Map<String, Object> info = new HashMap<>();
+            info.put("port",    port);
+            info.put("appName", simpleAppName);
+            info.put("version", "0.1.0");
+            if (windowTitle != null && !windowTitle.isBlank()) {
+                info.put("windowTitle", windowTitle);
+            }
+            writeJson(exchange, 200, info);
         });
 
         server.createContext("/sessions", new SessionsHandler(sessionStore));

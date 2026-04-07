@@ -5,6 +5,7 @@ Launch with:
 """
 from __future__ import annotations
 
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import threading
@@ -64,8 +65,13 @@ class RecorderApp:
         self._run_thread: Optional[threading.Thread] = None
         self._status_var: tk.StringVar  # initialised in _build_ui
 
+        # File & dirty-tracking state
+        self._current_file: Optional[str] = None
+        self._dirty: bool = False
+
         self._build_ui()
         self._refresh_agents()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ── UI construction ────────────────────────────────────────────────────
 
@@ -73,6 +79,20 @@ class RecorderApp:
         root = self.root
         root.columnconfigure(0, weight=1)
         root.rowconfigure(2, weight=1)
+
+        # ── Menubar ────────────────────────────────────────────────────────
+        menubar = tk.Menu(root)
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Open…",    accelerator="Ctrl+O",       command=self._open_file)
+        filemenu.add_command(label="Save",     accelerator="Ctrl+S",       command=self._save_script)
+        filemenu.add_command(label="Save As…", accelerator="Ctrl+Shift+S", command=self._save_as_script)
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=self._on_close)
+        menubar.add_cascade(label="File", menu=filemenu)
+        root.config(menu=menubar)
+        root.bind_all("<Control-o>", lambda e: self._open_file())
+        root.bind_all("<Control-s>", lambda e: self._save_script())
+        root.bind_all("<Control-S>", lambda e: self._save_as_script())
 
         # ── Row 0: App selector ────────────────────────────────────────────
         top = tk.Frame(root, padx=8, pady=6)
@@ -100,16 +120,20 @@ class RecorderApp:
                                    state="disabled", command=self._stop_recording)
         self._stop_btn.pack(side="left", padx=(0, 6))
 
-        self._save_btn = tk.Button(ctrl, text="💾 Save", width=12,
+        self._open_btn = tk.Button(ctrl, text="📂 Open", width=10,
+                                   command=self._open_file)
+        self._open_btn.pack(side="left", padx=(0, 4))
+
+        self._save_btn = tk.Button(ctrl, text="💾 Save", width=10,
                                    state="disabled", command=self._save_script)
         self._save_btn.pack(side="left", padx=(0, 12))
 
         self._run_all_btn = ttk.Button(ctrl, text="▶ Run All", width=12,
-                                       command=self._run_all)
+                                       state="disabled", command=self._run_all)
         self._run_all_btn.pack(side="left", padx=(0, 4))
 
         self._run_sel_btn = ttk.Button(ctrl, text="▶ Run Selection", width=14,
-                                       command=self._run_selection)
+                                       state="disabled", command=self._run_selection)
         self._run_sel_btn.pack(side="left", padx=(0, 12))
 
         self._wait_injection_var = tk.BooleanVar(value=False)
@@ -148,6 +172,10 @@ class RecorderApp:
         hsb.grid(row=1, column=0, sticky="ew")
         self._script_text.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
+        # Track modifications for dirty flag and dynamic button states
+        self._script_text.bind("<<Modified>>",  self._on_text_modified)
+        self._script_text.bind("<<Selection>>", lambda e: self._update_run_buttons())
+
         # ── Row 3: Run status bar ──────────────────────────────────────────
         self._run_status_var = tk.StringVar(value="")
         self._run_status_lbl = tk.Label(root, textvariable=self._run_status_var,
@@ -178,7 +206,10 @@ class RecorderApp:
             self._status_var.set("No OmniUI apps found")
             return
 
-        labels = [f"{a['port']} — {a.get('appName', 'unknown')}" for a in agents]
+        labels = [
+            f"{a['port']} — {a.get('windowTitle') or a.get('appName', 'unknown')}"
+            for a in agents
+        ]
         self._app_combo["values"] = labels
         self._app_combo.current(0)
         self._status_var.set(f"{len(agents)} app(s) found")
@@ -211,11 +242,12 @@ class RecorderApp:
         self._record_btn.config(state="disabled")
         self._stop_btn.config(state="normal")
         self._save_btn.config(state="disabled")
-        self._run_all_btn.config(state="disabled")
-        self._run_sel_btn.config(state="disabled")
         self._script_text.delete("1.0", "end")
+        self._dirty = False
+        self._script_text.edit_modified(False)
         self._status_var.set("● Recording…")
         self._run_status_var.set("")
+        self._update_run_buttons()
 
         self._polling = True
         self._poll_thread = threading.Thread(target=self._polling_loop, daemon=True)
@@ -228,6 +260,9 @@ class RecorderApp:
         from ..recorder.script_gen import generate_script
         from ..core.models import RecordedEvent
 
+        consecutive_errors = 0
+        _MAX_ERRORS = 3
+
         while self._polling:
             time.sleep(0.5)
             if not self._polling:
@@ -237,7 +272,12 @@ class RecorderApp:
                 break
             try:
                 raw_events = client.poll_events()
+                consecutive_errors = 0
             except Exception:
+                consecutive_errors += 1
+                if consecutive_errors >= _MAX_ERRORS:
+                    self.root.after(0, self._on_remote_app_closed)
+                    return
                 continue
             if not raw_events:
                 continue
@@ -270,6 +310,8 @@ class RecorderApp:
     def _append_script_lines(self, text: str) -> None:
         self._script_text.insert("end", text + "\n")
         self._script_text.see("end")
+        self._dirty = True
+        self._update_window_title()
 
     def _stop_recording(self) -> None:
         # Stop polling thread first
@@ -289,8 +331,6 @@ class RecorderApp:
 
         self._record_btn.config(state="normal")
         self._stop_btn.config(state="disabled")
-        self._run_all_btn.config(state="normal")
-        self._run_sel_btn.config(state="normal")
 
         n = len(self._script.events)
         self._status_var.set(f"Stopped — {n} event(s) captured")
@@ -299,9 +339,13 @@ class RecorderApp:
         # Replace incremental preview with the authoritative final script
         self._script_text.delete("1.0", "end")
         self._script_text.insert("1.0", self._script.script)
+        self._script_text.edit_modified(False)
 
         if n > 0:
+            self._dirty = True
             self._save_btn.config(state="normal")
+        self._update_run_buttons()
+        self._update_window_title()
 
     # ── Run All / Run Selection ────────────────────────────────────────────
 
@@ -310,9 +354,11 @@ class RecorderApp:
         self._run_status_lbl.config(fg=color)
 
     def _set_run_buttons(self, enabled: bool) -> None:
-        state = "normal" if enabled else "disabled"
-        self._run_all_btn.config(state=state)
-        self._run_sel_btn.config(state=state)
+        if enabled:
+            self._update_run_buttons()
+        else:
+            self._run_all_btn.config(state="disabled")
+            self._run_sel_btn.config(state="disabled")
 
     def _exec_script(self, code: str) -> None:
         """Execute *code* in a background thread with client in scope.
@@ -429,21 +475,146 @@ class RecorderApp:
             return
         self._exec_script(code)
 
-    def _save_script(self) -> None:
-        if self._script is None:
-            return
+    def _save_script(self) -> bool:
+        """Save to current file path; prompt via Save As if no path is set.
+
+        Returns True if the file was saved, False if the user cancelled.
+        """
+        if self._current_file:
+            return self._do_save(self._current_file)
+        return self._save_as_script()
+
+    def _save_as_script(self) -> bool:
+        """Always prompt for a file path. Returns True if saved."""
         path = filedialog.asksaveasfilename(
             defaultextension=".py",
             filetypes=[("Python files", "*.py"), ("All files", "*.*")],
-            title="Save recorded script",
+            title="Save script as",
+            initialfile=os.path.basename(self._current_file) if self._current_file else "",
+        )
+        if not path:
+            return False
+        return self._do_save(path)
+
+    def _do_save(self, path: str) -> bool:
+        """Write text widget content to *path*. Returns True on success."""
+        try:
+            content = self._script_text.get("1.0", "end-1c")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            self._current_file = path
+            self._dirty = False
+            self._script_text.edit_modified(False)
+            self._status_var.set(f"Saved → {path}")
+            self._update_window_title()
+            return True
+        except Exception as exc:
+            messagebox.showerror("Save error", str(exc))
+            return False
+
+    def _open_file(self) -> None:
+        """Open a Python script file into the editor."""
+        if self._dirty:
+            answer = messagebox.askyesnocancel(
+                "Unsaved changes",
+                "The current script has unsaved changes.\nSave before opening?",
+            )
+            if answer is None:
+                return
+            if answer and not self._save_script():
+                return
+
+        path = filedialog.askopenfilename(
+            filetypes=[("Python files", "*.py"), ("All files", "*.*")],
+            title="Open script",
         )
         if not path:
             return
         try:
-            self._script.save(path)
-            self._status_var.set(f"Saved → {path}")
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
         except Exception as exc:
-            messagebox.showerror("Save error", str(exc))
+            messagebox.showerror("Open error", str(exc))
+            return
+
+        self._script_text.delete("1.0", "end")
+        self._script_text.insert("1.0", content)
+        self._script_text.edit_modified(False)
+        self._current_file = path
+        self._dirty = False
+        self._status_var.set(f"Opened: {path}")
+        self._save_btn.config(state="normal")
+        self._update_run_buttons()
+        self._update_window_title()
+
+    # ── Text modification callbacks ────────────────────────────────────────
+
+    def _on_text_modified(self, event=None) -> None:
+        """Called when the Text widget fires <<Modified>>."""
+        if self._script_text.edit_modified():
+            self._dirty = True
+            self._script_text.edit_modified(False)
+            has_text = bool(self._script_text.get("1.0", "end-1c").strip())
+            self._save_btn.config(state="normal" if has_text else "disabled")
+            self._update_window_title()
+        self._update_run_buttons()
+
+    def _update_run_buttons(self, event=None) -> None:
+        """Enable/disable Run buttons based on recording state and content."""
+        if self._polling:
+            self._run_all_btn.config(state="disabled")
+            self._run_sel_btn.config(state="disabled")
+            return
+        has_text = bool(self._script_text.get("1.0", "end-1c").strip())
+        has_sel = False
+        try:
+            has_sel = bool(self._script_text.get(tk.SEL_FIRST, tk.SEL_LAST).strip())
+        except tk.TclError:
+            pass
+        self._run_all_btn.config(state="normal" if has_text else "disabled")
+        self._run_sel_btn.config(state="normal" if has_sel else "disabled")
+
+    def _update_window_title(self) -> None:
+        """Reflect current file and dirty state in the window title."""
+        if self._current_file:
+            name = os.path.basename(self._current_file)
+            prefix = "* " if self._dirty else ""
+            self.root.title(f"{prefix}OmniUI Recorder — {name}")
+        else:
+            prefix = "* " if self._dirty else ""
+            self.root.title(f"{prefix}OmniUI Recorder")
+
+    # ── Remote app disconnection ───────────────────────────────────────────
+
+    def _on_remote_app_closed(self) -> None:
+        """Called when the recorded app stops responding (3 consecutive errors)."""
+        self._polling = False
+        self._record_btn.config(state="normal")
+        self._stop_btn.config(state="disabled")
+        self._status_var.set("⚠ App disconnected")
+        self._update_run_buttons()
+        messagebox.showwarning(
+            "App disconnected",
+            "The recorded app appears to have closed.\n"
+            "Recording has been stopped automatically.\n"
+            "The partial script is preserved in the editor.",
+        )
+
+    # ── Window close ──────────────────────────────────────────────────────
+
+    def _on_close(self) -> None:
+        """Intercept window close; prompt to save unsaved changes."""
+        if self._dirty:
+            answer = messagebox.askyesnocancel(
+                "Unsaved changes",
+                "The script has unsaved changes. Save before closing?",
+            )
+            if answer is None:      # Cancel
+                return
+            if answer:              # Yes — save
+                if not self._save_script():
+                    return          # User cancelled the Save As dialog
+        self.root.destroy()
 
 
 def main() -> None:
