@@ -132,10 +132,7 @@
 - [ ] **拖放錄製（Drag & Drop recording）** — Recorder 捕捉 `MOUSE_PRESSED` + `MOUSE_RELEASED` 配對，推導起終點節點，在產出腳本中輸出 `client.drag(id=...).to(id=...)`
 - [x] **拖放錄製（Drag & Drop recording）** — `MOUSE_PRESSED`+`MOUSE_RELEASED` 距離 ≥15px 即記錄 drag 事件；codegen 輸出 `client.drag(id=...).to(id=...)`
 - [x] **即時錄製回饋（Real-time recording feedback）** — 目前 Recorder GUI 需等到按下 Stop 後才會顯示錄製腳本。計畫加入 polling 機制（每 ~500ms 呼叫 `GET /sessions/{sessionId}/events/pending`），讓每個使用者操作在錄製時立即顯示於腳本預覽區。升級路徑：先實作 polling，若需要低於 100ms 延遲或支援瀏覽器 UI 再改用 SSE。
-- [ ] **錄製後立即執行（Record & Run）** — 在 Recorder GUI 加入執行控制項：
-  - **▶ Run All** — 執行完整腳本
-  - **▶ Run Selection** — 僅執行腳本預覽區中目前選取的行
-  - 執行結果（pass/fail、stdout/stderr）顯示於 GUI 中
+- [x] **錄製後立即執行（Record & Run）** — Recorder GUI 加入 Run All 和 Run Selection 按鈕；透過 `exec()` 對連接的 agent 執行錄製腳本
 - [ ] **錄製時加入 Assertion** — 錄製過程中可對任意元素按右鍵，插入 `verify_text` / `verify_visible` / `verify_enabled` 驗證步驟；產出腳本中驗證步驟與操作步驟並列。
 - [ ] **Recorder 步驟編輯** — 停止錄製後，可在腳本預覽區刪除或重新排序個別步驟再儲存；支援拖拉排序或選取後刪除不需要的步驟。
 - [ ] **失敗時自動截圖** — 腳本步驟發生例外時自動擷取截圖並附加至錯誤輸出；與 Record & Run 及 CI 報告整合。

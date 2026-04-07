@@ -133,10 +133,7 @@ This file tracks planned features and improvements. Check off items as they are 
   - [x] **Drag & Drop recording** — `MOUSE_PRESSED/RELEASED` filters; `PickResult` for drop target; `dragJustFired` suppresses spurious click; generates `client.drag(...).to(...)`
 - [x] **Drag & Drop recording** — `MOUSE_PRESSED`+`MOUSE_RELEASED` pair with ≥15 px distance emits `drag` event; codegen outputs `client.drag(id=...).to(id=...)`
 - [x] **Real-time recording feedback** — currently the Recorder GUI only shows the captured script after pressing Stop. Add a polling mechanism (`GET /sessions/{sessionId}/events/pending` every ~500 ms) so each user action appears in the script preview immediately as it is recorded. Upgrade path: polling first, then SSE if sub-100 ms latency or a browser-based UI is needed later.
-- [ ] **Record & Run** — add run controls to the Recorder GUI after stopping:
-  - **▶ Run All** — execute the entire recorded script
-  - **▶ Run Selection** — execute only the lines currently selected/highlighted in the script preview
-  - Output (pass/fail, stdout/stderr) displayed inline in the GUI
+- [x] **Record & Run** — Run All and Run Selection buttons in Recorder GUI; executes recorded script against the connected agent via `exec()`
 - [ ] **Assertion recording** — while recording, right-click any element to insert a `verify_text` / `verify_visible` / `verify_enabled` assertion step; recorded assertions appear inline in the generated script alongside interaction steps.
 - [ ] **Step editor in Recorder** — after stopping, allow deleting or reordering individual steps in the script preview before saving; drag-to-reorder rows or select + delete unwanted steps.
 - [ ] **Screenshot on failure** — when a script step raises an exception, automatically capture a screenshot and attach it to the error output; pairs with Record & Run and CI reporting.
