@@ -913,6 +913,16 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Object cc = ReflectiveJavaFxSupport.invoke(event, "getClickCount");
             isDoubleClick = cc instanceof Number n && n.intValue() >= 2;
         } catch (Exception ignored) {}
+
+        // For double-click: just mutate the preceding click entry in-place — no need to
+        // re-resolve the node (the clickCount=1 entry already has the correct selector).
+        if (isDoubleClick) {
+            if (!recorderBuffer.isEmpty() && "click".equals(recorderBuffer.peekLast().get("type"))) {
+                recorderBuffer.peekLast().put("type", "double_click");
+            }
+            return;
+        }
+
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {
@@ -959,15 +969,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
-            if (isDoubleClick) {
-                // Replace the preceding single-click (clickCount=1) entry with double_click
-                if (!recorderBuffer.isEmpty() && "click".equals(recorderBuffer.peekLast().get("type"))) {
-                    recorderBuffer.removeLast();
-                }
-                entry.put("type", "double_click");
-            } else {
-                entry.put("type", "click");
-            }
+            entry.put("type",       "click");
             entry.put("fxId",       fxId);
             entry.put("text",       nullToEmpty(ReflectiveJavaFxSupport.textOf(node)));
             entry.put("nodeType",   nodeType);
