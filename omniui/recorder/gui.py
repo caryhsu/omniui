@@ -91,10 +91,18 @@ class RecorderApp:
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=self._on_close)
         menubar.add_cascade(label="File", menu=filemenu)
+
+        editmenu = tk.Menu(menubar, tearoff=0)
+        editmenu.add_command(label="Insert Screenshot",
+                             accelerator="Ctrl+Shift+P",
+                             command=self._insert_screenshot)
+        menubar.add_cascade(label="Edit", menu=editmenu)
+
         root.config(menu=menubar)
         root.bind_all("<Control-o>", lambda e: self._open_file())
         root.bind_all("<Control-s>", lambda e: self._save_script())
         root.bind_all("<Control-S>", lambda e: self._save_as_script())
+        root.bind_all("<Control-P>", lambda e: self._insert_screenshot())
 
         # ── Row 0: App selector ────────────────────────────────────────────
         top = tk.Frame(root, padx=8, pady=6)
@@ -701,6 +709,21 @@ class RecorderApp:
             "Recording has been stopped automatically.\n"
             "The partial script is preserved in the editor.",
         )
+
+    # ── Edit menu actions ─────────────────────────────────────────────────
+
+    def _insert_screenshot(self) -> None:
+        """Insert a client.save_screenshot() line at the current cursor position."""
+        line = "client.save_screenshot()\n"
+        try:
+            insert_pos = self._script_text.index("insert")
+            # Insert at start of current line so it lands cleanly between steps
+            line_start = f"{insert_pos.split('.')[0]}.0"
+            self._script_text.insert(line_start, line)
+        except Exception:
+            self._script_text.insert("end", line)
+        self._dirty = True
+        self._save_btn.config(state="normal")
 
     # ── Window close ──────────────────────────────────────────────────────
 
