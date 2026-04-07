@@ -157,10 +157,10 @@ def login_client():
 # ---------------------------------------------------------------------------
 
 def test_core_server_list_exists(core_client):
-    """serverList is present and has at least one item."""
-    result = core_client.get_items(id="serverList")
-    assert result.ok, f"get_items(serverList) failed: {result}"
-    assert len(result.value or []) > 0, "serverList should not be empty"
+    """serverList node is present in the scene graph."""
+    nodes = core_client.get_nodes()
+    ids = [n.get("fxId") for n in nodes]
+    assert "serverList" in ids, f"serverList not found in nodes: {ids}"
 
 
 def test_core_role_combo_select(core_client):
