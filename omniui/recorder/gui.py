@@ -116,6 +116,13 @@ class RecorderApp:
         tk.Checkbutton(ctrl, text="Insert wait_for_*",
                        variable=self._wait_injection_var).pack(side="left")
 
+        tk.Label(ctrl, text="  Delay:").pack(side="left")
+        self._replay_delay_var = tk.StringVar(value="0.30")
+        ttk.Spinbox(ctrl, textvariable=self._replay_delay_var,
+                    from_=0.0, to=5.0, increment=0.1, width=5,
+                    format="%.2f").pack(side="left")
+        tk.Label(ctrl, text="s").pack(side="left")
+
         # ── Row 1 right: status label ──────────────────────────────────────
         self._status_var = tk.StringVar(value="Ready")
         tk.Label(ctrl, textvariable=self._status_var, anchor="e").pack(
@@ -325,7 +332,14 @@ class RecorderApp:
             def connect(*args, **kwargs):
                 return existing_client
 
+        try:
+            replay_delay = float(self._replay_delay_var.get())
+        except ValueError:
+            replay_delay = 0.30
+
         def run():
+            prev_delay = existing_client.step_delay
+            existing_client.step_delay = replay_delay
             try:
                 exec(code, {"client": existing_client, "OmniUI": _OmniUIStub})  # noqa: S102
                 self.root.after(0, self._set_run_status, "✅ Passed", "green")
@@ -333,6 +347,7 @@ class RecorderApp:
                 msg = str(exc).split("\n")[0]
                 self.root.after(0, self._set_run_status, f"❌ Failed: {msg}", "red")
             finally:
+                existing_client.step_delay = prev_delay
                 self.root.after(0, self._set_run_buttons, True)
 
         self._run_thread = threading.Thread(target=run, daemon=True)

@@ -328,6 +328,48 @@ class RecorderRunTests(unittest.TestCase):
         self.assertIn("Failed", app._run_status_var.get())
         self.assertIn("boom", app._run_status_var.get())
 
+    def test_exec_script_applies_replay_delay_and_restores(self) -> None:
+        """step_delay is set to replay_delay_var during exec, then restored."""
+        from omniui.core.engine import OmniUIClient
+        from unittest.mock import patch, MagicMock
+        app = self._make_app()
+        client = OmniUIClient(base_url="http://127.0.0.1:48100", session_id="s1")
+        client.step_delay = 0.0
+        app._client = client
+        app._replay_delay_var.set("0.30")
+
+        delays_during_exec: list[float] = []
+
+        def sync_after(_delay, func, *args):
+            func(*args)
+
+        original_thread = __import__("threading").Thread
+        import builtins as _builtins
+
+        def sync_thread(*args, target=None, daemon=None, **kw):
+            t = MagicMock()
+            if target is not None and not args and not kw:
+                t.start.side_effect = target
+            else:
+                t = original_thread(*args, target=target, daemon=daemon, **kw)
+            return t
+
+        original_exec = _builtins.exec
+
+        def spy_exec(code, ns=None, *a):
+            if ns is not None:
+                delays_during_exec.append(ns.get("client", client).step_delay)
+            return original_exec(code, ns, *a) if ns is not None else original_exec(code)
+
+        with patch.object(app.root, "after", side_effect=sync_after), \
+             patch("omniui.recorder.gui.threading.Thread", side_effect=sync_thread), \
+             patch("builtins.exec", side_effect=spy_exec):
+            app._exec_script("x = 1")
+
+        self.assertEqual(len(delays_during_exec), 1)
+        self.assertAlmostEqual(delays_during_exec[0], 0.30)
+        self.assertEqual(client.step_delay, 0.0)  # restored after exec
+
 
 if __name__ == "__main__":
     unittest.main()
