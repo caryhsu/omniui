@@ -30,12 +30,16 @@ class OmniUIClient:
         ocr_engine: SimpleOcrEngine | None = None,
         vision_engine: SimpleVisionEngine | None = None,
         step_delay: float = 0.0,
+        screenshot_mode: str = "off",
+        screenshot_dir: str = "screenshots",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.session_id = session_id
         self.ocr_engine = ocr_engine or SimpleOcrEngine()
         self.vision_engine = vision_engine or SimpleVisionEngine()
         self.step_delay = step_delay
+        self.screenshot_mode = screenshot_mode   # "off" | "on_failure" | "always"
+        self.screenshot_dir = screenshot_dir
         self._action_log: list[ActionLogEntry] = []
         self._scope: dict[str, Any] | None = None
         self._recording: bool = False
@@ -52,6 +56,8 @@ class OmniUIClient:
         vision_engine: SimpleVisionEngine | None = None,
         connect_timeout: float = 5.0,
         step_delay: float = 0.0,
+        screenshot_mode: str = "off",
+        screenshot_dir: str = "screenshots",
     ) -> "OmniUIClient":
         root = base_url.rstrip("/")
         health = cls._request_json("GET", f"{root}/health", timeout=connect_timeout)
@@ -68,6 +74,8 @@ class OmniUIClient:
             ocr_engine=ocr_engine,
             vision_engine=vision_engine,
             step_delay=step_delay,
+            screenshot_mode=screenshot_mode,
+            screenshot_dir=screenshot_dir,
         )
 
     def get_nodes(self) -> list[dict[str, Any]]:
@@ -663,6 +671,37 @@ class OmniUIClient:
         payload = self._request_json("POST", f"{self.base_url}/sessions/{self.session_id}/screenshot", {"format": "png"})
         return base64.b64decode(payload["data"])
 
+    def save_screenshot(self, path: str | None = None, *, prefix: str = "screenshot") -> str:
+        """Capture a screenshot and save it to *path* (or auto-generate a timestamped filename).
+
+        Returns the path where the file was saved.
+        """
+        import os
+        from datetime import datetime
+
+        if path is None:
+            os.makedirs(self.screenshot_dir, exist_ok=True)
+            ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            path = os.path.join(self.screenshot_dir, f"{ts}_{prefix}.png")
+        else:
+            os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+
+        data = self.screenshot()
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+
+    def _auto_screenshot(self, action: str, selector_payload: dict[str, Any]) -> str | None:
+        """Save a screenshot using the auto-naming scheme; return saved path or None on error."""
+        try:
+            sel_hint = selector_payload.get("id") or selector_payload.get("text") or "unknown"
+            # Sanitise for filename
+            sel_hint = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(sel_hint))
+            prefix = f"{action}_{sel_hint}"
+            return self.save_screenshot(prefix=prefix)
+        except Exception:
+            return None
+
     def ocr(self, image: bytes) -> list[dict[str, Any]]:
         return [
             {
@@ -1097,6 +1136,11 @@ class OmniUIClient:
         delay = step_delay_override if step_delay_override is not None else self.step_delay
         if delay > 0:
             time.sleep(delay)
+        # Auto-screenshot based on mode
+        if self.screenshot_mode == "always":
+            self._auto_screenshot(action, selector_payload)
+        elif self.screenshot_mode == "on_failure" and not result.ok:
+            self._auto_screenshot(action, selector_payload)
         return result
 
     def _perform_request(

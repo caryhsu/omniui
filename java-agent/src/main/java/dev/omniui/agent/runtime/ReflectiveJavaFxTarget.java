@@ -1354,17 +1354,67 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private byte[] screenshotOnFxThread() {
-        List<Map<String, Object>> nodes = discoverOnFxThread();
-        StringBuilder builder = new StringBuilder();
-        int y = 20;
-        for (Map<String, Object> node : nodes) {
-            Object text = node.get("text");
-            if (text instanceof String value && !value.isBlank()) {
-                builder.append(value).append("|0.99|10|").append(y).append("|160|24").append('\n');
-                y += 28;
+        try {
+            // Find the first visible window/stage
+            Class<?> windowClass = Class.forName("javafx.stage.Window");
+            @SuppressWarnings("unchecked")
+            java.util.List<Object> windows = (java.util.List<Object>)
+                windowClass.getMethod("getWindows").invoke(null);
+            Object stage = null;
+            for (Object w : windows) {
+                Boolean showing = (Boolean) w.getClass().getMethod("isShowing").invoke(w);
+                if (Boolean.TRUE.equals(showing)) { stage = w; break; }
             }
+            if (stage == null) return new byte[0];
+
+            Object scene = stage.getClass().getMethod("getScene").invoke(stage);
+            if (scene == null) return new byte[0];
+            Object root = scene.getClass().getMethod("getRoot").invoke(scene);
+            if (root == null) return new byte[0];
+
+            // Node.snapshot(SnapshotParameters params, WritableImage image) — nulls = defaults
+            Class<?> snapParamsClass  = Class.forName("javafx.scene.SnapshotParameters");
+            Class<?> writableImgClass = Class.forName("javafx.scene.image.WritableImage");
+            Object writableImage = root.getClass()
+                .getMethod("snapshot", snapParamsClass, writableImgClass)
+                .invoke(root, null, null);
+
+            int width  = ((Number) writableImage.getClass().getMethod("getWidth").invoke(writableImage)).intValue();
+            int height = ((Number) writableImage.getClass().getMethod("getHeight").invoke(writableImage)).intValue();
+            if (width <= 0 || height <= 0) return new byte[0];
+
+            // Read pixels via PixelReader
+            Object pixelReader = writableImage.getClass().getMethod("getPixelReader").invoke(writableImage);
+            java.lang.reflect.Method getArgb = pixelReader.getClass().getMethod("getArgb", int.class, int.class);
+            int[] argbPixels = new int[width * height];
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    argbPixels[y * width + x] = (int) getArgb.invoke(pixelReader, x, y);
+                }
+            }
+
+            // Use reflection to access java.awt and javax.imageio (java.desktop module)
+            // to avoid a compile-time module-path dependency.
+            int TYPE_INT_ARGB = 2; // BufferedImage.TYPE_INT_ARGB
+            Class<?> buffImgClass = Class.forName("java.awt.image.BufferedImage");
+            Object buffered = buffImgClass
+                .getConstructor(int.class, int.class, int.class)
+                .newInstance(width, height, TYPE_INT_ARGB);
+            buffImgClass.getMethod("setRGB", int.class, int.class, int.class, int.class,
+                    int[].class, int.class, int.class)
+                .invoke(buffered, 0, 0, width, height, argbPixels, 0, width);
+
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            Class<?> imageIOClass = Class.forName("javax.imageio.ImageIO");
+            imageIOClass.getMethod("write",
+                    Class.forName("java.awt.image.RenderedImage"),
+                    String.class,
+                    java.io.OutputStream.class)
+                .invoke(null, buffered, "png", baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return new byte[0];
         }
-        return builder.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private ActionResult performOnFxThread(String action, JsonObject selector, JsonObject payload) {
