@@ -69,6 +69,9 @@ def generate_script(
         if event.event_type == "click":
             action_lines.append(f'client.click({kwargs}){suffix}')
             action_events.append(event)
+        elif event.event_type == "double_click":
+            action_lines.append(f'client.double_click({kwargs}){suffix}')
+            action_events.append(event)
         elif event.event_type == "type":
             action_lines.append(f'client.type({kwargs}, text="{event.text}"){suffix}')
             action_events.append(event)

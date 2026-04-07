@@ -907,6 +907,12 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Object button = ReflectiveJavaFxSupport.invoke(event, "getButton");
             if (button != null && "SECONDARY".equals(button.toString())) return;
         } catch (Exception ignored) {}
+        // Detect double-click (clickCount == 2)
+        boolean isDoubleClick = false;
+        try {
+            Object cc = ReflectiveJavaFxSupport.invoke(event, "getClickCount");
+            isDoubleClick = cc instanceof Number n && n.intValue() >= 2;
+        } catch (Exception ignored) {}
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {
@@ -953,7 +959,15 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             }
             int    nodeIdx  = nodeIndexOf(node);
             Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("type",       "click");
+            if (isDoubleClick) {
+                // Replace the preceding single-click (clickCount=1) entry with double_click
+                if (!recorderBuffer.isEmpty() && "click".equals(recorderBuffer.peekLast().get("type"))) {
+                    recorderBuffer.removeLast();
+                }
+                entry.put("type", "double_click");
+            } else {
+                entry.put("type", "click");
+            }
             entry.put("fxId",       fxId);
             entry.put("text",       nullToEmpty(ReflectiveJavaFxSupport.textOf(node)));
             entry.put("nodeType",   nodeType);
