@@ -20,6 +20,6 @@
 
 - [x] 4.1 `git checkout -b fix/fragile-dialog-selector`
 - [x] 4.2 `pytest tests/ -q` — 158 passed
-- [ ] 4.3 Commit：`fix: suppress fragile layout-node selectors in recorder`
-- [ ] 4.4 Push + open PR → merge to main
-- [ ] 4.5 更新 ROADMAP — 標記 `fragile selector in dialogs` 為 ✅
+- [x] 4.3 Commit：`fix: suppress fragile layout-node selectors in recorder`
+- [x] 4.4 Push + open PR → merge to main
+- [x] 4.5 更新 ROADMAP — 標記 `fragile selector in dialogs` 為 ✅
