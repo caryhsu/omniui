@@ -56,3 +56,21 @@ All other node types (especially those ending in `Pane` or `Bar`) SHALL be treat
 #### Scenario: ButtonBar is non-actionable
 - **WHEN** `isActionableNode` is called with a `ButtonBar` instance
 - **THEN** the method returns `false`
+
+---
+
+### Requirement: 右鍵事件不產生 click 錄製步驟
+
+`EventFilter` **必須** 在 `MOUSE_PRESSED` 事件中區分左鍵與右鍵，右鍵事件 **不得** 進入一般 click 錄製路徑。
+
+#### Scenario: 右鍵不產生 click 事件
+
+- **WHEN** 使用者在錄製中對節點按右鍵（`MouseButton.SECONDARY`）
+- **THEN** 事件緩衝區中 **不** 增加 `event_type="click"` 的事件
+- **且** `/events/pending` 回傳的事件清單不包含此右鍵操作
+
+#### Scenario: 左鍵仍正常錄製
+
+- **WHEN** 使用者在錄製中對節點按左鍵（`MouseButton.PRIMARY`）
+- **THEN** 事件緩衝區正常增加 `event_type="click"` 的事件（行為不變）
+
