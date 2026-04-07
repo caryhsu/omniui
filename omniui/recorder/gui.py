@@ -204,6 +204,8 @@ class RecorderApp:
         self._record_btn.config(state="disabled")
         self._stop_btn.config(state="normal")
         self._save_btn.config(state="disabled")
+        self._run_all_btn.config(state="disabled")
+        self._run_sel_btn.config(state="disabled")
         self._script_text.delete("1.0", "end")
         self._status_var.set("● Recording…")
         self._run_status_var.set("")
@@ -276,11 +278,12 @@ class RecorderApp:
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to stop recording:\n{exc}")
             return
-        finally:
-            self._client = None
+        # Keep self._client alive for Run All / Run Selection after recording
 
         self._record_btn.config(state="normal")
         self._stop_btn.config(state="disabled")
+        self._run_all_btn.config(state="normal")
+        self._run_sel_btn.config(state="normal")
 
         n = len(self._script.events)
         self._status_var.set(f"Stopped — {n} event(s) captured")
@@ -305,13 +308,26 @@ class RecorderApp:
         self._run_sel_btn.config(state=state)
 
     def _exec_script(self, code: str) -> None:
-        """Execute *code* in a background thread with client in scope."""
+        """Execute *code* in a background thread with client in scope.
+
+        A lightweight OmniUI stub is injected into the exec namespace so that
+        ``OmniUI.connect()`` inside the generated script returns the already-
+        connected client instead of triggering a slow port scan.
+        """
         self.root.after(0, self._set_run_status, "Running…", "orange")
         self.root.after(0, self._set_run_buttons, False)
 
+        existing_client = self._client  # capture reference before thread starts
+
+        class _OmniUIStub:
+            """Minimal OmniUI factory stub — connect() returns the live client."""
+            @staticmethod
+            def connect(*args, **kwargs):
+                return existing_client
+
         def run():
             try:
-                exec(code, {"client": self._client})  # noqa: S102
+                exec(code, {"client": existing_client, "OmniUI": _OmniUIStub})  # noqa: S102
                 self.root.after(0, self._set_run_status, "✅ Passed", "green")
             except Exception as exc:
                 msg = str(exc).split("\n")[0]
