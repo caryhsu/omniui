@@ -249,6 +249,30 @@ public final class OmniUiAgentServer {
                 return;
             }
 
+            if (parts.length == 5 && "events".equals(parts[3]) && "assert-context".equals(parts[4])
+                    && "GET".equals(exchange.getRequestMethod())) {
+                String query = exchange.getRequestURI().getQuery();
+                double x = 0, y = 0;
+                if (query != null) {
+                    for (String param : query.split("&")) {
+                        String[] kv = param.split("=", 2);
+                        if (kv.length == 2) {
+                            try {
+                                if ("x".equals(kv[0])) x = Double.parseDouble(kv[1]);
+                                if ("y".equals(kv[0])) y = Double.parseDouble(kv[1]);
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                }
+                Map<String, Object> ctx = session.target().assertContext(x, y);
+                if (ctx == null) {
+                    writeError(exchange, 404, "No node at given coordinates");
+                } else {
+                    writeJson(exchange, 200, ctx);
+                }
+                return;
+            }
+
             writeError(exchange, 404, "Unknown path");
         }
     }

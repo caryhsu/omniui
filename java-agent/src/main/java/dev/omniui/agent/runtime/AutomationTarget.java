@@ -29,4 +29,8 @@ public interface AutomationTarget {
     default List<Map<String, Object>> pollEvents() {
         throw new UnsupportedOperationException("pollEvents not supported by this target");
     }
+
+    default Map<String, Object> assertContext(double sceneX, double sceneY) {
+        throw new UnsupportedOperationException("assertContext not supported by this target");
+    }
 }

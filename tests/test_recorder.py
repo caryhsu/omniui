@@ -430,5 +430,70 @@ class RecorderRunTests(unittest.TestCase):
         self.assertIn("_sentinel = True", stripped)
 
 
+class AssertionCodegenTests(unittest.TestCase):
+    """Tests for generate_script with assertion event type."""
+
+    def test_generate_script_assertion_verify_text(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="assertion", fx_id="statusLabel", text="", node_type="Label",
+                node_index=0, timestamp=0.0,
+                assertion_type="verify_text", expected="Success",
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertIn('client.verify_text(id="statusLabel", expected="Success")', script)
+
+    def test_generate_script_assertion_verify_visible(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="assertion", fx_id="submitBtn", text="", node_type="Button",
+                node_index=0, timestamp=0.0,
+                assertion_type="verify_visible", expected="",
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertIn('client.verify_visible(id="submitBtn")', script)
+
+    def test_generate_script_assertion_verify_enabled(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="assertion", fx_id="submitBtn", text="", node_type="Button",
+                node_index=0, timestamp=0.0,
+                assertion_type="verify_enabled", expected="",
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertIn('client.verify_enabled(id="submitBtn")', script)
+
+    def test_generate_script_assertion_no_warn_comment(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="assertion", fx_id="statusLabel", text="", node_type="Label",
+                node_index=0, timestamp=0.0,
+                assertion_type="verify_text", expected="OK",
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertNotIn("WARN", script)
+
+    def test_generate_script_assertion_mixed_with_click(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="click", fx_id="loginButton", text="", node_type="Button",
+                node_index=0, timestamp=0.0,
+            ),
+            RecordedEvent(
+                event_type="assertion", fx_id="statusLabel", text="", node_type="Label",
+                node_index=0, timestamp=0.1,
+                assertion_type="verify_text", expected="Success",
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        lines = [l for l in script.splitlines() if l.strip()]
+        self.assertEqual(lines[0], 'client.click(id="loginButton")')
+        self.assertEqual(lines[1], 'client.verify_text(id="statusLabel", expected="Success")')
+
+
 if __name__ == "__main__":
     unittest.main()

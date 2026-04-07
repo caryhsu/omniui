@@ -100,6 +100,20 @@ def generate_script(
             button_text = event.text or "OK"
             action_lines.append(f'client.dismiss_dialog(button="{button_text}")')
             action_events.append(event)
+        elif event.event_type == "assertion":
+            if event.fx_id:
+                sel_str = f'id="{event.fx_id}"'
+            elif event.text:
+                sel_str = f'text="{event.text}"'
+            else:
+                continue  # no stable selector, skip
+            if event.assertion_type == "verify_text":
+                action_lines.append(f'client.verify_text({sel_str}, expected="{event.expected}")')
+            elif event.assertion_type == "verify_visible":
+                action_lines.append(f'client.verify_visible({sel_str})')
+            elif event.assertion_type == "verify_enabled":
+                action_lines.append(f'client.verify_enabled({sel_str})')
+            # assertion events intentionally not added to action_events (no wait injection needed)
 
     if wait_injection:
         body_lines = inject_waits(action_events, action_lines, timeout=wait_timeout)

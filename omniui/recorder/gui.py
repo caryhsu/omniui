@@ -282,6 +282,18 @@ class RecorderApp:
             if not raw_events:
                 continue
 
+            right_click_events = [e for e in raw_events if e.get("type") == "right_click"]
+            action_events_raw = [e for e in raw_events if e.get("type") != "right_click"]
+
+            # Handle right-click events → show assertion menu on main thread (node info embedded in event)
+            for rc in right_click_events:
+                available = rc.get("availableAssertions") or []
+                if available:
+                    self.root.after(0, self._show_assertion_menu_from_event, rc, available)
+
+            if not action_events_raw:
+                continue
+
             events = [
                 RecordedEvent(
                     event_type=e.get("type", ""),
@@ -296,7 +308,7 @@ class RecorderApp:
                     to_node_index=int(e.get("toNodeIndex", 0)),
                     color=e.get("color", ""),
                 )
-                for e in raw_events
+                for e in action_events_raw
             ]
             partial = generate_script(
                 events,
@@ -312,6 +324,94 @@ class RecorderApp:
         self._script_text.see("end")
         self._dirty = True
         self._update_window_title()
+
+    def _fetch_and_show_assertion_menu(self, scene_x: float, scene_y: float) -> None:
+        """Called on main thread: fetch assert-context from agent and show menu."""
+        client = self._client
+        if client is None:
+            return
+        try:
+            session_id = client.session_id
+            url = f"{client.base_url}/sessions/{session_id}/events/assert-context?x={scene_x}&y={scene_y}"
+            with urllib.request.urlopen(url, timeout=1.0) as resp:
+                ctx = json.loads(resp.read())
+        except Exception:
+            return  # 靜默略過（node 不存在或連線失敗）
+
+        available = ctx.get("availableAssertions", [])
+        if not available:
+            return
+
+        # 取得目前螢幕滑鼠位置以彈出選單
+        try:
+            mx = self.root.winfo_pointerx()
+            my = self.root.winfo_pointery()
+        except Exception:
+            mx, my = 0, 0
+
+        self._show_assertion_menu(ctx, available, mx, my)
+
+    def _show_assertion_menu_from_event(self, rc: dict, available: list) -> None:
+        """Called on main thread with embedded node info from right_click event."""
+        mx = self.root.winfo_pointerx()
+        my = self.root.winfo_pointery()
+        self._show_assertion_menu(rc, available, mx, my)
+
+    def _show_assertion_menu(self, ctx: dict, available: list[str], screen_x: int, screen_y: int) -> None:
+        """Popup assertion menu at (screen_x, screen_y)."""
+        _LABELS = {
+            "verify_text":    "驗證文字",
+            "verify_visible": "驗證可見",
+            "verify_enabled": "驗證啟用",
+        }
+        menu = tk.Menu(self.root, tearoff=0)
+        for assertion_type in available:
+            label = _LABELS.get(assertion_type, assertion_type)
+            menu.add_command(
+                label=label,
+                command=lambda at=assertion_type: self._insert_assertion(ctx, at),
+            )
+        try:
+            menu.tk_popup(screen_x, screen_y)
+        finally:
+            menu.grab_release()
+
+    def _insert_assertion(self, ctx: dict, assertion_type: str) -> None:
+        """Insert an assertion line into the script preview at the cursor position."""
+        from omniui.core.models import RecordedEvent
+        from ..recorder.script_gen import generate_script
+
+        fx_id = ctx.get("fxId") or ""
+        current_text = ctx.get("currentText") or ""
+        expected = current_text if assertion_type == "verify_text" else ""
+
+        event = RecordedEvent(
+            event_type="assertion",
+            fx_id=fx_id,
+            text="",
+            node_type=ctx.get("nodeType", ""),
+            node_index=0,
+            timestamp=0.0,
+            assertion_type=assertion_type,
+            expected=expected,
+        )
+        line = generate_script([event], skip_header=True).strip()
+        if not line:
+            return
+
+        # 插入到游標所在行之後（若有）或末尾
+        try:
+            cursor = self._script_text.index(tk.INSERT)
+            row, _ = map(int, cursor.split("."))
+            insert_pos = f"{row}.end"
+        except Exception:
+            insert_pos = "end"
+
+        self._script_text.insert(insert_pos, "\n" + line)
+        self._script_text.see("end")
+        self._dirty = True
+        self._update_window_title()
+        self._update_run_buttons()
 
     def _stop_recording(self) -> None:
         # Stop polling thread first
