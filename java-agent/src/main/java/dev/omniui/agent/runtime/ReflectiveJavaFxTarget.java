@@ -907,6 +907,22 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             Object button = ReflectiveJavaFxSupport.invoke(event, "getButton");
             if (button != null && "SECONDARY".equals(button.toString())) return;
         } catch (Exception ignored) {}
+        // Detect double-click (clickCount == 2)
+        boolean isDoubleClick = false;
+        try {
+            Object cc = ReflectiveJavaFxSupport.invoke(event, "getClickCount");
+            isDoubleClick = cc instanceof Number n && n.intValue() >= 2;
+        } catch (Exception ignored) {}
+
+        // For double-click: just mutate the preceding click entry in-place — no need to
+        // re-resolve the node (the clickCount=1 entry already has the correct selector).
+        if (isDoubleClick) {
+            if (!recorderBuffer.isEmpty() && "click".equals(recorderBuffer.peekLast().get("type"))) {
+                recorderBuffer.peekLast().put("type", "double_click");
+            }
+            return;
+        }
+
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {

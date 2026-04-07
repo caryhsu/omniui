@@ -495,5 +495,44 @@ class AssertionCodegenTests(unittest.TestCase):
         self.assertEqual(lines[1], 'client.verify_text(id="statusLabel", expected="Success")')
 
 
-if __name__ == "__main__":
-    unittest.main()
+class DoubleClickCodegenTests(unittest.TestCase):
+    """Tests for generate_script with double_click event type."""
+
+    def test_generate_script_double_click_by_id(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="double_click", fx_id="myItem", text="", node_type="Label",
+                node_index=0, timestamp=0.0,
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertIn('client.double_click(id="myItem")', script)
+
+    def test_generate_script_double_click_no_id_falls_back_to_text(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="double_click", fx_id="", text="Hello", node_type="Label",
+                node_index=0, timestamp=0.0,
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        self.assertIn('client.double_click(', script)
+        self.assertIn('"Hello"', script)
+
+    def test_generate_script_double_click_mixed_with_click(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="click", fx_id="loginButton", text="", node_type="Button",
+                node_index=0, timestamp=0.0,
+            ),
+            RecordedEvent(
+                event_type="double_click", fx_id="itemList", text="", node_type="ListView",
+                node_index=0, timestamp=0.1,
+            ),
+        ]
+        script = generate_script(events, skip_header=True)
+        lines = [l for l in script.splitlines() if l.strip()]
+        self.assertEqual(lines[0], 'client.click(id="loginButton")')
+        self.assertEqual(lines[1], 'client.double_click(id="itemList")')
+
+
