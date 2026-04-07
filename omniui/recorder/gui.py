@@ -482,10 +482,23 @@ class RecorderApp:
 
         existing_client = self._client  # capture reference before thread starts
 
+        # If no client yet, auto-connect to the selected app without recording
         if existing_client is None:
-            self.root.after(0, self._set_run_status, "No connected app — please record first.", "red")
-            self.root.after(0, self._set_run_buttons, True)
-            return
+            agent = self._selected_agent()
+            if agent is None:
+                self.root.after(0, self._set_run_status,
+                                "No app selected — choose an app from the dropdown first.", "red")
+                self.root.after(0, self._set_run_buttons, True)
+                return
+            try:
+                self._client = OmniUI.connect(port=agent["port"])
+                existing_client = self._client
+                self.root.after(0, self._status_var.set,
+                                f"Connected to {agent.get('appName', agent['port'])}")
+            except Exception as exc:
+                self.root.after(0, self._set_run_status, f"Connect failed: {exc}", "red")
+                self.root.after(0, self._set_run_buttons, True)
+                return
 
         try:
             replay_delay = float(self._replay_delay_var.get())
