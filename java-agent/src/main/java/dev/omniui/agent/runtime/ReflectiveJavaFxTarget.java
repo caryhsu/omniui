@@ -1383,38 +1383,93 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             int height = ((Number) writableImage.getClass().getMethod("getHeight").invoke(writableImage)).intValue();
             if (width <= 0 || height <= 0) return new byte[0];
 
-            // Read pixels via PixelReader
+            // Bulk-read all pixels in one call via PixelFormat.getIntArgbInstance()
             Object pixelReader = writableImage.getClass().getMethod("getPixelReader").invoke(writableImage);
-            java.lang.reflect.Method getArgb = pixelReader.getClass().getMethod("getArgb", int.class, int.class);
             int[] argbPixels = new int[width * height];
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    argbPixels[y * width + x] = (int) getArgb.invoke(pixelReader, x, y);
-                }
-            }
+            Class<?> writablePixelFmtClass = Class.forName("javafx.scene.image.WritablePixelFormat");
+            Object intArgbFmt = Class.forName("javafx.scene.image.PixelFormat")
+                .getMethod("getIntArgbInstance").invoke(null);
+            pixelReader.getClass()
+                .getMethod("getPixels", int.class, int.class, int.class, int.class,
+                           writablePixelFmtClass, int[].class, int.class, int.class)
+                .invoke(pixelReader, 0, 0, width, height, intArgbFmt, argbPixels, 0, width);
 
-            // Use reflection to access java.awt and javax.imageio (java.desktop module)
-            // to avoid a compile-time module-path dependency.
-            int TYPE_INT_ARGB = 2; // BufferedImage.TYPE_INT_ARGB
-            Class<?> buffImgClass = Class.forName("java.awt.image.BufferedImage");
-            Object buffered = buffImgClass
-                .getConstructor(int.class, int.class, int.class)
-                .newInstance(width, height, TYPE_INT_ARGB);
-            buffImgClass.getMethod("setRGB", int.class, int.class, int.class, int.class,
-                    int[].class, int.class, int.class)
-                .invoke(buffered, 0, 0, width, height, argbPixels, 0, width);
-
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            Class<?> imageIOClass = Class.forName("javax.imageio.ImageIO");
-            imageIOClass.getMethod("write",
-                    Class.forName("java.awt.image.RenderedImage"),
-                    String.class,
-                    java.io.OutputStream.class)
-                .invoke(null, buffered, "png", baos);
-            return baos.toByteArray();
+            // Encode as PNG using only java.base (Deflater + CRC32) — no java.desktop required
+            return encodePng(argbPixels, width, height);
         } catch (Exception e) {
             return new byte[0];
         }
+    }
+
+    /**
+     * Encodes ARGB pixel data as a valid PNG byte stream.
+     * Uses only java.base classes (java.util.zip) to avoid java.desktop dependency.
+     */
+    private static byte[] encodePng(int[] argb, int width, int height) throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+
+        // PNG signature
+        out.write(new byte[]{(byte)137,80,78,71,13,10,26,10});
+
+        // IHDR chunk: width(4) height(4) bitDepth colorType(6=RGBA) 0 0 0
+        byte[] ihdr = new byte[13];
+        pngWriteInt(ihdr, 0, width);
+        pngWriteInt(ihdr, 4, height);
+        ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
+        pngWriteChunk(out, new byte[]{'I','H','D','R'}, ihdr);
+
+        // Build raw (uncompressed) scan-line data: filter_byte(0) + RGBA per pixel
+        byte[] raw = new byte[height * (1 + width * 4)];
+        int idx = 0;
+        for (int y = 0; y < height; y++) {
+            raw[idx++] = 0; // filter: None
+            for (int x = 0; x < width; x++) {
+                int px = argb[y * width + x];
+                raw[idx++] = (byte)((px >> 16) & 0xFF); // R
+                raw[idx++] = (byte)((px >>  8) & 0xFF); // G
+                raw[idx++] = (byte)( px        & 0xFF); // B
+                raw[idx++] = (byte)((px >> 24) & 0xFF); // A
+            }
+        }
+
+        // Deflate compress
+        java.util.zip.Deflater deflater = new java.util.zip.Deflater(java.util.zip.Deflater.BEST_SPEED);
+        deflater.setInput(raw);
+        deflater.finish();
+        java.io.ByteArrayOutputStream compressed = new java.io.ByteArrayOutputStream(raw.length / 2);
+        byte[] buf = new byte[16384];
+        while (!deflater.finished()) {
+            int n = deflater.deflate(buf);
+            compressed.write(buf, 0, n);
+        }
+        deflater.end();
+        pngWriteChunk(out, new byte[]{'I','D','A','T'}, compressed.toByteArray());
+
+        // IEND chunk
+        pngWriteChunk(out, new byte[]{'I','E','N','D'}, new byte[0]);
+
+        return out.toByteArray();
+    }
+
+    private static void pngWriteChunk(java.io.OutputStream out, byte[] type, byte[] data) throws java.io.IOException {
+        byte[] lenBuf = new byte[4];
+        pngWriteInt(lenBuf, 0, data.length);
+        out.write(lenBuf);
+        out.write(type);
+        out.write(data);
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(type);
+        crc.update(data);
+        byte[] crcBuf = new byte[4];
+        pngWriteInt(crcBuf, 0, (int) crc.getValue());
+        out.write(crcBuf);
+    }
+
+    private static void pngWriteInt(byte[] buf, int off, int val) {
+        buf[off]     = (byte)(val >> 24);
+        buf[off + 1] = (byte)(val >> 16);
+        buf[off + 2] = (byte)(val >>  8);
+        buf[off + 3] = (byte) val;
     }
 
     private ActionResult performOnFxThread(String action, JsonObject selector, JsonObject payload) {
