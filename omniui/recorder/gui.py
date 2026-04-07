@@ -482,6 +482,11 @@ class RecorderApp:
 
         existing_client = self._client  # capture reference before thread starts
 
+        if existing_client is None:
+            self.root.after(0, self._set_run_status, "No connected app — please record first.", "red")
+            self.root.after(0, self._set_run_buttons, True)
+            return
+
         try:
             replay_delay = float(self._replay_delay_var.get())
         except ValueError:
