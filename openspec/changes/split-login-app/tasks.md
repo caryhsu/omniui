@@ -18,7 +18,7 @@
 - [x] 3.1 Create `demo/python/login/` with `__init__.py`, `_bootstrap.py`, `_runtime.py` (copy from another demo dir, update port to 48108)
 - [x] 3.2 Move `demo/python/core/login_direct.py` → `demo/python/login/login_direct.py`
 - [x] 3.3 Move `demo/python/core/login_with_fallback.py` → `demo/python/login/login_with_fallback.py`
-- [ ] 3.4 Create `demo/python/login/login_demo.py` — runs both direct and fallback scenarios in sequence
+- [x] 3.4 Create `demo/python/login/login_demo.py` — runs both direct and fallback scenarios in sequence
 - [ ] 3.5 Verify `python demo/python/login/login_demo.py` passes end-to-end
 
 ## 4. Integration smoke tests
@@ -30,8 +30,8 @@
 
 ## 5. Cleanup and commit
 
-- [ ] 5.1 Update `README.md` and `README.zh-TW.md` — add login-app to demo apps table/list
-- [ ] 5.2 Update `docs/parallel-testing.md` / `docs/parallel-testing.zh-TW.md` if login-app port appears in examples
-- [ ] 5.3 Update `ROADMAP.md` / `ROADMAP.zh-TW.md` — mark `split-login-app` as done (move to ✅ Done)
+- [x] 5.1 Update `README.md` and `README.zh-TW.md` — add login-app to demo apps table/list
+- [x] 5.2 Update `docs/parallel-testing.md` / `docs/parallel-testing.zh-TW.md` if login-app port appears in examples (no changes needed)
+- [x] 5.3 Update `ROADMAP.md` / `ROADMAP.zh-TW.md` — mark `split-login-app` as done (move to ✅ Done)
 - [ ] 5.4 Commit all changes with message `feat: extract login-app from core-app`
 - [ ] 5.5 Open PR and merge to main

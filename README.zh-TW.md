@@ -115,13 +115,13 @@ openspec/
 
 ## 快速開始
 
-1. 啟動 JavaFX demo app：
+1. 啟動 JavaFX demo app（以 core-app 為例，port 48100）：
 
 ```bash
-demo\javafx-login-app\run-dev-with-agent.bat
+demo\java\core-app\run-dev-with-agent.bat
 ```
 
-這會開啟一個登入視窗，並以 OmniUI Java agent enabled 模式啟動，預設監聽 `http://127.0.0.1:48100`。
+這會開啟 demo 視窗，並以 OmniUI Java agent enabled 模式啟動，預設監聽 `http://127.0.0.1:48100`。
 
 2. 在另一個 terminal 執行 Python demo flow：
 
@@ -244,8 +244,8 @@ python -m pytest tests/integration/
 ```bash
 # 先將 agent module 安裝到本機 Maven repo
 mvn install -f java-agent/pom.xml
-# 再建置 jlink runtime image（會內嵌 agent module）
-mvn package javafx:jlink -f demo/javafx-login-app/pom.xml
+# 再建置 jlink runtime image（以 core-app 為例）
+mvn package javafx:jlink -f demo/java/core-app/pom.xml
 ```
 
 > **注意：** jlink runtime image 將 `dev.omniui.agent` 內嵌為 module。
