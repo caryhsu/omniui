@@ -1691,3 +1691,93 @@ class DragRecordingTests(unittest.TestCase):
         self.assertEqual(result.events[0].to_fx_id, "rightPanel")
         self.assertIn('client.drag(id="item_apple").to(id="rightPanel")', result.script)
 
+
+class ScreenshotModeTests(unittest.TestCase):
+    """Tests for screenshot_mode=on_failure / always auto-capture."""
+
+    def _make_client(self, mode: str, tmp_dir: str) -> "OmniUIClient":
+        from omniui.core.engine import OmniUIClient
+        client = OmniUIClient(
+            base_url="http://127.0.0.1:48100",
+            session_id="s1",
+            screenshot_mode=mode,
+            screenshot_dir=tmp_dir,
+        )
+        return client
+
+    def _fake_urlopen_ok(self, req, **kw):
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if "screenshot" in url:
+            import base64, io
+            png_1x1 = (
+                b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01'
+                b'\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00'
+                b'\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00'
+                b'\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'
+            )
+            return _FakeResponse({"data": base64.b64encode(png_1x1).decode(), "contentType": "image/png"})
+        return _FakeResponse({
+            "ok": True,
+            "resolved": {"tier": "javafx", "targetRef": "btn", "fxId": "btn", "nodeType": "Button", "text": "OK"},
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+            "value": "ok",
+        })
+
+    def _fake_urlopen_fail(self, req, **kw):
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if "screenshot" in url:
+            return self._fake_urlopen_ok(req, **kw)
+        return _FakeResponse({
+            "ok": False,
+            "resolved": None,
+            "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None},
+            "value": None,
+        })
+
+    def test_off_mode_no_screenshot(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._make_client("off", tmp)
+            with patch("urllib.request.urlopen", side_effect=self._fake_urlopen_fail):
+                client._perform("click", {"id": "btn"})
+            self.assertEqual(os.listdir(tmp), [])
+
+    def test_on_failure_saves_on_fail(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._make_client("on_failure", tmp)
+            with patch("urllib.request.urlopen", side_effect=self._fake_urlopen_fail):
+                client._perform("click", {"id": "btn"})
+            files = os.listdir(tmp)
+            self.assertEqual(len(files), 1)
+            self.assertTrue(files[0].endswith(".png"))
+            self.assertIn("click", files[0])
+
+    def test_on_failure_no_screenshot_on_success(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._make_client("on_failure", tmp)
+            with patch("urllib.request.urlopen", side_effect=self._fake_urlopen_ok):
+                client._perform("click", {"id": "btn"})
+            self.assertEqual(os.listdir(tmp), [])
+
+    def test_always_saves_on_success(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._make_client("always", tmp)
+            with patch("urllib.request.urlopen", side_effect=self._fake_urlopen_ok):
+                client._perform("click", {"id": "btn"})
+            files = os.listdir(tmp)
+            self.assertEqual(len(files), 1)
+
+    def test_save_screenshot_explicit_path(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as tmp:
+            client = self._make_client("off", tmp)
+            out_path = os.path.join(tmp, "manual.png")
+            with patch("urllib.request.urlopen", side_effect=self._fake_urlopen_ok):
+                saved = client.save_screenshot(out_path)
+            self.assertEqual(saved, out_path)
+            self.assertTrue(os.path.exists(out_path))
+
+

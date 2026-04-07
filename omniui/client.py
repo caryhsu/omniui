@@ -67,6 +67,8 @@ class OmniUI:
         vision_engine: SimpleVisionEngine | None = None,
         scan_range: tuple[int, int] = (_SCAN_START, _SCAN_END),
         step_delay: float = 0.0,
+        screenshot_mode: str = "off",
+        screenshot_dir: str = "screenshots",
     ) -> OmniUIClient:
         """Connect to a running OmniUI agent.
 
@@ -80,6 +82,11 @@ class OmniUI:
             step_delay: Seconds to sleep after each action. Useful for slowing
                 down script playback for demos. Can be overridden per-call via
                 the ``delay`` argument on individual action methods.
+            screenshot_mode: When to capture screenshots automatically.
+                ``"off"`` (default) disables auto-capture.
+                ``"on_failure"`` saves a PNG whenever an action fails.
+                ``"always"`` saves a PNG after every action.
+            screenshot_dir: Directory for auto-saved screenshots (default: ``"screenshots"``).
 
         Examples::
 
@@ -91,6 +98,9 @@ class OmniUI:
 
             # Demo mode — 0.5s pause between every action
             ui = OmniUI.connect(port=48100, step_delay=0.5)
+
+            # Save screenshot on failure
+            ui = OmniUI.connect(port=48100, screenshot_mode="on_failure")
 
             # Legacy base_url style
             ui = OmniUI.connect(base_url="http://127.0.0.1:48100")
@@ -114,6 +124,8 @@ class OmniUI:
             ocr_engine=ocr_engine,
             vision_engine=vision_engine,
             step_delay=step_delay,
+            screenshot_mode=screenshot_mode,
+            screenshot_dir=screenshot_dir,
         )
 
     @staticmethod
