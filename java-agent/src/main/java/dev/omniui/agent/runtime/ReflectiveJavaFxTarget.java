@@ -843,10 +843,70 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         return slice;
     }
 
+    @Override
+    public Map<String, Object> assertContext(double sceneX, double sceneY) {
+        Object[] nodeHolder = new Object[1];
+        ReflectiveJavaFxSupport.onFxThread(() -> {
+            try {
+                Object scene = sceneSupplier.get();
+                if (scene == null) return null;
+                Object pickResult = scene.getClass().getMethod("pick", double.class, double.class)
+                    .invoke(scene, sceneX, sceneY);
+                if (pickResult == null) return null;
+                Object pickedNode = pickResult.getClass().getMethod("getIntersectedNode").invoke(pickResult);
+                if (pickedNode == null) return null;
+                nodeHolder[0] = nearestNode(pickedNode);
+                return null;
+            } catch (Exception e) {
+                return null;
+            }
+        });
+
+        Object node = nodeHolder[0];
+        if (node == null) return null;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        String fxId     = nullToEmpty(safeString(node, "getId"));
+        String nodeType = node.getClass().getSimpleName();
+        boolean isPassword = "PasswordField".equals(nodeType);
+
+        result.put("fxId",        fxId.isEmpty() ? null : fxId);
+        result.put("nodeType",    nodeType);
+        result.put("currentText", isPassword ? null : ReflectiveJavaFxSupport.textOf(node));
+
+        try {
+            Object v = ReflectiveJavaFxSupport.invoke(node, "isVisible");
+            result.put("visible", Boolean.TRUE.equals(v));
+        } catch (Exception ignored) {
+            result.put("visible", true);
+        }
+
+        try {
+            Object d = ReflectiveJavaFxSupport.invoke(node, "isDisabled");
+            result.put("enabled", !Boolean.TRUE.equals(d));
+        } catch (Exception ignored) {
+            result.put("enabled", true);
+        }
+
+        java.util.List<String> available = new java.util.ArrayList<>();
+        if (!fxId.isEmpty()) {
+            if (!isPassword) available.add("verify_text");
+            available.add("verify_visible");
+            available.add("verify_enabled");
+        }
+        result.put("availableAssertions", available);
+        return result;
+    }
+
     private void onMouseClicked(Object event) {
         if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
         // Suppress click that immediately follows a recorded drag
         if (dragJustFired) { dragJustFired = false; return; }
+        // Right-click is handled by onMousePressed (assertion recording); ignore here
+        try {
+            Object button = ReflectiveJavaFxSupport.invoke(event, "getButton");
+            if (button != null && "SECONDARY".equals(button.toString())) return;
+        } catch (Exception ignored) {}
         // Flush pending key accumulations before recording the click
         flushKeyAccumulator();
         try {
@@ -937,13 +997,70 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     private void onMousePressed(Object event) {
-        // Record press info for drag detection (consumed by onMouseReleased)
         dragJustFired = false;
         try {
+            Object button = ReflectiveJavaFxSupport.invoke(event, "getButton");
+            boolean isSecondary = button != null && "SECONDARY".equals(button.toString());
+
             Object xObj = ReflectiveJavaFxSupport.invoke(event, "getSceneX");
             Object yObj = ReflectiveJavaFxSupport.invoke(event, "getSceneY");
-            dragPressX    = xObj instanceof Number n ? n.doubleValue() : 0;
-            dragPressY    = yObj instanceof Number n ? n.doubleValue() : 0;
+            double sceneX = xObj instanceof Number n ? n.doubleValue() : 0;
+            double sceneY = yObj instanceof Number n ? n.doubleValue() : 0;
+
+            if (isSecondary) {
+                // Right-click: record as right_click event with embedded node context
+                Map<String, Object> rc = new LinkedHashMap<>();
+                rc.put("type",      "right_click");
+                rc.put("sceneX",    sceneX);
+                rc.put("sceneY",    sceneY);
+                rc.put("timestamp", System.currentTimeMillis() / 1000.0);
+
+                // Embed target node info so Python side needs no extra HTTP call
+                try {
+                    Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
+                    Object node = target != null ? nearestNode(target) : null;
+                    // If the nearest node has no fxId (e.g. internal Text node inside TextField),
+                    // walk up the parent chain to find an ancestor with a non-empty fxId
+                    if (node != null) {
+                        String testId = nullToEmpty(safeString(node, "getId"));
+                        if (testId.isEmpty()) {
+                            Object cur = node;
+                            for (int i = 0; i < 10 && cur != null; i++) {
+                                try { cur = ReflectiveJavaFxSupport.invoke(cur, "getParent"); } catch (Exception e) { break; }
+                                if (cur == null) break;
+                                String pid = nullToEmpty(safeString(cur, "getId"));
+                                if (!pid.isEmpty()) { node = cur; break; }
+                            }
+                        }
+                    }
+                    if (node != null) {
+                        String fxId    = nullToEmpty(safeString(node, "getId"));
+                        String nType   = node.getClass().getSimpleName();
+                        boolean isPwd  = "PasswordField".equals(nType);
+                        boolean vis    = Boolean.TRUE.equals(ReflectiveJavaFxSupport.invoke(node, "isVisible"));
+                        boolean dis    = Boolean.TRUE.equals(ReflectiveJavaFxSupport.invoke(node, "isDisabled"));
+                        rc.put("fxId",     fxId.isEmpty() ? null : fxId);
+                        rc.put("nodeType", nType);
+                        rc.put("currentText", isPwd ? null : ReflectiveJavaFxSupport.textOf(node));
+                        rc.put("visible",  vis);
+                        rc.put("enabled",  !dis);
+                        java.util.List<String> avail = new java.util.ArrayList<>();
+                        if (!isPwd) avail.add("verify_text");
+                        avail.add("verify_visible");
+                        avail.add("verify_enabled");
+                        rc.put("availableAssertions", avail);
+                    }
+                } catch (Exception ignored) {}
+
+                if (recorderBuffer.size() < MAX_RECORDER_EVENTS) {
+                    recorderBuffer.add(rc);
+                }
+                return; // Do not set drag press state for right-click
+            }
+
+            // Left-click: record press info for drag detection
+            dragPressX    = sceneX;
+            dragPressY    = sceneY;
             dragPressTime = System.currentTimeMillis() / 1000.0;
 
             Object target = ReflectiveJavaFxSupport.invoke(event, "getTarget");
@@ -963,6 +1080,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private void onMouseReleased(Object event) {
         if (recorderBuffer.size() >= MAX_RECORDER_EVENTS) return;
         try {
+            // Ignore right-click releases — they don't participate in drag recording
+            Object button = ReflectiveJavaFxSupport.invoke(event, "getButton");
+            if (button != null && "SECONDARY".equals(button.toString())) return;
+
             Object xObj = ReflectiveJavaFxSupport.invoke(event, "getSceneX");
             Object yObj = ReflectiveJavaFxSupport.invoke(event, "getSceneY");
             double relX = xObj instanceof Number n ? n.doubleValue() : 0;

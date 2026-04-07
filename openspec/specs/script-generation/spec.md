@@ -25,3 +25,37 @@ The system SHALL provide a `generate_script(events: list[RecordedEvent]) -> str`
 #### Scenario: Generated script has standard header
 - **WHEN** `generate_script` is called with any non-empty event list
 - **THEN** the output starts with a comment header and `from omniui import OmniUI`
+
+### Requirement: assertion 事件產生 verify_* 呼叫
+
+`generate_script` **必須** 將 `event_type="assertion"` 的事件轉換為對應的 Python 行。
+
+#### Scenario: verify_text 斷言
+
+- **WHEN** `RecordedEvent(event_type="assertion", fx_id="statusLabel", assertion_type="verify_text", expected="Success")`
+- **THEN** the output contains `client.verify_text(id="statusLabel", expected="Success")`
+
+#### Scenario: verify_visible 斷言
+
+- **WHEN** `RecordedEvent(event_type="assertion", fx_id="submitBtn", assertion_type="verify_visible")`
+- **THEN** the output contains `client.verify_visible(id="submitBtn")`
+
+#### Scenario: verify_enabled 斷言
+
+- **WHEN** `RecordedEvent(event_type="assertion", fx_id="submitBtn", assertion_type="verify_enabled")`
+- **THEN** the output contains `client.verify_enabled(id="submitBtn")`
+
+#### Scenario: 斷言行不帶 WARN 注解
+
+- **WHEN** assertion 事件有穩定的 `fx_id`
+- **THEN** the generated line does **not** contain `# WARN: fragile selector`
+
+#### Scenario: assertion 步驟與 click 步驟混排順序正確
+
+- **WHEN** the event sequence is `[click("loginBtn"), assertion("statusLabel", "verify_text", "Success")]`
+- **THEN** the script output order is preserved:
+  ```python
+  client.click(id="loginBtn")
+  client.verify_text(id="statusLabel", expected="Success")
+  ```
+

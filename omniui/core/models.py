@@ -115,7 +115,7 @@ class UIDiff:
 class RecordedEvent:
     """A single user interaction event captured by the Java agent."""
 
-    event_type: str   # "click" | "type" | "drag" | "set_color" | "select_combo" | "set_date"
+    event_type: str   # "click" | "type" | "drag" | "set_color" | "select_combo" | "set_date" | "assertion" | "right_click"
     fx_id: str
     text: str
     node_type: str
@@ -128,6 +128,9 @@ class RecordedEvent:
     to_node_index: int = 0
     # set_color-only field
     color: str = ""
+    # assertion-only fields (populated when event_type == "assertion")
+    assertion_type: str = ""   # "verify_text" | "verify_visible" | "verify_enabled"
+    expected: str = ""         # expected value for verify_text; empty for others
 
 
 @dataclass
