@@ -1355,48 +1355,59 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private byte[] screenshotOnFxThread() {
         try {
-            // Find the first visible window/stage
-            Class<?> windowClass = Class.forName("javafx.stage.Window");
+            // Use exported public API classes for all method lookups to avoid
+            // IllegalAccessException from anonymous/private implementation classes.
+            Class<?> windowClass  = Class.forName("javafx.stage.Window");
+            Class<?> sceneClass   = Class.forName("javafx.scene.Scene");
+            Class<?> nodeClass    = Class.forName("javafx.scene.Node");
+            Class<?> imageClass   = Class.forName("javafx.scene.image.Image");
+            Class<?> pixelRdrClass= Class.forName("javafx.scene.image.PixelReader");
+            Class<?> snapParamsCls= Class.forName("javafx.scene.SnapshotParameters");
+            Class<?> writableImgCls=Class.forName("javafx.scene.image.WritableImage");
+            Class<?> wpfClass     = Class.forName("javafx.scene.image.WritablePixelFormat");
+
+            // Find first visible window
             @SuppressWarnings("unchecked")
             java.util.List<Object> windows = (java.util.List<Object>)
                 windowClass.getMethod("getWindows").invoke(null);
             Object stage = null;
+            java.lang.reflect.Method isShowing = windowClass.getMethod("isShowing");
             for (Object w : windows) {
-                Boolean showing = (Boolean) w.getClass().getMethod("isShowing").invoke(w);
-                if (Boolean.TRUE.equals(showing)) { stage = w; break; }
+                if (Boolean.TRUE.equals(isShowing.invoke(w))) { stage = w; break; }
             }
             if (stage == null) return new byte[0];
 
-            Object scene = stage.getClass().getMethod("getScene").invoke(stage);
+            Object scene = windowClass.getMethod("getScene").invoke(stage);
             if (scene == null) return new byte[0];
-            Object root = scene.getClass().getMethod("getRoot").invoke(scene);
+            Object root = sceneClass.getMethod("getRoot").invoke(scene);
             if (root == null) return new byte[0];
 
-            // Node.snapshot(SnapshotParameters params, WritableImage image) — nulls = defaults
-            Class<?> snapParamsClass  = Class.forName("javafx.scene.SnapshotParameters");
-            Class<?> writableImgClass = Class.forName("javafx.scene.image.WritableImage");
-            Object writableImage = root.getClass()
-                .getMethod("snapshot", snapParamsClass, writableImgClass)
+            // snapshot() — look up via Node class (public, exported)
+            Object writableImage = nodeClass
+                .getMethod("snapshot", snapParamsCls, writableImgCls)
                 .invoke(root, null, null);
+            if (writableImage == null) return new byte[0];
 
-            int width  = ((Number) writableImage.getClass().getMethod("getWidth").invoke(writableImage)).intValue();
-            int height = ((Number) writableImage.getClass().getMethod("getHeight").invoke(writableImage)).intValue();
+            int width  = ((Number) imageClass.getMethod("getWidth").invoke(writableImage)).intValue();
+            int height = ((Number) imageClass.getMethod("getHeight").invoke(writableImage)).intValue();
             if (width <= 0 || height <= 0) return new byte[0];
 
-            // Bulk-read all pixels in one call via PixelFormat.getIntArgbInstance()
-            Object pixelReader = writableImage.getClass().getMethod("getPixelReader").invoke(writableImage);
+            // getPixelReader() — look up via Image class (public, exported)
+            Object pixelReader = imageClass.getMethod("getPixelReader").invoke(writableImage);
+
+            // Bulk-read pixels via PixelReader interface (public, exported)
             int[] argbPixels = new int[width * height];
-            Class<?> writablePixelFmtClass = Class.forName("javafx.scene.image.WritablePixelFormat");
             Object intArgbFmt = Class.forName("javafx.scene.image.PixelFormat")
                 .getMethod("getIntArgbInstance").invoke(null);
-            pixelReader.getClass()
+            pixelRdrClass
                 .getMethod("getPixels", int.class, int.class, int.class, int.class,
-                           writablePixelFmtClass, int[].class, int.class, int.class)
+                           wpfClass, int[].class, int.class, int.class)
                 .invoke(pixelReader, 0, 0, width, height, intArgbFmt, argbPixels, 0, width);
 
-            // Encode as PNG using only java.base (Deflater + CRC32) — no java.desktop required
             return encodePng(argbPixels, width, height);
         } catch (Exception e) {
+            System.err.println("[omniui-screenshot] failed: " + e.getClass().getName() + ": " + e.getMessage());
+            if (e.getCause() != null) System.err.println("  cause: " + e.getCause());
             return new byte[0];
         }
     }
