@@ -61,6 +61,8 @@ class RecorderApp:
         self._agents: list[dict] = []
         self._poll_thread: Optional[threading.Thread] = None
         self._polling: bool = False
+        self._run_thread: Optional[threading.Thread] = None
+        self._status_var: tk.StringVar  # initialised in _build_ui
 
         self._build_ui()
         self._refresh_agents()
@@ -102,6 +104,14 @@ class RecorderApp:
                                    state="disabled", command=self._save_script)
         self._save_btn.pack(side="left", padx=(0, 12))
 
+        self._run_all_btn = ttk.Button(ctrl, text="▶ Run All", width=12,
+                                       command=self._run_all)
+        self._run_all_btn.pack(side="left", padx=(0, 4))
+
+        self._run_sel_btn = ttk.Button(ctrl, text="▶ Run Selection", width=14,
+                                       command=self._run_selection)
+        self._run_sel_btn.pack(side="left", padx=(0, 12))
+
         self._wait_injection_var = tk.BooleanVar(value=False)
         tk.Checkbutton(ctrl, text="Insert wait_for_*",
                        variable=self._wait_injection_var).pack(side="left")
@@ -131,7 +141,13 @@ class RecorderApp:
         hsb.grid(row=1, column=0, sticky="ew")
         self._script_text.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-        root.geometry("700x480")
+        # ── Row 3: Run status bar ──────────────────────────────────────────
+        self._run_status_var = tk.StringVar(value="")
+        self._run_status_lbl = tk.Label(root, textvariable=self._run_status_var,
+                                        anchor="w", padx=10, fg="gray")
+        self._run_status_lbl.grid(row=3, column=0, sticky="ew")
+
+        root.geometry("700x500")
 
     # ── Agent discovery ────────────────────────────────────────────────────
 
@@ -190,6 +206,7 @@ class RecorderApp:
         self._save_btn.config(state="disabled")
         self._script_text.delete("1.0", "end")
         self._status_var.set("● Recording…")
+        self._run_status_var.set("")
 
         self._polling = True
         self._poll_thread = threading.Thread(target=self._polling_loop, daemon=True)
@@ -267,6 +284,7 @@ class RecorderApp:
 
         n = len(self._script.events)
         self._status_var.set(f"Stopped — {n} event(s) captured")
+        self._run_status_var.set("")
 
         # Replace incremental preview with the authoritative final script
         self._script_text.delete("1.0", "end")
@@ -274,6 +292,53 @@ class RecorderApp:
 
         if n > 0:
             self._save_btn.config(state="normal")
+
+    # ── Run All / Run Selection ────────────────────────────────────────────
+
+    def _set_run_status(self, text: str, color: str = "gray") -> None:
+        self._run_status_var.set(text)
+        self._run_status_lbl.config(fg=color)
+
+    def _set_run_buttons(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        self._run_all_btn.config(state=state)
+        self._run_sel_btn.config(state=state)
+
+    def _exec_script(self, code: str) -> None:
+        """Execute *code* in a background thread with client in scope."""
+        self.root.after(0, self._set_run_status, "Running…", "orange")
+        self.root.after(0, self._set_run_buttons, False)
+
+        def run():
+            try:
+                exec(code, {"client": self._client})  # noqa: S102
+                self.root.after(0, self._set_run_status, "✅ Passed", "green")
+            except Exception as exc:
+                msg = str(exc).split("\n")[0]
+                self.root.after(0, self._set_run_status, f"❌ Failed: {msg}", "red")
+            finally:
+                self.root.after(0, self._set_run_buttons, True)
+
+        self._run_thread = threading.Thread(target=run, daemon=True)
+        self._run_thread.start()
+
+    def _run_all(self) -> None:
+        code = self._script_text.get("1.0", "end-1c")
+        if not code.strip():
+            self._set_run_status("❌ No script to run", "red")
+            return
+        self._exec_script(code)
+
+    def _run_selection(self) -> None:
+        try:
+            code = self._script_text.get(tk.SEL_FIRST, tk.SEL_LAST)
+        except tk.TclError:
+            self._set_run_status("❌ No text selected", "red")
+            return
+        if not code.strip():
+            self._set_run_status("❌ No text selected", "red")
+            return
+        self._exec_script(code)
 
     def _save_script(self) -> None:
         if self._script is None:
