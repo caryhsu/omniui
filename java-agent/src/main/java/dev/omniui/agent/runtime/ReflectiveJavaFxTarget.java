@@ -66,6 +66,11 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private volatile boolean dragJustFired      = false;
     private static final double DRAG_MIN_DIST   = 15.0; // px threshold to distinguish drag from click
 
+    // ── Recording title animation ─────────────────────────────────────────────
+    private volatile java.util.Timer recordingTitleTimer    = null;
+    private volatile Object          recordingTitleWindow   = null;
+    private volatile String          recordingOriginalTitle = "";
+
     public ReflectiveJavaFxTarget(String appName, Supplier<Object> sceneSupplier) {
         this.appName = Objects.requireNonNull(appName, "appName");
         this.sceneSupplier = Objects.requireNonNull(sceneSupplier, "sceneSupplier");
@@ -284,8 +289,76 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
             registeredWindowScenes.clear();
             registeredWindowScenes.add(scene);
             checkAndAttachNewWindows();
+            // Animate the window title to indicate recording is active
+            try {
+                Object window = scene.getClass().getMethod("getWindow").invoke(scene);
+                if (window != null) startTitleAnimation(window);
+            } catch (Exception ignored) {}
             return ActionResult.success("javafx", null, Map.of(), null);
         });
+    }
+
+    /**
+     * Starts an animated window-title indicator showing that recording is active.
+     * The title blinks between 🔴 and ⚫ frames every 600 ms.
+     * Must be called from the JavaFX application thread.
+     */
+    private void startTitleAnimation(Object window) {
+        // Store original title (called on FX thread so getTitle() is safe)
+        try {
+            Object t = window.getClass().getMethod("getTitle").invoke(window);
+            recordingOriginalTitle = t != null ? t.toString() : "";
+        } catch (Exception ignored) {
+            recordingOriginalTitle = "";
+        }
+        recordingTitleWindow = window;
+
+        // Animation frames: blinking red / black circle prefix
+        String[] frames = {
+            recordingOriginalTitle + " \uD83D\uDD34 REC",   // 🔴 REC
+            recordingOriginalTitle + " \u26AB REC",          // ⚫ REC
+        };
+        final int[] idx = {0};
+        recordingTitleTimer = new java.util.Timer("omniui-rec-blink", /* daemon */ true);
+        recordingTitleTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                String newTitle = frames[idx[0] % frames.length];
+                idx[0]++;
+                try {
+                    Class<?> platform = ReflectiveJavaFxSupport.loadClass("javafx.application.Platform");
+                    platform.getMethod("runLater", Runnable.class).invoke(null, (Runnable) () -> {
+                        try {
+                            window.getClass().getMethod("setTitle", String.class).invoke(window, newTitle);
+                        } catch (Exception ignored) {}
+                    });
+                } catch (Exception ignored) {}
+            }
+        }, 0, 600);
+    }
+
+    /** Cancels the title animation and restores the original window title. */
+    private void stopTitleAnimation() {
+        if (recordingTitleTimer != null) {
+            recordingTitleTimer.cancel();
+            recordingTitleTimer = null;
+        }
+        if (recordingTitleWindow != null) {
+            final Object w = recordingTitleWindow;
+            final String t = recordingOriginalTitle;
+            recordingTitleWindow   = null;
+            recordingOriginalTitle = "";
+            try {
+                // Restore on FX thread (may already be on FX thread when called from stopRecordingFlush,
+                // but runLater is always safe)
+                Class<?> platform = ReflectiveJavaFxSupport.loadClass("javafx.application.Platform");
+                platform.getMethod("runLater", Runnable.class).invoke(null, (Runnable) () -> {
+                    try {
+                        w.getClass().getMethod("setTitle", String.class).invoke(w, t);
+                    } catch (Exception ignored) {}
+                });
+            } catch (Exception ignored) {}
+        }
     }
 
     /** Attach recording event filters to an arbitrary scene (reuses existing proxy objects). */
@@ -747,6 +820,8 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
             // Flush any pending key accumulations
             flushKeyAccumulator();
+            // Stop title animation and restore original title
+            stopTitleAnimation();
 
             List<Map<String, Object>> events = new ArrayList<>(recorderBuffer);
             recorderBuffer.clear();
