@@ -198,6 +198,13 @@ public final class OmniUiAgentServer {
                 return;
             }
 
+            if (parts.length == 5 && "events".equals(parts[3]) && "pending".equals(parts[4])
+                    && "GET".equals(exchange.getRequestMethod())) {
+                List<Map<String, Object>> events = session.target().pollEvents();
+                writeJson(exchange, 200, Map.of("ok", true, "events", events));
+                return;
+            }
+
             writeError(exchange, 404, "Unknown path");
         }
     }

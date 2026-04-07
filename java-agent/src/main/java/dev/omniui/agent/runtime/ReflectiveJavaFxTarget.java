@@ -33,6 +33,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     // ── Recorder state ────────────────────────────────────────────────────────
     private final ConcurrentLinkedDeque<Map<String, Object>> recorderBuffer = new ConcurrentLinkedDeque<>();
+    private final AtomicInteger deliveredUpTo = new AtomicInteger(0); // poll cursor
     private final ConcurrentHashMap<String, StringBuilder> keyAccumulator   = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long>          keyTimestamps    = new ConcurrentHashMap<>();
     private volatile Object mouseEventFilter    = null;
@@ -177,6 +178,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 return ActionResult.failure(List.of("javafx"), Map.of("reason", "no_scene"));
             }
             recorderBuffer.clear();
+            deliveredUpTo.set(0);
             keyAccumulator.clear();
             keyTimestamps.clear();
 
@@ -748,10 +750,22 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
             List<Map<String, Object>> events = new ArrayList<>(recorderBuffer);
             recorderBuffer.clear();
+            deliveredUpTo.set(0);
             keyAccumulator.clear();
             keyTimestamps.clear();
             return events;
         });
+    }
+
+    @Override
+    public List<Map<String, Object>> pollEvents() {
+        flushKeyAccumulator();
+        List<Map<String, Object>> all = new ArrayList<>(recorderBuffer);
+        int from = deliveredUpTo.get();
+        if (from >= all.size()) return List.of();
+        List<Map<String, Object>> slice = new ArrayList<>(all.subList(from, all.size()));
+        deliveredUpTo.set(all.size());
+        return slice;
     }
 
     private void onMouseClicked(Object event) {
