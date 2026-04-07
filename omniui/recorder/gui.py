@@ -317,20 +317,14 @@ class RecorderApp:
     def _exec_script(self, code: str) -> None:
         """Execute *code* in a background thread with client in scope.
 
-        A lightweight OmniUI stub is injected into the exec namespace so that
-        ``OmniUI.connect()`` inside the generated script returns the already-
-        connected client instead of triggering a slow port scan.
+        A progress proxy wraps the client so that every action updates the
+        status bar with the action name.  ``OmniUI.connect()`` inside the
+        generated script returns the proxy so the script sees the same object.
         """
         self.root.after(0, self._set_run_status, "Running…", "orange")
         self.root.after(0, self._set_run_buttons, False)
 
         existing_client = self._client  # capture reference before thread starts
-
-        class _OmniUIStub:
-            """Minimal OmniUI factory stub — connect() returns the live client."""
-            @staticmethod
-            def connect(*args, **kwargs):
-                return existing_client
 
         try:
             replay_delay = float(self._replay_delay_var.get())
@@ -340,8 +334,31 @@ class RecorderApp:
         def run():
             prev_delay = existing_client.step_delay
             existing_client.step_delay = replay_delay
+
+            # Wrap client to show per-action progress in the status bar
+            set_status = lambda msg: self.root.after(0, self._set_run_status, msg, "orange")
+
+            class _ProgressProxy:
+                """Forwards all attribute access to the real client; logs each call."""
+                def __getattr__(self, name):
+                    orig = getattr(existing_client, name)
+                    if not callable(orig):
+                        return orig
+                    def wrapper(*args, **kwargs):
+                        label = f"Running: {name}({', '.join(str(a) for a in args)}{', '.join(f'{k}={v}' for k,v in kwargs.items())})"
+                        set_status(label[:80])
+                        return orig(*args, **kwargs)
+                    return wrapper
+
+            proxy = _ProgressProxy()
+
+            class _OmniUIStubWithProxy:
+                @staticmethod
+                def connect(*args, **kwargs):
+                    return proxy
+
             try:
-                exec(code, {"client": existing_client, "OmniUI": _OmniUIStub})  # noqa: S102
+                exec(code, {"client": proxy, "OmniUI": _OmniUIStubWithProxy})  # noqa: S102
                 self.root.after(0, self._set_run_status, "✅ Passed", "green")
             except Exception as exc:
                 msg = str(exc).split("\n")[0]

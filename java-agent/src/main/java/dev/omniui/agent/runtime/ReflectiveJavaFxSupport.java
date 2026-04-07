@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -46,7 +47,12 @@ final class ReflectiveJavaFxSupport {
         };
         invokeStatic(platformClass, "runLater", runnable);
         try {
-            latch.await();
+            boolean done = latch.await(30, TimeUnit.SECONDS);
+            if (!done) {
+                throw new RuntimeException(
+                    "FX thread did not respond within 30 seconds " +
+                    "(possible deadlock or application closed)");
+            }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while waiting for JavaFX task", ex);
