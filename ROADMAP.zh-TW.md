@@ -106,6 +106,7 @@
 - [x] **CI/CD 範例** — GitHub Actions workflow：`ci-unit.yml`（僅 pytest）與 `ci-integration.yml`（Xvfb + 完整 demo 測試）
 - [x] **HTML 測試報告** — pytest-html 整合；失敗時截圖自動嵌入報告；詳見 `docs/html-report.zh-TW.md`
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
+- [ ] **Self-healing selector** — 當 locator 因 `fx:id` 被改名或移除而失敗時，自動依序嘗試 `text`、`type+index` 作為備援，成功後記錄所使用的備援方式，提示開發者更新 selector。
 - [x] **拖放（Drag & Drop）** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`；觸發 MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
 - [ ] **獨立 drag-drop demo app** — 獨立 JavaFX app，左右兩個 ListView 可拖曳項目（左 → 右）；作為更完整的 drag & drop 展示，取代塞在 advanced-app 中的簡陋區塊
 - [x] **獨立 drag-drop demo app** — `demo/java/drag-app/` 獨立 app；左欄（Available）→ 右欄（Selected）逐項拖曳；`demo/python/drag/drag_listview_demo.py`
