@@ -25,4 +25,8 @@ public interface AutomationTarget {
     default List<Map<String, Object>> stopRecordingFlush() {
         throw new UnsupportedOperationException("stopRecordingFlush not supported by this target");
     }
+
+    default List<Map<String, Object>> pollEvents() {
+        throw new UnsupportedOperationException("pollEvents not supported by this target");
+    }
 }

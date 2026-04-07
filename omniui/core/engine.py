@@ -148,6 +148,21 @@ class OmniUIClient:
         script = generate_script(events, wait_injection=self._wait_injection, wait_timeout=self._wait_timeout)
         return RecordedScript(events=events, script=script)
 
+    def poll_events(self) -> list[dict]:
+        """Return recorder events buffered since the last poll (non-destructive).
+
+        Only valid while a recording session is active (after :meth:`start_recording`
+        and before :meth:`stop_recording`). Raises :class:`RuntimeError` otherwise.
+        """
+        if not self._recording:
+            raise RuntimeError("poll_events() called without an active recording session")
+        payload = self._request_json(
+            "GET",
+            f"{self.base_url}/sessions/{self.session_id}/events/pending",
+            {},
+        )
+        return payload.get("events", [])
+
     def action_history(self) -> list[ActionLogEntry]:
         return list(self._action_log)
 

@@ -59,6 +59,8 @@ class RecorderApp:
         self._client: Optional[OmniUI] = None
         self._script: Optional[RecordedScript] = None
         self._agents: list[dict] = []
+        self._poll_thread: Optional[threading.Thread] = None
+        self._polling: bool = False
 
         self._build_ui()
         self._refresh_agents()
@@ -189,7 +191,67 @@ class RecorderApp:
         self._script_text.delete("1.0", "end")
         self._status_var.set("● Recording…")
 
+        self._polling = True
+        self._poll_thread = threading.Thread(target=self._polling_loop, daemon=True)
+        self._poll_thread.start()
+
+    def _polling_loop(self) -> None:
+        """Background thread: poll agent every 500 ms and append new script lines."""
+        import time
+        from ..recorder.selector_inference import infer_selector
+        from ..recorder.script_gen import generate_script
+        from ..core.models import RecordedEvent
+
+        while self._polling:
+            time.sleep(0.5)
+            if not self._polling:
+                break
+            client = self._client
+            if client is None:
+                break
+            try:
+                raw_events = client.poll_events()
+            except Exception:
+                continue
+            if not raw_events:
+                continue
+
+            events = [
+                RecordedEvent(
+                    event_type=e.get("type", ""),
+                    fx_id=e.get("fxId", ""),
+                    text=e.get("text", ""),
+                    node_type=e.get("nodeType", ""),
+                    node_index=int(e.get("nodeIndex", 0)),
+                    timestamp=float(e.get("timestamp", 0)),
+                    to_fx_id=e.get("toFxId", ""),
+                    to_text=e.get("toText", ""),
+                    to_node_type=e.get("toNodeType", ""),
+                    to_node_index=int(e.get("toNodeIndex", 0)),
+                    color=e.get("color", ""),
+                )
+                for e in raw_events
+            ]
+            partial = generate_script(
+                events,
+                wait_injection=client._wait_injection,
+                wait_timeout=client._wait_timeout,
+                skip_header=True,
+            )
+            if partial.strip():
+                self.root.after(0, self._append_script_lines, partial)
+
+    def _append_script_lines(self, text: str) -> None:
+        self._script_text.insert("end", text + "\n")
+        self._script_text.see("end")
+
     def _stop_recording(self) -> None:
+        # Stop polling thread first
+        self._polling = False
+        if self._poll_thread is not None:
+            self._poll_thread.join(timeout=1.0)
+            self._poll_thread = None
+
         if self._client is None:
             return
         try:
@@ -206,6 +268,7 @@ class RecorderApp:
         n = len(self._script.events)
         self._status_var.set(f"Stopped — {n} event(s) captured")
 
+        # Replace incremental preview with the authoritative final script
         self._script_text.delete("1.0", "end")
         self._script_text.insert("1.0", self._script.script)
 
