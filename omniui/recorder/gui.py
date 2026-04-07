@@ -570,6 +570,11 @@ class RecorderApp:
             class _OmniUIStubWithProxy:
                 @staticmethod
                 def connect(*args, **kwargs):
+                    # Apply screenshot settings from the script's connect() call
+                    if "screenshot_mode" in kwargs:
+                        existing_client.screenshot_mode = kwargs["screenshot_mode"]
+                    if "screenshot_dir" in kwargs:
+                        existing_client.screenshot_dir = kwargs["screenshot_dir"]
                     return proxy
 
             try:
