@@ -216,5 +216,118 @@ class PollEventsTests(unittest.TestCase):
         self.assertIn('client.click(id="addButton")', partial)
 
 
+class RecorderRunTests(unittest.TestCase):
+    """Tests for Recorder GUI Run All / Run Selection logic."""
+
+    def _make_app(self):
+        """Create a RecorderApp with a mocked Tk root."""
+        import sys
+        if sys.platform.startswith("linux"):
+            import os
+            if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+                self.skipTest("No display available")
+
+        import tkinter as tk
+        from unittest.mock import patch
+        from omniui.recorder.gui import RecorderApp
+        try:
+            root = tk.Tk()
+            root.withdraw()
+        except tk.TclError:
+            self.skipTest("Tkinter display not available")
+        # Suppress background port scan so it doesn't interfere with tests
+        with patch("omniui.recorder.gui._scan_agents", return_value=[]):
+            app = RecorderApp(root)
+        self.addCleanup(root.destroy)
+        return app
+
+    def test_run_all_calls_exec_script(self) -> None:
+        from unittest.mock import patch, MagicMock
+        app = self._make_app()
+        app._script_text.insert("1.0", 'client.click(id="btn")')
+        called_with = []
+        with patch.object(app, "_exec_script", side_effect=lambda c: called_with.append(c)):
+            app._run_all()
+        self.assertEqual(len(called_with), 1)
+        self.assertIn('client.click(id="btn")', called_with[0])
+
+    def test_run_all_empty_script_shows_warning(self) -> None:
+        app = self._make_app()
+        app._script_text.delete("1.0", "end")
+        app._run_all()
+        self.assertIn("No script", app._run_status_var.get())
+
+    def test_run_selection_no_selection_shows_warning(self) -> None:
+        app = self._make_app()
+        app._script_text.insert("1.0", 'client.click(id="btn")')
+        # No selection made → TclError
+        app._run_selection()
+        self.assertIn("No text selected", app._run_status_var.get())
+
+    def test_run_selection_calls_exec_script_with_selection(self) -> None:
+        import tkinter as tk
+        from unittest.mock import patch
+        app = self._make_app()
+        app._script_text.insert("1.0", 'client.click(id="btn")\nclient.click(id="btn2")\n')
+        app._script_text.tag_add(tk.SEL, "1.0", "1.end")
+        called_with = []
+        with patch.object(app, "_exec_script", side_effect=lambda c: called_with.append(c)):
+            app._run_selection()
+        self.assertEqual(len(called_with), 1)
+        self.assertIn('client.click(id="btn")', called_with[0])
+
+    def test_exec_script_sets_passed_status(self) -> None:
+        from omniui.core.engine import OmniUIClient
+        from unittest.mock import patch, MagicMock
+        app = self._make_app()
+        app._client = OmniUIClient(base_url="http://127.0.0.1:48100", session_id="s1")
+
+        def sync_after(_delay, func, *args):
+            func(*args)
+
+        # Only intercept Thread created with a plain target kwarg (our run thread)
+        original_thread = __import__("threading").Thread
+
+        def sync_thread(*args, target=None, daemon=None, **kw):
+            t = MagicMock()
+            if target is not None and not args and not kw:
+                t.start.side_effect = target
+            else:
+                t = original_thread(*args, target=target, daemon=daemon, **kw)
+            return t
+
+        with patch.object(app.root, "after", side_effect=sync_after), \
+             patch("omniui.recorder.gui.threading.Thread", side_effect=sync_thread):
+            app._exec_script("x = 1")
+
+        self.assertIn("Passed", app._run_status_var.get())
+
+    def test_exec_script_sets_failed_status_on_exception(self) -> None:
+        from omniui.core.engine import OmniUIClient
+        from unittest.mock import patch, MagicMock
+        app = self._make_app()
+        app._client = OmniUIClient(base_url="http://127.0.0.1:48100", session_id="s1")
+
+        def sync_after(_delay, func, *args):
+            func(*args)
+
+        original_thread = __import__("threading").Thread
+
+        def sync_thread(*args, target=None, daemon=None, **kw):
+            t = MagicMock()
+            if target is not None and not args and not kw:
+                t.start.side_effect = target
+            else:
+                t = original_thread(*args, target=target, daemon=daemon, **kw)
+            return t
+
+        with patch.object(app.root, "after", side_effect=sync_after), \
+             patch("omniui.recorder.gui.threading.Thread", side_effect=sync_thread):
+            app._exec_script("raise ValueError('boom')")
+
+        self.assertIn("Failed", app._run_status_var.get())
+        self.assertIn("boom", app._run_status_var.get())
+
+
 if __name__ == "__main__":
     unittest.main()
