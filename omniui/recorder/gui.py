@@ -703,7 +703,16 @@ class RecorderApp:
     # ── Window close ──────────────────────────────────────────────────────
 
     def _on_close(self) -> None:
-        """Intercept window close; prompt to save unsaved changes."""
+        """Intercept window close; prompt when recording is active or there are unsaved changes."""
+        if self._polling:
+            answer = messagebox.askyesno(
+                "Recording in progress",
+                "Recording is still in progress. Stop recording and close?",
+            )
+            if not answer:
+                return
+            self._stop_recording()
+
         if self._dirty:
             answer = messagebox.askyesnocancel(
                 "Unsaved changes",
