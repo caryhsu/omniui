@@ -5,7 +5,9 @@ Launch with:
 """
 from __future__ import annotations
 
+import atexit
 import os
+import signal
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import threading
@@ -728,7 +730,26 @@ class RecorderApp:
 
 def main() -> None:
     root = tk.Tk()
-    RecorderApp(root)
+    app = RecorderApp(root)
+
+    # Best-effort cleanup on unexpected exit (Ctrl+C, atexit, SIGTERM).
+    # Does not cover SIGKILL / force-kill — use Java watchdog (ROADMAP) for that.
+    def _emergency_stop() -> None:
+        if app._polling and app._client is not None:
+            try:
+                app._client.stop_recording()
+            except Exception:
+                pass
+
+    atexit.register(_emergency_stop)
+
+    def _signal_handler(sig, frame) -> None:
+        _emergency_stop()
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGINT,  _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
     root.mainloop()
 
 
