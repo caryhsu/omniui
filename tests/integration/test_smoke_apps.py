@@ -37,6 +37,7 @@ _PORTS = {
     "color":    49106,
     "todo":     49107,
     "login":    49108,
+    "settings": 49109,
 }
 
 
@@ -148,6 +149,18 @@ def todo_client():
 def login_client():
     port = _PORTS["login"]
     cmd = _build_app_cmd("login-app", "dev.omniui.demo.login/dev.omniui.demo.login.LoginApp", port)
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+@pytest.fixture(scope="session")
+def settings_client():
+    port = _PORTS["settings"]
+    cmd = _build_app_cmd(
+        "settings-app",
+        "dev.omniui.demo.settings/dev.omniui.demo.settings.SettingsApp",
+        port,
+    )
     with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
         yield client
 
@@ -332,3 +345,107 @@ def test_login_failure(login_client):
     status = login_client.get_text(id="status")
     assert status.ok, f"get_text(status) failed: {status}"
     assert "Success" not in status.value, f"Expected failure, got: {status.value!r}"
+
+
+# ---------------------------------------------------------------------------
+# settings-app smoke tests
+# ---------------------------------------------------------------------------
+
+def test_settings_tabs_count(settings_client):
+    """settingsTabs has exactly 5 tabs: Account, Appearance, Notifications, Advanced, About."""
+    result = settings_client.get_tabs(id="settingsTabs")
+    assert result.ok, f"get_tabs(settingsTabs) failed: {result}"
+    tabs = result.value or []
+    assert len(tabs) == 5, f"Expected 5 tabs, got {len(tabs)}: {tabs}"
+
+
+def test_settings_reset_defaults(settings_client):
+    """Reset button restores usernameField to 'john_doe' and emailField to 'john@example.com'."""
+    settings_client.click(id="resetBtn")
+    time.sleep(0.3)
+
+    username = settings_client.get_text(id="usernameField")
+    assert username.ok, f"get_text(usernameField) failed: {username}"
+    assert username.value == "john_doe", f"Expected 'john_doe', got {username.value!r}"
+
+    email = settings_client.get_text(id="emailField")
+    assert email.ok, f"get_text(emailField) failed: {email}"
+    assert email.value == "john@example.com", f"Expected 'john@example.com', got {email.value!r}"
+
+
+def test_settings_save_success(settings_client):
+    """Matching passwords → Save shows success status."""
+    settings_client.click(id="resetBtn")
+    time.sleep(0.2)
+
+    settings_client.select_tab("Account", id="settingsTabs")
+    settings_client.press_key("Control+A", id="passwordField")
+    settings_client.type("Pass1234", id="passwordField")
+    settings_client.press_key("Control+A", id="confirmPasswordField")
+    settings_client.type("Pass1234", id="confirmPasswordField")
+    settings_client.click(id="saveBtn")
+    time.sleep(0.2)
+
+    status = settings_client.get_text(id="statusLabel")
+    assert status.ok, f"get_text(statusLabel) failed: {status}"
+    assert "saved" in status.value.lower(), f"Expected 'saved', got {status.value!r}"
+
+
+def test_settings_password_mismatch(settings_client):
+    """Mismatched passwords → Save shows mismatch error."""
+    settings_client.select_tab("Account", id="settingsTabs")
+    settings_client.press_key("Control+A", id="passwordField")
+    settings_client.type("AAA", id="passwordField")
+    settings_client.press_key("Control+A", id="confirmPasswordField")
+    settings_client.type("BBB", id="confirmPasswordField")
+    settings_client.click(id="saveBtn")
+    time.sleep(0.2)
+
+    status = settings_client.get_text(id="statusLabel")
+    assert status.ok, f"get_text(statusLabel) failed: {status}"
+    assert "match" in status.value.lower(), f"Expected mismatch error, got {status.value!r}"
+
+
+def test_settings_dnd_toggle(settings_client):
+    """DND toggle flips dndStatusLabel between 'DND: Off' and 'DND: On'."""
+    settings_client.click(id="resetBtn")  # ensure DND is off
+    time.sleep(0.2)
+
+    settings_client.select_tab("Notifications", id="settingsTabs")
+    time.sleep(0.2)
+
+    before = settings_client.get_text(id="dndStatusLabel")
+    assert before.ok, f"get_text(dndStatusLabel) failed: {before}"
+    assert "off" in before.value.lower(), f"Expected DND off after reset, got {before.value!r}"
+
+    settings_client.click(id="dndToggle")
+    time.sleep(0.1)
+    after = settings_client.get_text(id="dndStatusLabel")
+    assert after.ok, f"get_text(dndStatusLabel) after toggle: {after}"
+    assert "on" in after.value.lower(), f"Expected DND on, got {after.value!r}"
+
+    # restore
+    settings_client.click(id="dndToggle")
+
+
+def test_settings_proxy_enable(settings_client):
+    """Enabling proxy CheckBox makes proxyField accept input."""
+    settings_client.click(id="resetBtn")  # ensure proxy is off
+    time.sleep(0.2)
+
+    settings_client.select_tab("Advanced", id="settingsTabs")
+    time.sleep(0.2)
+
+    # confirm proxy initially disabled (clicking should fail or be a no-op)
+    proxy_before = settings_client.get_selected(id="enableProxyCheck")
+    assert proxy_before.ok, f"get_selected(enableProxyCheck) failed: {proxy_before}"
+    assert proxy_before.value is False, f"Expected proxy off by default, got {proxy_before.value}"
+
+    settings_client.click(id="enableProxyCheck")
+    time.sleep(0.1)
+
+    r = settings_client.type("http://proxy.local:8080", id="proxyField")
+    assert r.ok, f"type into proxyField failed (should be enabled): {r}"
+
+    # restore
+    settings_client.click(id="enableProxyCheck")

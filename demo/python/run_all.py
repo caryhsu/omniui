@@ -71,6 +71,7 @@ if __package__ in (None, ""):
     import color.color_demo as color_demo  # type: ignore
     # Todo app demos
     import todo.todo_demo as todo_demo  # type: ignore
+    import settings.settings_demo as settings_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -134,6 +135,7 @@ else:
     from .image import image_demo
     from .color import color_demo
     from .todo import todo_demo
+    from .settings import settings_demo
 
 from omniui import OmniUI
 
@@ -478,6 +480,22 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
     with todo_ctx:
         _section("Todo Demo")
         todo_demo.main()
+
+    # ── Settings App ──────────────────────────────────────────────────────────
+    _section("Settings App demos (port 48112+)")
+    if auto_launch:
+        settings_port = OmniUI.find_free_port(48112, 48999)
+        settings_cmd = _build_launch_cmd(
+            java_dir / "settings-app", "omniui-settings-demo",
+            "dev.omniui.demo.settings", "dev.omniui.demo.settings.SettingsApp", settings_port,
+        )
+        settings_ctx = OmniUI.launch(cmd=settings_cmd, port=settings_port, timeout=30.0)
+    else:
+        settings_ctx = nullcontext()
+
+    with settings_ctx:
+        _section("Settings Demo")
+        settings_demo.main()
 
 
 if __name__ == "__main__":
