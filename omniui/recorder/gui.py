@@ -127,7 +127,11 @@ class RecorderApp:
 
         self._theme_var = tk.StringVar(value="dark")
         viewmenu = tk.Menu(menubar, tearoff=0)
-        viewmenu.add_command(label="Font Size…", command=self._change_font_size)
+        viewmenu.add_command(label="Font Size…",       command=self._change_font_size)
+        viewmenu.add_command(label="Increase Font Size", accelerator="Ctrl+=",
+                             command=self._increase_font_size)
+        viewmenu.add_command(label="Decrease Font Size", accelerator="Ctrl+-",
+                             command=self._decrease_font_size)
         viewmenu.add_separator()
         viewmenu.add_radiobutton(label="Dark Theme",  variable=self._theme_var,
                                  value="dark",  command=self._apply_theme)
@@ -143,6 +147,8 @@ class RecorderApp:
         root.bind_all("<Control-W>", lambda e: self._insert_wait())
         root.bind_all("<Control-z>", lambda e: self._script_text.edit_undo())
         root.bind_all("<Control-y>", lambda e: self._script_text.edit_redo())
+        root.bind_all("<Control-equal>", lambda e: self._increase_font_size())
+        root.bind_all("<Control-minus>",  lambda e: self._decrease_font_size())
         root.bind_all("<F5>", lambda e: self._run_all())
         root.bind_all("<F6>", lambda e: self._run_selection())
         root.bind_all("<F7>", lambda e: self._start_recording())
@@ -839,6 +845,16 @@ class RecorderApp:
             return
         self._font_size = size
         self._script_text.configure(font=("Courier New", size))
+
+    def _increase_font_size(self) -> None:
+        if self._font_size < 36:
+            self._font_size += 1
+            self._script_text.configure(font=("Courier New", self._font_size))
+
+    def _decrease_font_size(self) -> None:
+        if self._font_size > 6:
+            self._font_size -= 1
+            self._script_text.configure(font=("Courier New", self._font_size))
 
     _THEMES = {
         "dark":  {"bg": "#1e1e1e", "fg": "#d4d4d4", "insertbackground": "white",
