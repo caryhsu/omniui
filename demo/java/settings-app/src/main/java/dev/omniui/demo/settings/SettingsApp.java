@@ -1,6 +1,5 @@
 package dev.omniui.demo.settings;
 
-import dev.omniui.agent.OmniUiJavaAgent;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -61,8 +60,6 @@ public class SettingsApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        OmniUiJavaAgent.startServer("port=48112");
-
         BorderPane root = new BorderPane();
         root.setCenter(buildTabPane());
         root.setBottom(buildBottomBar());
