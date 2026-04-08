@@ -1,40 +1,46 @@
 # OmniUI Python Demo Scripts
 
-These scripts are small runnable examples for the current Python client.
+Demo scripts are organized per app under `demo/python/`:
 
-## Scripts
+| Package | Target App | Port |
+|---------|-----------|------|
+| `core/` | core-app | 48100 |
+| `input/` | input-app | 48101 |
+| `advanced/` | advanced-app | 48102 |
+| `drag/` | drag-app | 48103 |
+| `progress/` | progress-app | 48104 |
+| `image/` | image-app | 48105 |
+| `color/` | color-app | 48106 |
+| `todo/` | todo-app | 48107 |
+| `settings/` | settings-app | 48112 |
+| `dynamicfxml/` | dynamic-fxml-app | 48110 |
+| `explorer/` | explorer-app | 48111 |
+| `usersearch/` | user-search-app | 48109 |
 
-- [run_all.py](run_all.py)
-- [discover_nodes.py](discover_nodes.py)
-- [discover_advanced_controls.py](discover_advanced_controls.py)
-- [select_combo_role.py](select_combo_role.py)
-- [select_list_item.py](select_list_item.py)
-- [select_tree_item.py](select_tree_item.py)
-- [select_table_row.py](select_table_row.py)
-- [login_direct.py](login_direct.py)
-- [login_with_fallback.py](login_with_fallback.py)
-- [recorder_preview.py](recorder_preview.py)
-- [run_benchmark.py](run_benchmark.py)
-
-All scripts assume the reference JavaFX demo app is already running.
-
-## Advanced demo discovery
-
-```bash
-python demo/python/discover_advanced_controls.py
-```
-
-Lists the currently visible advanced JavaFX demo controls such as the combo box, list view, tree view, table view, and grid section.
-
-`run_all.py` also includes this advanced-control discovery step before the interaction demos.
-
-## Advanced interaction demos
+## Run all demos (auto-launch)
 
 ```bash
-python demo/python/select_combo_role.py
-python demo/python/select_list_item.py
-python demo/python/select_tree_item.py
-python demo/python/select_table_row.py
+python demo/python/run_all.py
 ```
 
-These scripts exercise direct JavaFX selection behavior for the advanced demo controls and verify the corresponding status labels.
+Launches each JVM with the agent, runs all demo scripts in sequence, then shuts down each app.
+
+## Run a specific demo
+
+Each package has a `*_demo.py` entry point that connects to the app on its preferred port.
+
+```bash
+# App must be running in with-agent mode first
+python demo/python/settings/settings_demo.py        # port 48112
+python demo/python/dynamicfxml/dynamic_fxml_demo.py # port 48110
+python demo/python/explorer/explorer_demo.py         # port 48111
+python demo/python/usersearch/user_search_demo.py   # port 48109
+python demo/python/drag/drag_listview_demo.py        # port 48103
+python demo/python/todo/todo_demo.py                 # port 48107
+```
+
+## Benchmark
+
+```bash
+python demo/python/run_benchmark.py
+```

@@ -12,8 +12,8 @@ Phase 1 focuses on local JavaFX automation with this priority order:
 The current repo includes:
 - a Python client in [omniui](omniui)
 - a local HTTP Java agent in [java-agent](java-agent)
-- reference JavaFX demo apps in [demo/java](demo/java) (`core-app`, `input-app`, `advanced-app`, `login-app`)
-- demo and benchmark scripts in [scripts](scripts)
+- reference JavaFX demo apps in [demo/java](demo/java) — 13 apps covering the full JavaFX control set
+- demo and benchmark scripts in [demo/python](demo/python) and [scripts](scripts)
 
 ## Status
 
@@ -93,15 +93,32 @@ omniui/
 java-agent/
 demo/
   java/
-    core-app/    ← ComboBox, ListView, TreeView, TableView, GridPane  (port 48100)
-    input-app/   ← TextArea, Checkboxes, Sliders, ColorPicker, DatePicker …  (port 48101)
-    advanced-app/← ContextMenu, MenuBar, Dialogs, TabPane, Accordion …       (port 48102)
-    login-app/   ← Login form (username, password, loginButton, status)       (port 48108)
+    core-app/          ← ComboBox, ListView, TreeView, TableView, GridPane        (port 48100)
+    input-app/         ← TextArea, Checkboxes, Sliders, ColorPicker, DatePicker … (port 48101)
+    advanced-app/      ← ContextMenu, MenuBar, Dialogs, TabPane, Accordion …      (port 48102)
+    drag-app/          ← Drag & Drop (label items → drop target)                  (port 48103)
+    progress-app/      ← ProgressBar, ProgressIndicator, async jobs               (port 48104)
+    image-app/         ← ImageView, image switching                               (port 48105)
+    color-app/         ← ColorPicker, color result label                          (port 48106)
+    todo-app/          ← TableView (editable), dialog, task management            (port 48107)
+    login-app/         ← Login form (username, password, loginButton, status)     (port 48108)
+    user-search-app/   ← TableView with pagination, live search/filter            (port 48109)
+    dynamic-fxml-app/  ← FXML view loading, Form/Dashboard/List views             (port 48110)
+    explorer-app/      ← TreeView file explorer, TableView file listing           (port 48111)
+    settings-app/      ← TabPane settings form with full validation               (port 48112)
   python/
-    core/        ← demo scripts for core-app
-    input/       ← demo scripts for input-app
-    advanced/    ← demo scripts for advanced-app
-    login/       ← demo scripts for login-app
+    core/              ← demo scripts for core-app
+    input/             ← demo scripts for input-app
+    advanced/          ← demo scripts for advanced-app
+    drag/              ← demo scripts for drag-app
+    progress/          ← demo scripts for progress-app
+    image/             ← demo scripts for image-app
+    color/             ← demo scripts for color-app
+    todo/              ← demo scripts for todo-app
+    settings/          ← demo scripts for settings-app
+    dynamicfxml/       ← demo scripts for dynamic-fxml-app
+    explorer/          ← demo scripts for explorer-app
+    usersearch/        ← demo scripts for user-search-app
 scripts/
 openspec/
 ```

@@ -1,6 +1,5 @@
 package dev.omniui.demo.explorer;
 
-import dev.omniui.agent.OmniUiJavaAgent;
 import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -19,6 +18,9 @@ public class ExplorerApp extends Application {
 
     record FsNode(String name, String type, String size, List<FsNode> children) {
         boolean isFolder() { return "Folder".equals(type); }
+
+        @Override
+        public String toString() { return name; }
     }
 
     private static FsNode folder(String name, FsNode... children) {
@@ -70,8 +72,6 @@ public class ExplorerApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        OmniUiJavaAgent.startServer("port=48111");
-
         BorderPane root = new BorderPane();
         root.setTop(buildMenuBar());
         root.setCenter(buildSplitPane());
