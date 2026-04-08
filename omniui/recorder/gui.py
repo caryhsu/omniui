@@ -193,6 +193,7 @@ class RecorderApp:
         menubar.add_cascade(label="Run", menu=self._runmenu)
 
         self._theme_var = tk.StringVar(value="dark")
+        self._activate_window_var = tk.BooleanVar(value=True)
         viewmenu = tk.Menu(menubar, tearoff=0)
         viewmenu.add_command(label="Font Size…",       command=self._change_font_size)
         viewmenu.add_command(label="Increase Font Size", accelerator="Ctrl+=",
@@ -204,6 +205,9 @@ class RecorderApp:
                                  value="dark",  command=self._apply_theme)
         viewmenu.add_radiobutton(label="Light Theme", variable=self._theme_var,
                                  value="light", command=self._apply_theme)
+        viewmenu.add_separator()
+        viewmenu.add_checkbutton(label="Activate App Window on Record/Run",
+                                 variable=self._activate_window_var)
         menubar.add_cascade(label="View", menu=viewmenu)
 
         root.config(menu=menubar)
@@ -268,10 +272,6 @@ class RecorderApp:
         self._wait_injection_var = tk.BooleanVar(value=False)
         tk.Checkbutton(ctrl, text="Insert wait_for_*",
                        variable=self._wait_injection_var).pack(side="left")
-
-        self._activate_window_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(ctrl, text="Activate app window",
-                       variable=self._activate_window_var).pack(side="left", padx=(8, 0))
 
         tk.Label(ctrl, text="  Delay:").pack(side="left")
         self._replay_delay_var = tk.StringVar(value="0.30")
