@@ -14,5 +14,6 @@
     <module>demo/java/input-app</module>
     <module>demo/java/advanced-app</module>
     <module>demo/java/login-app</module>
+    <module>demo/java/user-search-app</module>
   </modules>
 </project>
