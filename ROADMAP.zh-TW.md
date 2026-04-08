@@ -158,6 +158,7 @@
 - [x] **login-app 從 core-app 拆分** — `core-app` 目前將登入 Demo 與其他核心控制元件（ListView、TableView、ComboBox 等）混在一起。將登入表單獨立為 `demo/java/login-app`，使 `core-app` 專注於控制元件覆蓋範圍，`login-app` 則成為認證流程自動化（`click`、`type`、`verify_text`）的獨立範例。 ✅
 - [ ] **Mini Explorer demo app** — 假檔案瀏覽器（`demo/java/explorer-app`），用於測試 TreeView 導覽與水平 SplitPane 分隔調整。佈局：左側 = TreeView（模擬資料夾/檔案層級）；右側 = 選取資料夾後顯示對應檔案清單；使用者可拖曳調整分隔線。覆蓋：`select_tree_item`、`get_tree_items`、`get_divider_positions`、`set_divider_position`。
 - [ ] **Settings Panel demo app** — 設定表單 App（`demo/java/settings-app`），用於測試多種輸入控制元件的綜合場景。建議控制元件：TextField、PasswordField、ComboBox、CheckBox、RadioButton、Slider、Spinner、ToggleButton，加上 Save / Reset 按鈕。可單頁展示或用 TabPane 分區（如 Account / Appearance / Notifications）。
+- [ ] **Layout Playground demo app** — `demo/java/layout-app` 互動式 Layout 展示工具，用於視覺化比較所有 JavaFX 主要布局管理器的行為差異。UI 架構：BorderPane 外框，頂部 ToolBar 含 ComboBox `layoutSelector`（HBox / VBox / GridPane / BorderPane / FlowPane / TilePane / StackPane）、`resetBtn`、`randomizeBtn`；左側 Control Panel 根據所選 Layout 動態顯示對應的 Slider / Spinner / CheckBox（spacing、padding、alignment、gap、gridLines、orientation、wrap-length、tile columns、子節點順序等）；中央 Preview Area 即時渲染當前 Layout，內含 5–8 個標籤節點（不同背景色 + 紅色邊框，方便辨識）；底部 StatusBar 顯示目前 Layout 名稱、子節點數量與預覽尺寸。進階功能：視窗縮放測試（FlowPane / TilePane 自動換行）、新增 / 移除節點、顯示 layout 邊界。完整覆蓋所有 JavaFX Layout 類別，以及 Slider、Spinner、ComboBox、CheckBox、Button、Rectangle。
 - [ ] **多 App 自動化（Multi-app automation）** — 在單一測試流程中協調多個 JavaFX app
   - Python 端管理多條 agent 連線（每個 JavaFX app 各自嵌入一個 agent）
   - App 生命週期管理：啟動、連線、切換、斷線、關閉
