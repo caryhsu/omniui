@@ -93,6 +93,13 @@ class RecorderApp:
         menubar.add_cascade(label="File", menu=filemenu)
 
         editmenu = tk.Menu(menubar, tearoff=0)
+        editmenu.add_command(label="Undo",
+                             accelerator="Ctrl+Z",
+                             command=lambda: self._script_text.edit_undo())
+        editmenu.add_command(label="Redo",
+                             accelerator="Ctrl+Y",
+                             command=lambda: self._script_text.edit_redo())
+        editmenu.add_separator()
         editmenu.add_command(label="Insert Screenshot",
                              accelerator="Ctrl+Shift+P",
                              command=self._insert_screenshot)
@@ -102,6 +109,14 @@ class RecorderApp:
         menubar.add_cascade(label="Edit", menu=editmenu)
 
         self._runmenu = tk.Menu(menubar, tearoff=0)
+        self._runmenu.add_command(label="Record",
+                                  accelerator="F7",
+                                  command=self._start_recording)
+        self._runmenu.add_command(label="Stop",
+                                  accelerator="F8",
+                                  state="disabled",
+                                  command=self._stop_recording)
+        self._runmenu.add_separator()
         self._runmenu.add_command(label="Run All",
                                   accelerator="F5",
                                   command=self._run_all)
@@ -110,14 +125,30 @@ class RecorderApp:
                                   command=self._run_selection)
         menubar.add_cascade(label="Run", menu=self._runmenu)
 
+        self._theme_var = tk.StringVar(value="dark")
+        viewmenu = tk.Menu(menubar, tearoff=0)
+        viewmenu.add_command(label="Font Size…", command=self._change_font_size)
+        viewmenu.add_separator()
+        viewmenu.add_radiobutton(label="Dark Theme",  variable=self._theme_var,
+                                 value="dark",  command=self._apply_theme)
+        viewmenu.add_radiobutton(label="Light Theme", variable=self._theme_var,
+                                 value="light", command=self._apply_theme)
+        menubar.add_cascade(label="View", menu=viewmenu)
+
         root.config(menu=menubar)
         root.bind_all("<Control-o>", lambda e: self._open_file())
         root.bind_all("<Control-s>", lambda e: self._save_script())
         root.bind_all("<Control-S>", lambda e: self._save_as_script())
         root.bind_all("<Control-P>", lambda e: self._insert_screenshot())
         root.bind_all("<Control-W>", lambda e: self._insert_wait())
+        root.bind_all("<Control-z>", lambda e: self._script_text.edit_undo())
+        root.bind_all("<Control-y>", lambda e: self._script_text.edit_redo())
         root.bind_all("<F5>", lambda e: self._run_all())
         root.bind_all("<F6>", lambda e: self._run_selection())
+        root.bind_all("<F7>", lambda e: self._start_recording())
+        root.bind_all("<F8>", lambda e: self._stop_recording())
+
+        self._font_size = 10
 
         # ── Row 0: App selector ────────────────────────────────────────────
         top = tk.Frame(root, padx=8, pady=6)
@@ -186,7 +217,8 @@ class RecorderApp:
         self._script_text = tk.Text(script_frame, wrap="none",
                                     font=("Courier New", 10),
                                     bg="#1e1e1e", fg="#d4d4d4",
-                                    insertbackground="white")
+                                    insertbackground="white",
+                                    undo=True)
         self._script_text.grid(row=0, column=0, sticky="nsew")
 
         vsb = ttk.Scrollbar(script_frame, orient="vertical",
@@ -792,6 +824,33 @@ class RecorderApp:
             self._script_text.insert("end", line)
         self._dirty = True
         self._save_btn.config(state="normal")
+
+    def _change_font_size(self) -> None:
+        """Prompt for a new font size and apply it to the script editor."""
+        size = simpledialog.askinteger(
+            "Font Size",
+            "Editor font size (pt):",
+            initialvalue=self._font_size,
+            minvalue=6,
+            maxvalue=36,
+            parent=self.root,
+        )
+        if size is None:
+            return
+        self._font_size = size
+        self._script_text.configure(font=("Courier New", size))
+
+    _THEMES = {
+        "dark":  {"bg": "#1e1e1e", "fg": "#d4d4d4", "insertbackground": "white",
+                  "selectbackground": "#264f78", "selectforeground": "#d4d4d4"},
+        "light": {"bg": "#ffffff", "fg": "#1e1e1e", "insertbackground": "black",
+                  "selectbackground": "#add6ff", "selectforeground": "#1e1e1e"},
+    }
+
+    def _apply_theme(self) -> None:
+        """Apply the selected theme to the script editor."""
+        cfg = self._THEMES[self._theme_var.get()]
+        self._script_text.configure(**cfg)
 
     # ── Window close ──────────────────────────────────────────────────────
 
