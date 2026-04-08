@@ -141,6 +141,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [ ] **Step editor in Recorder** — after stopping, allow deleting or reordering individual steps in the script preview before saving; drag-to-reorder rows or select + delete unwanted steps.
 - [x] **Screenshot on failure** — `screenshot_mode="on_failure"` / `"always"` / `"off"` on `OmniUI.connect()`; `client.save_screenshot()`; Recorder Edit > Insert Screenshot. *(merged PR #24)*
 - [ ] **Locator Inspector** — click any element in the running app to display all available selectors (`fx:id`, `text`, `type+index`) ranked by stability; lets developers verify or copy the best selector without writing code.
+- [ ] **System Tray (Windows)** — minimize Recorder to the Windows notification area (bottom-right) instead of closing; tray icon right-click menu: Show / Hide / Quit. Requires `pystray` + `Pillow`; icon generated programmatically (no extra asset file needed).
 
 ### Known Recorder Issues
 
