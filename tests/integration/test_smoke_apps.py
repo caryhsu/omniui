@@ -29,15 +29,19 @@ _AGENT_JAR = _ROOT / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT
 
 # Smoke test ports — distinct from demo (48100-48108) and parallel-example (49000+)
 _PORTS = {
-    "core":     49100,
-    "input":    49101,
-    "advanced": 49102,
-    "progress": 49104,
-    "image":    49105,
-    "color":    49106,
-    "todo":     49107,
-    "login":    49108,
-    "settings": 49109,
+    "core":        49100,
+    "input":       49101,
+    "advanced":    49102,
+    "progress":    49104,
+    "image":       49105,
+    "color":       49106,
+    "todo":        49107,
+    "login":       49108,
+    "settings":    49109,
+    "drag":        49110,
+    "dynamicfxml": 49111,
+    "explorer":    49112,
+    "usersearch":  49113,
 }
 
 
@@ -50,7 +54,7 @@ def _clf() -> str:
     return "linux"
 
 
-def _build_app_cmd(app_dir: str, module_main: str, port: int) -> list[str]:
+def _build_app_cmd(app_dir: str, module_main: str, port: int, extra_jfx: tuple = ()) -> list[str]:
     """Build the java launch command for a demo app.
 
     Args:
@@ -58,6 +62,8 @@ def _build_app_cmd(app_dir: str, module_main: str, port: int) -> list[str]:
         module_main: Java module/main-class string (e.g.
                      "dev.omniui.demo.core/dev.omniui.demo.core.CoreDemoApp").
         port:        HTTP port for the OmniUI agent.
+        extra_jfx:   Extra JavaFX artifact names to include in the module path
+                     (e.g. ``("javafx-fxml",)`` for FXML-based apps).
     """
     m2 = Path.home() / ".m2" / "repository"
     jfx = "21.0.2"
@@ -76,6 +82,7 @@ def _build_app_cmd(app_dir: str, module_main: str, port: int) -> list[str]:
         jfx_jar("javafx-graphics"),
         jfx_jar("javafx-base"),
         gson,
+        *[jfx_jar(j) for j in extra_jfx],
     ])
     return [
         "java",
@@ -449,3 +456,185 @@ def test_settings_proxy_enable(settings_client):
 
     # restore
     settings_client.click(id="enableProxyCheck")
+
+
+# ---------------------------------------------------------------------------
+# drag-app smoke tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def drag_client():
+    port = _PORTS["drag"]
+    cmd = _build_app_cmd("drag-app", "dev.omniui.demo.drag/dev.omniui.demo.drag.DragDemoApp", port)
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+def test_drag_initial_idle(drag_client):
+    """dragStatus starts as 'idle' after reset."""
+    drag_client.click(id="resetBtn")
+    time.sleep(0.2)
+    status = drag_client.get_text(id="dragStatus")
+    assert status.ok, f"get_text(dragStatus) failed: {status}"
+    assert "idle" in status.value, f"Expected 'idle' in dragStatus, got {status.value!r}"
+
+
+def test_drag_apple_to_right(drag_client):
+    """Drag Apple to rightPanel → dragStatus contains 'dropped Apple'."""
+    drag_client.click(id="resetBtn")
+    time.sleep(0.2)
+    result = drag_client.drag(id="item_apple").to(id="rightPanel")
+    assert result.ok, f"drag Apple failed: {result}"
+    status = drag_client.get_text(id="dragStatus")
+    assert status.ok
+    assert "dropped Apple" in status.value, f"Expected 'dropped Apple', got {status.value!r}"
+    # restore
+    drag_client.click(id="resetBtn")
+
+
+# ---------------------------------------------------------------------------
+# dynamic-fxml-app smoke tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def dynamicfxml_client():
+    port = _PORTS["dynamicfxml"]
+    cmd = _build_app_cmd(
+        "dynamic-fxml-app",
+        "dev.omniui.demo.dynamicfxml/dev.omniui.demo.dynamicfxml.DynamicFxmlApp",
+        port,
+        extra_jfx=("javafx-fxml",),
+    )
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+def test_dynamicfxml_load_form(dynamicfxml_client):
+    """formBtn loads the Form view and exposes nameField."""
+    r = dynamicfxml_client.click(id="formBtn")
+    assert r.ok, f"formBtn click failed: {r}"
+    time.sleep(0.3)
+    nodes = dynamicfxml_client.get_nodes()
+    ids = [n.get("fxId") for n in nodes]
+    assert "nameField" in ids, f"nameField not found after loading Form view: {ids}"
+
+
+def test_dynamicfxml_form_submit(dynamicfxml_client):
+    """Fill and submit the Form view → statusLabel shows 'Submitted'."""
+    dynamicfxml_client.click(id="formBtn")
+    time.sleep(0.3)
+    dynamicfxml_client.press_key("Control+A", id="nameField")
+    dynamicfxml_client.type("Bob", id="nameField")
+    dynamicfxml_client.press_key("Control+A", id="emailField")
+    dynamicfxml_client.type("bob@example.com", id="emailField")
+    r = dynamicfxml_client.click(id="submitBtn")
+    assert r.ok, f"submitBtn click failed: {r}"
+    time.sleep(0.2)
+    status = dynamicfxml_client.get_text(id="statusLabel")
+    assert status.ok, f"get_text(statusLabel) failed: {status}"
+    assert "Submitted" in status.value, f"Expected 'Submitted', got {status.value!r}"
+
+
+def test_dynamicfxml_load_dashboard(dynamicfxml_client):
+    """dashboardBtn loads the Dashboard view with numeric usersCountLabel."""
+    r = dynamicfxml_client.click(id="dashboardBtn")
+    assert r.ok, f"dashboardBtn click failed: {r}"
+    time.sleep(0.3)
+    count = dynamicfxml_client.get_text(id="usersCountLabel")
+    assert count.ok, f"get_text(usersCountLabel) failed: {count}"
+    assert count.value.isdigit(), f"Expected numeric usersCountLabel, got {count.value!r}"
+
+
+# ---------------------------------------------------------------------------
+# explorer-app smoke tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def explorer_client():
+    port = _PORTS["explorer"]
+    cmd = _build_app_cmd(
+        "explorer-app",
+        "dev.omniui.demo.explorer/dev.omniui.demo.explorer.ExplorerApp",
+        port,
+    )
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+def test_explorer_initial_status(explorer_client):
+    """statusBar initially shows count of top-level items."""
+    status = explorer_client.get_text(id="statusBar")
+    assert status.ok, f"get_text(statusBar) failed: {status}"
+    assert "top-level" in status.value, f"Expected 'top-level' in statusBar, got {status.value!r}"
+
+
+def test_explorer_select_folder(explorer_client):
+    """Selecting Documents in folderTree updates statusBar."""
+    r = explorer_client.select("Documents", id="folderTree")
+    assert r.ok, f"select(Documents) failed: {r}"
+    time.sleep(0.3)
+    status = explorer_client.get_text(id="statusBar")
+    assert status.ok, f"get_text(statusBar) failed: {status}"
+    assert "Documents" in status.value, f"Expected 'Documents' in statusBar, got {status.value!r}"
+
+
+# ---------------------------------------------------------------------------
+# user-search-app smoke tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def usersearch_client():
+    port = _PORTS["usersearch"]
+    cmd = _build_app_cmd(
+        "user-search-app",
+        "dev.omniui.demo.usersearch/dev.omniui.demo.usersearch.UserSearchApp",
+        port,
+    )
+    with OmniUI.launch(cmd=cmd, port=port, timeout=30.0) as client:
+        yield client
+
+
+def test_usersearch_initial_ready(usersearch_client):
+    """statusLabel initially contains 'Ready'."""
+    status = usersearch_client.get_text(id="statusLabel")
+    assert status.ok, f"get_text(statusLabel) failed: {status}"
+    assert "Ready" in status.value, f"Expected 'Ready' in statusLabel, got {status.value!r}"
+
+
+def test_usersearch_search_all(usersearch_client):
+    """Search with no filter finds all 25 users across 5 pages."""
+    usersearch_client.click(id="searchButton")
+    usersearch_client.wait_for_text(id="statusLabel", expected="Found 25 users.", timeout=10.0)
+    page = usersearch_client.get_text(id="pageLabel")
+    assert page.ok, f"get_text(pageLabel) failed: {page}"
+    assert page.value == "Page 1 / 5", f"Expected 'Page 1 / 5', got {page.value!r}"
+
+
+def test_usersearch_pagination(usersearch_client):
+    """Next/prev buttons navigate pages."""
+    usersearch_client.click(id="searchButton")
+    usersearch_client.wait_for_text(id="statusLabel", expected="Found 25 users.", timeout=10.0)
+
+    usersearch_client.click(id="nextButton")
+    time.sleep(0.2)
+    page = usersearch_client.get_text(id="pageLabel")
+    assert page.ok
+    assert page.value == "Page 2 / 5", f"Expected 'Page 2 / 5', got {page.value!r}"
+
+    usersearch_client.click(id="prevButton")
+    time.sleep(0.2)
+    page = usersearch_client.get_text(id="pageLabel")
+    assert page.ok
+    assert page.value == "Page 1 / 5", f"Expected back to 'Page 1 / 5', got {page.value!r}"
+
+
+def test_usersearch_filter_name(usersearch_client):
+    """Filtering by name 'Alice' returns exactly 1 result."""
+    usersearch_client.press_key("Control+A", id="nameFilter")
+    usersearch_client.type("Alice", id="nameFilter")
+    usersearch_client.click(id="searchButton")
+    usersearch_client.wait_for_text(id="statusLabel", expected="Found 1 user.", timeout=10.0)
+    # cleanup
+    usersearch_client.press_key("Control+A", id="nameFilter")
+    usersearch_client.press_key("Delete", id="nameFilter")
+

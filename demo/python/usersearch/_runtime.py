@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from omniui import OmniUI
+
+WITH_AGENT_HINT = (
+    "OmniUI user-search-app demo scripts require the user-search-app to be running in with-agent mode.\n"
+    "Start it first:\n"
+    "- demo\\java\\user-search-app\\run-dev-with-agent.bat"
+)
+
+_PREFERRED_PORT = 48109
+
+
+def connect_or_exit() -> OmniUI:
+    first_err: RuntimeError | None = None
+    try:
+        return OmniUI.connect(port=_PREFERRED_PORT)
+    except RuntimeError as exc:
+        first_err = exc
+    try:
+        return OmniUI.connect()
+    except RuntimeError:
+        raise SystemExit(f"{WITH_AGENT_HINT}\n\nConnection error: {first_err}") from first_err

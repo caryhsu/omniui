@@ -72,6 +72,9 @@ if __package__ in (None, ""):
     # Todo app demos
     import todo.todo_demo as todo_demo  # type: ignore
     import settings.settings_demo as settings_demo  # type: ignore
+    import dynamicfxml.dynamic_fxml_demo as dynamic_fxml_demo  # type: ignore
+    import explorer.explorer_demo as explorer_demo  # type: ignore
+    import usersearch.user_search_demo as user_search_demo  # type: ignore
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
@@ -136,6 +139,9 @@ else:
     from .color import color_demo
     from .todo import todo_demo
     from .settings import settings_demo
+    from .dynamicfxml import dynamic_fxml_demo
+    from .explorer import explorer_demo
+    from .usersearch import user_search_demo
 
 from omniui import OmniUI
 
@@ -162,7 +168,14 @@ def _gson_jar() -> Path:
     return _M2 / "com" / "google" / "code" / "gson" / "gson" / _GSON_VERSION / f"gson-{_GSON_VERSION}.jar"
 
 
-def _build_launch_cmd(app_dir: Path, launcher: str, module: str, main_class: str, port: int) -> list[str]:
+def _build_launch_cmd(
+    app_dir: Path,
+    launcher: str,
+    module: str,
+    main_class: str,
+    port: int,
+    extra_jfx: tuple = (),
+) -> list[str]:
     if not _AGENT_JAR.exists():
         raise SystemExit(
             f"Agent JAR not found: {_AGENT_JAR}\n"
@@ -194,6 +207,7 @@ def _build_launch_cmd(app_dir: Path, launcher: str, module: str, main_class: str
         str(_javafx_jar("javafx-graphics")),
         str(_javafx_jar("javafx-base")),
         str(_gson_jar()),
+        *[str(_javafx_jar(j)) for j in extra_jfx],
     ])
     return [
         "java",
@@ -496,6 +510,58 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
     with settings_ctx:
         _section("Settings Demo")
         settings_demo.main()
+
+    # ── Dynamic FXML App ───────────────────────────────────────────────────────
+    _section("Dynamic FXML App demos (port 48110+)")
+    if auto_launch:
+        dynamicfxml_port = OmniUI.find_free_port(48110, 48999)
+        dynamicfxml_cmd = _build_launch_cmd(
+            java_dir / "dynamic-fxml-app", "omniui-dynamicfxml-demo",
+            "dev.omniui.demo.dynamicfxml", "dev.omniui.demo.dynamicfxml.DynamicFxmlApp",
+            dynamicfxml_port,
+            extra_jfx=("javafx-fxml",),
+        )
+        dynamicfxml_ctx = OmniUI.launch(cmd=dynamicfxml_cmd, port=dynamicfxml_port, timeout=30.0)
+    else:
+        dynamicfxml_ctx = nullcontext()
+
+    with dynamicfxml_ctx:
+        _section("Dynamic FXML Demo")
+        dynamic_fxml_demo.main()
+
+    # ── Explorer App ───────────────────────────────────────────────────────────
+    _section("Explorer App demos (port 48111+)")
+    if auto_launch:
+        explorer_port = OmniUI.find_free_port(48111, 48999)
+        explorer_cmd = _build_launch_cmd(
+            java_dir / "explorer-app", "omniui-explorer-demo",
+            "dev.omniui.demo.explorer", "dev.omniui.demo.explorer.ExplorerApp",
+            explorer_port,
+        )
+        explorer_ctx = OmniUI.launch(cmd=explorer_cmd, port=explorer_port, timeout=30.0)
+    else:
+        explorer_ctx = nullcontext()
+
+    with explorer_ctx:
+        _section("Explorer Demo")
+        explorer_demo.main()
+
+    # ── User Search App ────────────────────────────────────────────────────────
+    _section("User Search App demos (port 48109+)")
+    if auto_launch:
+        usersearch_port = OmniUI.find_free_port(48109, 48999)
+        usersearch_cmd = _build_launch_cmd(
+            java_dir / "user-search-app", "omniui-usersearch-demo",
+            "dev.omniui.demo.usersearch", "dev.omniui.demo.usersearch.UserSearchApp",
+            usersearch_port,
+        )
+        usersearch_ctx = OmniUI.launch(cmd=usersearch_cmd, port=usersearch_port, timeout=30.0)
+    else:
+        usersearch_ctx = nullcontext()
+
+    with usersearch_ctx:
+        _section("User Search Demo")
+        user_search_demo.main()
 
 
 if __name__ == "__main__":
