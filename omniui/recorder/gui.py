@@ -101,12 +101,23 @@ class RecorderApp:
                              command=self._insert_wait)
         menubar.add_cascade(label="Edit", menu=editmenu)
 
+        self._runmenu = tk.Menu(menubar, tearoff=0)
+        self._runmenu.add_command(label="Run All",
+                                  accelerator="F5",
+                                  command=self._run_all)
+        self._runmenu.add_command(label="Run Selection",
+                                  accelerator="F6",
+                                  command=self._run_selection)
+        menubar.add_cascade(label="Run", menu=self._runmenu)
+
         root.config(menu=menubar)
         root.bind_all("<Control-o>", lambda e: self._open_file())
         root.bind_all("<Control-s>", lambda e: self._save_script())
         root.bind_all("<Control-S>", lambda e: self._save_as_script())
         root.bind_all("<Control-P>", lambda e: self._insert_screenshot())
         root.bind_all("<Control-W>", lambda e: self._insert_wait())
+        root.bind_all("<F5>", lambda e: self._run_all())
+        root.bind_all("<F6>", lambda e: self._run_selection())
 
         # ── Row 0: App selector ────────────────────────────────────────────
         top = tk.Frame(root, padx=8, pady=6)
@@ -134,13 +145,13 @@ class RecorderApp:
                                    state="disabled", command=self._stop_recording)
         self._stop_btn.pack(side="left", padx=(0, 6))
 
+        # Open / Save buttons removed from toolbar — use File menu instead.
+        # _open_btn and _save_btn kept as hidden widgets so state-tracking calls work.
         self._open_btn = tk.Button(ctrl, text="📂 Open", width=10,
                                    command=self._open_file)
-        self._open_btn.pack(side="left", padx=(0, 4))
 
         self._save_btn = tk.Button(ctrl, text="💾 Save", width=10,
                                    state="disabled", command=self._save_script)
-        self._save_btn.pack(side="left", padx=(0, 12))
 
         self._run_all_btn = ttk.Button(ctrl, text="▶ Run All", width=12,
                                        state="disabled", command=self._run_all)
@@ -473,6 +484,8 @@ class RecorderApp:
         else:
             self._run_all_btn.config(state="disabled")
             self._run_sel_btn.config(state="disabled")
+            self._runmenu.entryconfig("Run All", state="disabled")
+            self._runmenu.entryconfig("Run Selection", state="disabled")
 
     def _exec_script(self, code: str) -> None:
         """Execute *code* in a background thread with client in scope.
@@ -701,6 +714,8 @@ class RecorderApp:
         if self._polling:
             self._run_all_btn.config(state="disabled")
             self._run_sel_btn.config(state="disabled")
+            self._runmenu.entryconfig("Run All", state="disabled")
+            self._runmenu.entryconfig("Run Selection", state="disabled")
             return
         has_text = bool(self._script_text.get("1.0", "end-1c").strip())
         has_sel = False
@@ -710,6 +725,8 @@ class RecorderApp:
             pass
         self._run_all_btn.config(state="normal" if has_text else "disabled")
         self._run_sel_btn.config(state="normal" if has_sel else "disabled")
+        self._runmenu.entryconfig("Run All", state="normal" if has_text else "disabled")
+        self._runmenu.entryconfig("Run Selection", state="normal" if has_sel else "disabled")
 
     def _update_window_title(self) -> None:
         """Reflect current file and dirty state in the window title."""
