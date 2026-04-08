@@ -107,6 +107,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **HTML test report** — pytest-html integration; screenshots embedded inline on failure; see `docs/html-report.md`
 - [ ] **Video recording** — complement screenshot for richer debug output
 - [ ] **Self-healing selector** — when a locator fails because `fx:id` was renamed or removed, automatically retry using `text` then `type+index` fallbacks before raising an error; log which fallback was used so developers know to update the selector.
+- [ ] **TableView interaction API** — `click_row(id=..., row=0)` to select/click a specific data row; `get_cell_text(id=..., row=0, column=1)` to read cell content; `get_row_count(id=...)` to query result count. Currently, clicking a TableView data cell produces no stable selector (cells have no `fx:id`), and recording a row click is mis-captured as a column-header click.
 - [x] **Drag & Drop** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`; fires MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
 - [ ] **Dedicated drag-drop demo app** — standalone JavaFX app with two ListViews (left → right item transfer) as a richer, real-world drag & drop showcase; replaces the cramped section inside advanced-app
 - [x] **Dedicated drag-drop demo app** — `demo/java/drag-app/` standalone app; left panel (Available) → right panel (Selected) with per-item drag; `demo/python/drag/drag_listview_demo.py`
