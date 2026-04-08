@@ -126,10 +126,10 @@ This file tracks planned features and improvements. Check off items as they are 
   - Button/ComboBox/CheckBox/... → `wait_for_enabled`; other nodes → `wait_for_visible`
   - Fragile selectors (no `fx:id` / `text`) are skipped
 - [x] **Record session API** — `start_recording(wait_injection)` / `stop_recording()` / `save_script(path)`
-- [ ] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
+- [x] **Recorder UI tool** — ~~interactive TUI/GUI app (`python -m omniui.recorder`) with Record / Stop / Save controls, allowing non-programmers to record sessions without writing code~~
 - [x] **Recorder UI tool** — `python -m omniui.recorder` tkinter GUI; auto-scans running apps, Record / Stop / Save workflow
   - [x] **Wait injection checkbox** — "Insert wait_for_*" toggle in GUI; setting applied at Record time
-- [ ] **Drag & Drop recording** — capture `MOUSE_PRESSED` + `MOUSE_RELEASED` pairs in the Recorder; infer source/target nodes and emit `client.drag(id=...).to(id=...)` in generated scripts
+- [x] **Drag & Drop recording** — capture `MOUSE_PRESSED` + `MOUSE_RELEASED` pairs in the Recorder; infer source/target nodes and emit `client.drag(id=...).to(id=...)` in generated scripts
   - [x] **Drag & Drop recording** — `MOUSE_PRESSED/RELEASED` filters; `PickResult` for drop target; `dragJustFired` suppresses spurious click; generates `client.drag(...).to(...)`
 - [x] **Drag & Drop recording** — `MOUSE_PRESSED`+`MOUSE_RELEASED` pair with ≥15 px distance emits `drag` event; codegen outputs `client.drag(id=...).to(id=...)`
 - [x] **Real-time recording feedback** — currently the Recorder GUI only shows the captured script after pressing Stop. Add a polling mechanism (`GET /sessions/{sessionId}/events/pending` every ~500 ms) so each user action appears in the script preview immediately as it is recorded. Upgrade path: polling first, then SSE if sub-100 ms latency or a browser-based UI is needed later.
@@ -138,7 +138,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Double-click recording** — detect `clickCount >= 2` in Java agent; mutate preceding click entry to `double_click`; codegen emits `client.double_click(id=...)`. *(merged PR #22)*
 - [x] **Recorder close confirmation** — confirm dialog when closing Recorder during active recording; atexit/SIGTERM handler restores Login App title on unexpected exit. *(PR #23)*
 - [ ] **Step editor in Recorder** — after stopping, allow deleting or reordering individual steps in the script preview before saving; drag-to-reorder rows or select + delete unwanted steps.
-- [ ] **Screenshot on failure** — when a script step raises an exception, automatically capture a screenshot and attach it to the error output; pairs with Record & Run and CI reporting.
+- [x] **Screenshot on failure** — `screenshot_mode="on_failure"` / `"always"` / `"off"` on `OmniUI.connect()`; `client.save_screenshot()`; Recorder Edit > Insert Screenshot. *(merged PR #24)*
 - [ ] **Locator Inspector** — click any element in the running app to display all available selectors (`fx:id`, `text`, `type+index`) ranked by stability; lets developers verify or copy the best selector without writing code.
 
 ### Known Recorder Issues
