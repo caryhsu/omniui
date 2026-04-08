@@ -105,6 +105,7 @@
 - [x] **Headless 模式** — Linux 使用 Xvfb 虛擬顯示器；`run_all.py` 自動偵測 OS 並選擇對應的 JavaFX JAR；詳見 `docs/headless.zh-TW.md`
 - [x] **CI/CD 範例** — GitHub Actions workflow：`ci-unit.yml`（僅 pytest）與 `ci-integration.yml`（Xvfb + 完整 demo 測試）
 - [x] **HTML 測試報告** — pytest-html 整合；失敗時截圖自動嵌入報告；詳見 `docs/html-report.zh-TW.md`
+- [ ] **TableView 互動 API** — `click_row(id=..., row=0)` 選取或點擊特定資料列；`get_cell_text(id=..., row=0, column=1)` 讀取儲存格內容；`get_row_count(id=...)` 查詢結果筆數。目前點擊 TableView 資料列儲存格無法產生穩定 selector（儲存格沒有 `fx:id`），錄製時會誤捕為欄位標題點擊。
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
 - [ ] **Self-healing selector** — 當 locator 因 `fx:id` 被改名或移除而失敗時，自動依序嘗試 `text`、`type+index` 作為備援，成功後記錄所使用的備援方式，提示開發者更新 selector。
 - [x] **拖放（Drag & Drop）** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`；觸發 MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
@@ -137,6 +138,7 @@
 - [ ] **Recorder 步驟編輯** — 停止錄製後，可在腳本預覽區刪除或重新排序個別步驟再儲存；支援拖拉排序或選取後刪除不需要的步驟。
 - [ ] **失敗時自動截圖** — 腳本步驟發生例外時自動擷取截圖並附加至錯誤輸出；與 Record & Run 及 CI 報告整合。
 - [ ] **Locator Inspector** — 點擊執行中 app 的任意元素，顯示所有可用 selector（`fx:id`、`text`、`type+index`）並依穩定性排序；讓開發者無需寫程式即可確認或複製最佳 selector。
+- [ ] **System Tray（Windows/macOS/Linux）** — 關閉 Recorder 視窗時改為縮到系統通知區（Windows 右下角、macOS 選單列、Linux tray），而非直接結束；右鍵選單：Show / Hide / Quit。需要 `pystray` + `Pillow`；圖示以程式碼動態產生，不需額外圖檔。
 
 ### 已知錄製器問題（Known Recorder Issues）
 
