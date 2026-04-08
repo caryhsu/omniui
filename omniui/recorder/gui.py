@@ -9,7 +9,7 @@ import atexit
 import os
 import signal
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 import threading
 import urllib.request
 import urllib.error
@@ -96,6 +96,9 @@ class RecorderApp:
         editmenu.add_command(label="Insert Screenshot",
                              accelerator="Ctrl+Shift+P",
                              command=self._insert_screenshot)
+        editmenu.add_command(label="Insert Wait…",
+                             accelerator="Ctrl+Shift+W",
+                             command=self._insert_wait)
         menubar.add_cascade(label="Edit", menu=editmenu)
 
         root.config(menu=menubar)
@@ -103,6 +106,7 @@ class RecorderApp:
         root.bind_all("<Control-s>", lambda e: self._save_script())
         root.bind_all("<Control-S>", lambda e: self._save_as_script())
         root.bind_all("<Control-P>", lambda e: self._insert_screenshot())
+        root.bind_all("<Control-W>", lambda e: self._insert_wait())
 
         # ── Row 0: App selector ────────────────────────────────────────────
         top = tk.Frame(root, padx=8, pady=6)
@@ -741,6 +745,30 @@ class RecorderApp:
         try:
             insert_pos = self._script_text.index("insert")
             # Insert at start of current line so it lands cleanly between steps
+            line_start = f"{insert_pos.split('.')[0]}.0"
+            self._script_text.insert(line_start, line)
+        except Exception:
+            self._script_text.insert("end", line)
+        self._dirty = True
+        self._save_btn.config(state="normal")
+
+    def _insert_wait(self) -> None:
+        """Prompt for a duration and insert a time.sleep() line at the cursor."""
+        seconds = simpledialog.askfloat(
+            "Insert Wait",
+            "Wait duration (seconds):",
+            initialvalue=1.0,
+            minvalue=0.1,
+            maxvalue=60.0,
+            parent=self.root,
+        )
+        if seconds is None:
+            return  # cancelled
+        # Format: drop trailing zero for whole numbers (1.0 → 1, 1.5 → 1.5)
+        formatted = f"{seconds:g}"
+        line = f"import time; time.sleep({formatted})\n"
+        try:
+            insert_pos = self._script_text.index("insert")
             line_start = f"{insert_pos.split('.')[0]}.0"
             self._script_text.insert(line_start, line)
         except Exception:
