@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="dev.omniui.demo.dynamicfxml.controller.DashboardController"
+      spacing="16">
+    <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+
+    <Label text="Dashboard" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <GridPane hgap="24" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints minWidth="100"/>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="200"/>
+        </columnConstraints>
+
+        <Label text="Total Users:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <Label fx:id="usersCountLabel" text="—"
+               GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Active Users:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <Label fx:id="activeCountLabel" text="—"
+               GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="CPU Usage:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <ProgressBar fx:id="cpuBar" progress="0" maxWidth="Infinity"
+                     GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <Label text="Memory:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <ProgressBar fx:id="memBar" progress="0" maxWidth="Infinity"
+                     GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <Button fx:id="refreshBtn" text="↻ Refresh" onAction="#handleRefresh"/>
+
+    <PieChart fx:id="pieChart" prefHeight="260" animated="true"/>
+</VBox>

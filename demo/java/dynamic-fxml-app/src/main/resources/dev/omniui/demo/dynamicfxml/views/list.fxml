@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="dev.omniui.demo.dynamicfxml.controller.ListController">
+    <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+
+    <top>
+        <VBox spacing="10">
+            <Label text="Task List" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+            <Separator/>
+            <HBox spacing="8">
+                <TextField fx:id="newItemField" promptText="New task…" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="addBtn" text="Add" onAction="#handleAdd"/>
+            </HBox>
+            <padding><Insets bottom="8"/></padding>
+        </VBox>
+    </top>
+
+    <center>
+        <ListView fx:id="itemList"/>
+    </center>
+
+    <bottom>
+        <HBox spacing="8">
+            <padding><Insets top="10"/></padding>
+            <Button fx:id="removeBtn" text="Remove Selected" onAction="#handleRemove"/>
+            <Button fx:id="clearBtn"  text="Clear All"       onAction="#handleClear"/>
+        </HBox>
+    </bottom>
+</BorderPane>
