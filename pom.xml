@@ -16,5 +16,6 @@
     <module>demo/java/login-app</module>
     <module>demo/java/user-search-app</module>
     <module>demo/java/dynamic-fxml-app</module>
+    <module>demo/java/explorer-app</module>
   </modules>
 </project>
