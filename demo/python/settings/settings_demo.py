@@ -180,7 +180,7 @@ def main() -> None:
     r = client.click(id="testNotifBtn")
     assert r.ok, f"click testNotifBtn failed: {r}"
     # animation takes 2 s
-    client.wait_for_text(id="statusLabel", expected="Test notification sent", timeout=8.0)
+    client.wait_for_text(id="statusLabel", expected="✔ Test notification sent.", timeout=8.0)
     print("Test Notification → 'Test notification sent' in statusLabel (ok)")
 
     print("\nsettings_demo succeeded (ok)")
