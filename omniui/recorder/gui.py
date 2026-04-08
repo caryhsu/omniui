@@ -23,6 +23,73 @@ _SCAN_PORTS = range(48100, 48200)
 _SCAN_TIMEOUT = 0.3
 
 
+def _activate_window(title: str) -> bool:
+    """Best-effort: bring the window whose title contains *title* to the foreground.
+
+    Returns True if the window was found and activated, False otherwise.
+    Works without any third-party packages:
+    - Windows: ctypes (win32 API)
+    - macOS: osascript (AppleScript)
+    - Linux: wmctrl (if installed)
+    """
+    import sys
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            import ctypes.wintypes
+            found: list = []
+            WNDENUMPROC = ctypes.WINFUNCTYPE(
+                ctypes.wintypes.BOOL,
+                ctypes.wintypes.HWND,
+                ctypes.wintypes.LPARAM,
+            )
+
+            def _cb(hwnd, _):
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+                if length == 0:
+                    return True
+                buf = ctypes.create_unicode_buffer(length + 1)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+                if title.lower() in buf.value.lower():
+                    found.append(hwnd)
+                return True
+
+            ctypes.windll.user32.EnumWindows(WNDENUMPROC(_cb), 0)
+            if found:
+                hwnd = found[0]
+                ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+                return True
+        except Exception:
+            pass
+    elif sys.platform == "darwin":
+        try:
+            import subprocess
+            script = (
+                'tell application "System Events"\n'
+                '  set procs to every process whose '
+                f'(exists (windows whose name contains "{title}"))\n'
+                '  if procs is not {} then\n'
+                '    set frontmost of item 1 of procs to true\n'
+                '  end if\n'
+                'end tell'
+            )
+            subprocess.run(["osascript", "-e", script],
+                           capture_output=True, timeout=2)
+            return True
+        except Exception:
+            pass
+    else:  # Linux
+        try:
+            import subprocess
+            subprocess.run(["wmctrl", "-a", title],
+                           capture_output=True, timeout=2)
+            return True
+        except Exception:
+            pass
+    return False
+
+
 def _probe_port(port: int) -> Optional[dict]:
     """Return info dict if an OmniUI agent is listening on *port*, else None."""
     try:
@@ -202,6 +269,10 @@ class RecorderApp:
         tk.Checkbutton(ctrl, text="Insert wait_for_*",
                        variable=self._wait_injection_var).pack(side="left")
 
+        self._activate_window_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(ctrl, text="Activate app window",
+                       variable=self._activate_window_var).pack(side="left", padx=(8, 0))
+
         tk.Label(ctrl, text="  Delay:").pack(side="left")
         self._replay_delay_var = tk.StringVar(value="0.30")
         ttk.Spinbox(ctrl, textvariable=self._replay_delay_var,
@@ -291,6 +362,11 @@ class RecorderApp:
             messagebox.showwarning("No app selected",
                                    "Please select an app from the dropdown first.")
             return
+
+        # Always activate the target app window before recording starts
+        win_title = agent.get("windowTitle") or agent.get("appName", "")
+        if win_title:
+            _activate_window(win_title)
 
         try:
             self._client = OmniUI.connect(port=agent["port"])
@@ -554,6 +630,14 @@ class RecorderApp:
                 self.root.after(0, self._set_run_status, f"Connect failed: {exc}", "red")
                 self.root.after(0, self._set_run_buttons, True)
                 return
+
+        # Activate target app window before running (if option is enabled)
+        if self._activate_window_var.get():
+            agent = self._selected_agent()
+            if agent:
+                win_title = agent.get("windowTitle") or agent.get("appName", "")
+                if win_title:
+                    _activate_window(win_title)
 
         try:
             replay_delay = float(self._replay_delay_var.get())
