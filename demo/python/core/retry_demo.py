@@ -44,9 +44,9 @@ def main() -> None:
         print("retry correctly raises after exhausting all attempts (ok)")
 
     # Verify retry with a real client action (focus + verify_focused)
-    client.focus(id="username")
+    client.focus(id="regionField")
     client.retry(
-        lambda: client.verify_focused(id="username"),
+        lambda: client.verify_focused(id="regionField"),
         times=3,
         delay=0.1,
     )

@@ -12,37 +12,39 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # focus() — move focus to username field
-    result = client.focus(id="username")
+    # focus() — move focus to regionField
+    result = client.focus(id="regionField")
     if not result.ok:
-        raise SystemExit(f"focus(username) failed: {result.trace.details}")
-    print(f"focus(username) succeeded (ok)")
+        raise SystemExit(f"focus(regionField) failed: {result.trace.details}")
+    print("focus(regionField) succeeded (ok)")
 
-    # get_focused() — verify username is focused
+    # get_focused() — verify regionField is focused
     focused = client.get_focused()
-    assert focused.value is not None and focused.value.get("fxId") == "username", (
-        f"Expected 'username' to be focused, got '{focused.value}'"
+    assert focused.value is not None and focused.value.get("fxId") == "regionField", (
+        f"Expected 'regionField' to be focused, got '{focused.value}'"
     )
     print(f"get_focused() = '{focused.value.get('fxId')}' ({focused.value.get('nodeType')}) (ok)")
 
     # verify_focused() — assertion helper
-    client.verify_focused(id="username")
-    print("verify_focused(username) passed (ok)")
+    client.verify_focused(id="regionField")
+    print("verify_focused(regionField) passed (ok)")
 
-    # tab_focus() — Tab to password field
+    # tab_focus() — Tab to next focusable field
     client.tab_focus()
     focused2 = client.get_focused()
     print(f"After tab_focus(): focused = '{focused2.value.get('fxId')}' (ok)")
 
-    # tab_focus(reverse=True) — Shift+Tab back to username
+    # tab_focus(reverse=True) — Shift+Tab back
     client.tab_focus(reverse=True)
-    client.verify_focused(id="username")
-    print("tab_focus(reverse=True) returned focus to username (ok)")
+    client.verify_focused(id="regionField")
+    print("tab_focus(reverse=True) returned focus to regionField (ok)")
 
-    # tab_focus(times=2) — skip to loginButton
+    # tab_focus(times=2) — skip forward
     client.tab_focus(times=2)
     focused3 = client.get_focused()
     print(f"After tab_focus(times=2): focused = '{focused3.value.get('fxId')}' (ok)")
+
+    print("\nfocus_demo succeeded (ok)")
 
     print("\nfocus_demo succeeded (ok)")
 

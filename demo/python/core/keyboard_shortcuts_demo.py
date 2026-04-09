@@ -1,9 +1,9 @@
 """keyboard_shortcuts_demo.py — Smoke tests for press_key().
 
 Covers:
-  1. Single key:   press_key("Tab") on username field (moves focus)
+  1. Single key:   press_key("Tab") on regionField (moves focus)
   2. Single key:   press_key("Escape") globally (no selector)
-  3. Modifier key: press_key("Control+A", id="username") (select all text)
+  3. Modifier key: press_key("Control+A", id="regionField") (select all text)
 """
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # 1. Type into username, then press Tab to move focus
-    client.click(id="username")
-    client.type("testuser", id="username")
-    result = client.press_key("Tab", id="username")
+    # 1. Type into regionField, then press Tab to move focus
+    client.click(id="regionField")
+    client.type("us-west-2", id="regionField")
+    result = client.press_key("Tab", id="regionField")
     if not result.ok:
         raise SystemExit(f"press_key Tab failed: {result.trace.details}")
     print("press_key('Tab') succeeded")
@@ -32,14 +32,14 @@ def main() -> None:
         raise SystemExit(f"press_key Escape failed: {result.trace.details}")
     print("press_key('Escape') succeeded")
 
-    # 3. Ctrl+A to select all text in username field
-    result = client.press_key("Control+A", id="username")
+    # 3. Ctrl+A to select all text in regionField
+    result = client.press_key("Control+A", id="regionField")
     if not result.ok:
         raise SystemExit(f"press_key Control+A failed: {result.trace.details}")
     print("press_key('Control+A') succeeded")
 
     # 4. Alias: ctrl+z (lowercase, alias)
-    result = client.press_key("ctrl+z", id="username")
+    result = client.press_key("ctrl+z", id="regionField")
     if not result.ok:
         raise SystemExit(f"press_key ctrl+z failed: {result.trace.details}")
     print("press_key('ctrl+z') succeeded")
