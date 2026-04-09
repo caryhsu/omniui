@@ -262,6 +262,75 @@ class ReflectiveJavaFxTargetTest {
         assertNull(absentIndex);
     }
 
+    @Test
+    void menuHelpersFindItemsByTextIdAndPath() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        MenuItemNode open = new MenuItemNode("Open", "openItem");
+        MenuItemNode export = new MenuItemNode("Export", "exportItem");
+        MenuItemNode file = new MenuItemNode("File", "fileMenu", open, export);
+        MenuItemNode edit = new MenuItemNode("Edit", "editMenu");
+        List<MenuItemNode> items = List.of(file, edit);
+
+        Object byText = invokePrivate(target, "findMenuItemInList", new Class<?>[]{List.class, String.class, String.class}, items, "Edit", null);
+        Object byId = invokePrivate(target, "findMenuItemInList", new Class<?>[]{List.class, String.class, String.class}, items, null, "fileMenu");
+        Object byPath = invokePrivate(target, "findMenuItemByPath", new Class<?>[]{Object.class, String[].class}, new ContextMenuWindow(items), new String[]{"File", "Export"});
+        Object missing = invokePrivate(target, "findMenuItemByPath", new Class<?>[]{Object.class, String[].class}, new ContextMenuWindow(items), new String[]{"File", "Missing"});
+
+        assertEquals(edit, byText);
+        assertEquals(file, byId);
+        assertEquals(export, byPath);
+        assertNull(missing);
+    }
+
+    @Test
+    void dialogHelpersBuildDescriptorAndRecognizePane() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Button ok = new Button("OK");
+        Button cancel = new Button("Cancel");
+        ButtonBarNode buttonBar = new ButtonBarNode(ok, cancel);
+        DialogPaneNode dialogPane = new DialogPaneNode("Confirm", "Proceed?", new AlertDialog("CONFIRMATION"), buttonBar);
+        DialogWindow window = new DialogWindow("Delete File");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> descriptor = (Map<String, Object>) invokePrivate(
+            target,
+            "buildDialogDescriptor",
+            new Class<?>[]{Object.class, Object.class},
+            window,
+            dialogPane
+        );
+        boolean pane = (boolean) invokePrivate(target, "isDialogPane", new Class<?>[]{Object.class}, dialogPane);
+        boolean notPane = (boolean) invokePrivate(target, "isDialogPane", new Class<?>[]{Object.class}, buttonBar);
+
+        assertEquals("Delete File", descriptor.get("title"));
+        assertEquals("Confirm", descriptor.get("header"));
+        assertEquals("Proceed?", descriptor.get("content"));
+        assertEquals("CONFIRMATION", descriptor.get("alertType"));
+        assertEquals(List.of("OK", "Cancel"), descriptor.get("buttons"));
+        assertTrue(pane);
+        assertFalse(notPane);
+    }
+
+    @Test
+    void dialogButtonTextFallsBackToAncestorTextOrDefault() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Button ok = new Button("OK");
+        ButtonGraphic graphic = new ButtonGraphic();
+        ok.addChild(graphic);
+
+        String fromAncestor = assertInstanceOf(
+            String.class,
+            invokePrivate(target, "getDialogButtonText", new Class<?>[]{Object.class}, graphic)
+        );
+        String defaultLabel = assertInstanceOf(
+            String.class,
+            invokePrivate(target, "getDialogButtonText", new Class<?>[]{Object.class}, new ParentNode("plain", ""))
+        );
+
+        assertEquals("OK", fromAncestor);
+        assertEquals("OK", defaultLabel);
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -379,6 +448,7 @@ class ReflectiveJavaFxTargetTest {
         private final String id;
         private final String text;
         private final List<Object> children = new java.util.ArrayList<>();
+        private Object parent;
 
         ParentNode(String id, String text) {
             this.id = id;
@@ -387,10 +457,21 @@ class ReflectiveJavaFxTargetTest {
 
         void addChild(Object child) {
             children.add(child);
+            if (child instanceof ParentNode parentNode) {
+                parentNode.setParent(this);
+            }
+        }
+
+        void setParent(Object parent) {
+            this.parent = parent;
         }
 
         public List<Object> getChildrenUnmodifiable() {
             return List.copyOf(children);
+        }
+
+        public Object getParent() {
+            return parent;
         }
 
         public String getId() {
@@ -656,6 +737,133 @@ class ReflectiveJavaFxTargetTest {
         @Override
         public String toString() {
             return name + " / " + role;
+        }
+    }
+
+    static class MenuItemNode {
+        private final String text;
+        private final String id;
+        private final List<Object> items = new java.util.ArrayList<>();
+        boolean fired;
+
+        MenuItemNode(String text, String id, Object... items) {
+            this.text = text;
+            this.id = id;
+            this.items.addAll(List.of(items));
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public List<Object> getItems() {
+            return items;
+        }
+
+        public void fire() {
+            fired = true;
+        }
+    }
+
+    static final class ContextMenuWindow {
+        private final List<?> items;
+
+        ContextMenuWindow(List<?> items) {
+            this.items = items;
+        }
+
+        public List<?> getItems() {
+            return items;
+        }
+    }
+
+    static class ButtonBarNode extends ParentNode {
+        private final List<Object> buttons = new java.util.ArrayList<>();
+
+        ButtonBarNode(Object... buttons) {
+            super("buttonBar", "");
+            this.buttons.addAll(List.of(buttons));
+            for (Object button : buttons) {
+                addChild(button);
+                if (button instanceof ParentNode parent) {
+                    parent.setParent(this);
+                }
+            }
+        }
+
+        public List<Object> getButtons() {
+            return buttons;
+        }
+    }
+
+    static class DialogPaneNode extends ParentNode {
+        private final String headerText;
+        private final String contentText;
+        private final Object dialog;
+
+        DialogPaneNode(String headerText, String contentText, Object dialog, Object... children) {
+            super("dialogPane", "");
+            this.headerText = headerText;
+            this.contentText = contentText;
+            this.dialog = dialog;
+            for (Object child : children) {
+                addChild(child);
+                if (child instanceof ParentNode parent) {
+                    parent.setParent(this);
+                }
+            }
+        }
+
+        public String getHeaderText() {
+            return headerText;
+        }
+
+        public String getContentText() {
+            return contentText;
+        }
+
+        public Object getDialog() {
+            return dialog;
+        }
+    }
+
+    static final class DialogWindow {
+        private final String title;
+
+        DialogWindow(String title) {
+            this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+    }
+
+    static final class AlertDialog {
+        private final String alertType;
+
+        AlertDialog(String alertType) {
+            this.alertType = alertType;
+        }
+
+        public Object getAlertType() {
+            return alertType;
+        }
+    }
+
+    static class Button extends ParentNode {
+        Button(String text) {
+            super("button", text);
+        }
+    }
+
+    static final class ButtonGraphic extends ParentNode {
+        ButtonGraphic() {
+            super("graphic", "");
         }
     }
 }
