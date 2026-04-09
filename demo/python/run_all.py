@@ -168,6 +168,21 @@ def _gson_jar() -> Path:
     return _M2 / "com" / "google" / "code" / "gson" / "gson" / _GSON_VERSION / f"gson-{_GSON_VERSION}.jar"
 
 
+_HEADLESS: bool = False
+
+
+def _headless_jvm_args() -> list[str]:
+    """Return JVM args for JavaFX headless mode (empty list when disabled).
+
+    Requires JavaFX 24+ — the built-in Headless Platform is not available
+    in JavaFX 21.  Upgrade ``<javafx.version>`` in the demo pom.xml files
+    and rebuild before using ``--headless``.
+    """
+    if not _HEADLESS:
+        return []
+    return ["-Dglass.platform=Headless"]
+
+
 def _build_launch_cmd(
     app_dir: Path,
     launcher: str,
@@ -181,6 +196,7 @@ def _build_launch_cmd(
             f"Agent JAR not found: {_AGENT_JAR}\n"
             "Run: mvn install -f java-agent/pom.xml"
         )
+    headless_args = _headless_jvm_args()
     # Prefer jlink image (built by build_demo_runtime or mvn javafx:jlink)
     for java_name in ("java.exe", "java"):
         jlink_java = app_dir / "target" / launcher / "bin" / java_name
@@ -188,6 +204,7 @@ def _build_launch_cmd(
             print(f"  [launch] using jlink image: {jlink_java.relative_to(ROOT)}")
             return [
                 str(jlink_java),
+                *headless_args,
                 f"-javaagent:{_AGENT_JAR}=port={port}",
                 "-m", f"{module}/{main_class}",
             ]
@@ -211,6 +228,7 @@ def _build_launch_cmd(
     ])
     return [
         "java",
+        *headless_args,
         f"-javaagent:{_AGENT_JAR}=port={port}",
         "-p", module_path,
         "-m", f"{module}/{main_class}",
@@ -222,7 +240,11 @@ def _section(title: str) -> None:
     print(f"=== {title} ===")
 
 
-def main(auto_launch: bool = True, verbose: bool = False) -> None:
+def main(auto_launch: bool = True, verbose: bool = False, headless: bool = False) -> None:
+    global _HEADLESS
+    _HEADLESS = headless
+    if headless:
+        print("[headless] JavaFX Headless Platform enabled (-Dglass.platform=Headless)")
     java_dir = ROOT / "demo" / "java"
 
     # ── Core App ──────────────────────────────────────────────────────────────
@@ -579,5 +601,12 @@ if __name__ == "__main__":
         "--verbose", action="store_true",
         help="Show detailed output including Discover Nodes JSON dump",
     )
+    parser.add_argument(
+        "--headless", action="store_true",
+        help="Run JavaFX apps in headless mode (requires JavaFX 24+; not yet supported with current 21.0.2)",
+    )
     args = parser.parse_args()
-    main(auto_launch=not args.no_launch, verbose=args.verbose)
+    if args.no_launch and args.headless:
+        parser.error("--no-launch and --headless cannot be used together "
+                     "(--headless injects JVM args at launch time)")
+    main(auto_launch=not args.no_launch, verbose=args.verbose, headless=args.headless)
