@@ -175,6 +175,93 @@ class ReflectiveJavaFxTargetTest {
         assertEquals(10.0, setPosition.value());
     }
 
+    @Test
+    void treeHelpersFindNestedItemsAndHandleMissingChildren() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        TreeItemNode leaf = new TreeItemNode("Leaf");
+        TreeItemNode branch = new TreeItemNode("Branch", leaf);
+        TreeItemNode root = new TreeItemNode("Root", branch);
+
+        Object found = invokePrivate(target, "findTreeItem", new Class<?>[]{Object.class, String.class}, root, "Leaf");
+        Object missing = invokePrivate(target, "findTreeItem", new Class<?>[]{Object.class, String.class}, new TreeItemWithoutChildren("Solo"), "Leaf");
+
+        assertEquals(leaf, found);
+        assertNull(missing);
+    }
+
+    @Test
+    void treeTableHelpersMatchByValueColumnAndFallbackGetter() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        TreeTableColumn nameColumn = new TreeTableColumn("Name", item -> ((PersonRow) item.getValue()).name());
+        TreeTableColumn roleColumn = new TreeTableColumn("Role", item -> ((PersonRow) item.getValue()).role());
+        TreeTableView treeTable = new TreeTableView(List.of(nameColumn, roleColumn));
+
+        TreeTableItemNode root = new TreeTableItemNode(new PersonRow("Root", "Container"));
+        TreeTableItemNode alice = new TreeTableItemNode(new PersonRow("Alice", "Admin"));
+        TreeTableItemNode bob = new TreeTableItemNode(new PersonRow("Bob", "User"));
+        root.addChild(alice);
+        root.addChild(bob);
+        treeTable.setRoot(root);
+
+        Object byValue = invokePrivate(target, "findTreeTableItem", new Class<?>[]{Object.class, String.class}, root, "Bob / User");
+        Object byCell = invokePrivate(target, "findTreeTableItemByCell", new Class<?>[]{Object.class, Object.class, String.class, String.class}, treeTable, root, "Admin", "Role");
+        Object byFallbackGetter = invokePrivate(target, "findTreeTableItemByCell", new Class<?>[]{Object.class, Object.class, String.class, String.class}, treeTable, root, "Bob", "");
+        Object missing = invokePrivate(target, "findTreeTableItemByCell", new Class<?>[]{Object.class, Object.class, String.class, String.class}, treeTable, root, "Missing", "Role");
+
+        assertEquals(bob, byValue);
+        assertEquals(alice, byCell);
+        assertEquals(bob, byFallbackGetter);
+        assertNull(missing);
+    }
+
+    @Test
+    void getTreeTableCellReturnsRequestedColumnValue() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        TreeTableColumn nameColumn = new TreeTableColumn("Name", item -> ((PersonRow) item.getValue()).name());
+        TreeTableColumn roleColumn = new TreeTableColumn("Role", item -> ((PersonRow) item.getValue()).role());
+        TreeTableView treeTable = new TreeTableView(List.of(nameColumn, roleColumn));
+
+        TreeTableItemNode root = new TreeTableItemNode(new PersonRow("Root", "Container"));
+        TreeTableItemNode alice = new TreeTableItemNode(new PersonRow("Alice", "Admin"));
+        root.addChild(alice);
+        treeTable.setRoot(root);
+
+        String role = assertInstanceOf(
+            String.class,
+            invokePrivate(target, "getTreeTableCell", new Class<?>[]{Object.class, String.class, String.class}, treeTable, "Alice", "Role")
+        );
+        Object missing = invokePrivate(target, "getTreeTableCell", new Class<?>[]{Object.class, String.class, String.class}, treeTable, "Alice", "State");
+
+        assertEquals("Admin", role);
+        assertNull(missing);
+    }
+
+    @Test
+    void tableHelpersMatchRowsAndLocateIdentityIndex() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        PersonRow alice = new PersonRow("Alice", "Admin");
+        PersonRow bob = new PersonRow("Bob", "User");
+        List<PersonRow> rows = List.of(alice, bob);
+
+        boolean byToString = (boolean) invokePrivate(target, "rowMatches", new Class<?>[]{Object.class, String.class, String.class}, alice, "Alice / Admin", null);
+        boolean byProperty = (boolean) invokePrivate(target, "rowMatches", new Class<?>[]{Object.class, String.class, String.class}, bob, "User", "role");
+        boolean byFallbackProperty = (boolean) invokePrivate(target, "rowMatches", new Class<?>[]{Object.class, String.class, String.class}, alice, "Alice", null);
+        boolean missing = (boolean) invokePrivate(target, "rowMatches", new Class<?>[]{Object.class, String.class, String.class}, bob, "Missing", null);
+
+        Integer aliceIndex = assertInstanceOf(
+            Integer.class,
+            invokePrivate(target, "findRowIndex", new Class<?>[]{java.util.Collection.class, Object.class}, rows, alice)
+        );
+        Object absentIndex = invokePrivate(target, "findRowIndex", new Class<?>[]{java.util.Collection.class, Object.class}, rows, new PersonRow("Bob", "User"));
+
+        assertTrue(byToString);
+        assertTrue(byProperty);
+        assertTrue(byFallbackProperty);
+        assertFalse(missing);
+        assertEquals(0, aliceIndex);
+        assertNull(absentIndex);
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -467,6 +554,108 @@ class ReflectiveJavaFxTargetTest {
 
         public void setValue(double value) {
             this.value = value;
+        }
+    }
+
+    static class TreeItemNode {
+        private final Object value;
+        private final List<Object> children = new java.util.ArrayList<>();
+
+        TreeItemNode(Object value, Object... children) {
+            this.value = value;
+            this.children.addAll(List.of(children));
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public List<Object> getChildren() {
+            return children;
+        }
+
+        void addChild(Object child) {
+            children.add(child);
+        }
+    }
+
+    static final class TreeItemWithoutChildren {
+        private final Object value;
+
+        TreeItemWithoutChildren(Object value) {
+            this.value = value;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public Object getChildren() {
+            return value;
+        }
+    }
+
+    static final class TreeTableItemNode extends TreeItemNode {
+        TreeTableItemNode(Object value, Object... children) {
+            super(value, children);
+        }
+    }
+
+    static final class TreeTableView {
+        private final List<Object> columns;
+        private Object root;
+
+        TreeTableView(List<Object> columns) {
+            this.columns = columns;
+        }
+
+        public Object getRoot() {
+            return root;
+        }
+
+        void setRoot(Object root) {
+            this.root = root;
+        }
+
+        public List<Object> getColumns() {
+            return columns;
+        }
+    }
+
+    static final class TreeTableColumn {
+        private final String text;
+        private final java.util.function.Function<TreeTableItemNode, Object> resolver;
+
+        TreeTableColumn(String text, java.util.function.Function<TreeTableItemNode, Object> resolver) {
+            this.text = text;
+            this.resolver = resolver;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public ObservableValue getCellObservableValue(Object item) {
+            return new ObservableValue(resolver.apply((TreeTableItemNode) item));
+        }
+    }
+
+    static final class ObservableValue {
+        private final Object value;
+
+        ObservableValue(Object value) {
+            this.value = value;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+    }
+
+    record PersonRow(String name, String role) {
+        @Override
+        public String toString() {
+            return name + " / " + role;
         }
     }
 }
