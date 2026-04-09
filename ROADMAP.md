@@ -114,7 +114,7 @@ This file tracks planned features and improvements. Check off items as they are 
 - [x] **Dedicated drag-drop demo app** — `demo/java/drag-app/` standalone app; left panel (Available) → right panel (Selected) with per-item drag; `demo/python/drag/drag_listview_demo.py`
 - [x] **Hover** — `hover(id=...)` to trigger tooltips or hover states
 - [x] **Clipboard operations** — `copy()`, `paste()`, `get_clipboard()`
-- [ ] **Upgrade JavaFX to 24+** — the current demo apps use JavaFX 21.0.2 which does **not** include the built-in Headless Platform (`-Dglass.platform=Headless`). Upgrading to JavaFX 24+ enables true headless execution on all platforms (Windows/Linux/macOS) without Xvfb or Monocle. Affects all demo `pom.xml` files and `run_all.py _JAVAFX_VERSION`. The `--headless` flag in `run_all.py` is already wired but blocked on this upgrade.
+- [x] **Upgrade JavaFX to 24+** — upgraded to JavaFX 24.0.1 with Java 22+ compiler target. Enables built-in Headless Platform (`-Dglass.platform=Headless`) on all platforms (Windows/Linux/macOS) without Xvfb or Monocle. The `--headless` flag in `run_all.py` is now fully functional.
 
 ---
 

@@ -109,7 +109,7 @@ openspec/
 ## 環境需求
 
 - Python 3.11+
-- Java 21+
+- Java 22+
 - Maven 3.9+
 - 目前 demo app 主要以 Windows 為驗證環境
 

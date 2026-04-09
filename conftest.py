@@ -101,7 +101,7 @@ def omniui_parallel(request: pytest.FixtureRequest, tmp_path_factory):
         return "mac" if "darwin" in s else "linux"
 
     m2 = Path.home() / ".m2" / "repository"
-    jfx_ver = "21.0.2"
+    jfx_ver = "24.0.1"
     gson_ver = "2.11.0"
     clf = _javafx_classifier()
 

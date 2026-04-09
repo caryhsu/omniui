@@ -16,7 +16,7 @@ It is intended for local validation on the currently supported Windows-based dem
 
 ## Prerequisites
 
-- Java 21+
+- Java 22+
 - Maven 3.9+
 - Python 3.11+
 - A clean build of the Java agent and demo apps if you recently changed code

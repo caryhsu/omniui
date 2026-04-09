@@ -16,7 +16,7 @@
 
 ## 前置條件
 
-- Java 21+
+- Java 22+
 - Maven 3.9+
 - Python 3.11+
 - 若最近有改 code，請先確保 Java agent 與 demo app 已重新建置

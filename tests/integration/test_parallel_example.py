@@ -47,7 +47,7 @@ def _worker_port(base: int) -> int:
 def _build_drag_cmd(port: int) -> list[str]:
     import platform
     m2 = Path.home() / ".m2" / "repository"
-    jfx = "21.0.2"
+    jfx = "24.0.1"
     gson_ver = "2.11.0"
     clf = "win" if "windows" in platform.system().lower() else ("mac" if "darwin" in platform.system().lower() else "linux")
 

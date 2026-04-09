@@ -126,7 +126,7 @@ openspec/
 ## Prerequisites
 
 - Python 3.11+
-- Java 21+
+- Java 22+
 - Maven 3.9+
 - Windows is the currently validated desktop target for the demo app build
 
