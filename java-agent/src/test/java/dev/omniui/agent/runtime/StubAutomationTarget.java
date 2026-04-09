@@ -38,8 +38,7 @@ final class StubAutomationTarget implements AutomationTarget {
         return List.of();
     }
 
-    @Override
-    public ActionResult perform(String action, JsonObject selector, JsonObject payload) {
+    public ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload) {
         return ActionResult.success("javafx", "stub-node", Map.of(), null);
     }
 

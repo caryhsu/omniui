@@ -49,7 +49,7 @@ public final class DemoJavaFxTarget implements AutomationTarget {
     }
 
     @Override
-    public ActionResult perform(String action, JsonObject selector, JsonObject payload) {
+    public ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload) {
         Optional<Map<String, Object>> match = resolve(selector);
         if (match.isEmpty()) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "selector_not_found"));
