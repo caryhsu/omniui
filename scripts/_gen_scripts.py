@@ -1,7 +1,7 @@
 import os
 
 M2 = r"%USERPROFILE%\.m2\repository"
-JFX = "24.0.1"
+JFX = "26"
 GSON = "2.11.0"
 AGENT = r"java-agent\target\omniui-java-agent-0.1.0-SNAPSHOT.jar"
 

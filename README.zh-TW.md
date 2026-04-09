@@ -115,7 +115,13 @@ openspec/
 
 ## 快速開始
 
-1. 啟動 JavaFX demo app（以 core-app 為例，port 48100）：
+1. 建置所有 demo app（Java agent + jlink runtime image）：
+
+```bash
+scripts\build_demo_runtime.bat
+```
+
+2. 啟動 JavaFX demo app（以 core-app 為例，port 48100）：
 
 ```bash
 demo\java\core-app\run-dev-with-agent.bat
@@ -123,7 +129,7 @@ demo\java\core-app\run-dev-with-agent.bat
 
 這會開啟 demo 視窗，並以 OmniUI Java agent enabled 模式啟動，預設監聽 `http://127.0.0.1:48100`。
 
-2. 在另一個 terminal 執行 Python demo flow：
+3. 在另一個 terminal 執行 Python demo flow：
 
 ```bash
 python scripts/demo_login_flow.py
@@ -134,7 +140,7 @@ python scripts/demo_login_flow.py
 - `loginButton` 用 `text="Login"` 觸發 OCR fallback
 - 最後驗證 `status == "Success"`
 
-3. 若 demo app 仍在執行，可另外跑 benchmark：
+4. 若 demo app 仍在執行，可另外跑 benchmark：
 
 ```bash
 python scripts/benchmark_phase1.py

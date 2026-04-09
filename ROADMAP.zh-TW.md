@@ -114,7 +114,7 @@
 - [x] **獨立 drag-drop demo app** — `demo/java/drag-app/` 獨立 app；左欄（Available）→ 右欄（Selected）逐項拖曳；`demo/python/drag/drag_listview_demo.py`
 - [x] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
 - [x] **剪貼簿操作** — `copy()`、`paste()`、`get_clipboard()`
-- [x] **升級 JavaFX 至 24+** — 已升級至 JavaFX 24.0.1，Java 編譯目標提升至 22+。啟用內建 Headless Platform（`-Dglass.platform=Headless`），可在所有平台（Windows/Linux/macOS）實現真正的 headless 執行，不需要 Xvfb 或 Monocle。`run_all.py --headless` 旗標已完全可用。
+- [x] **升級 JavaFX 至 26** — 已升級至 JavaFX 26，Java 編譯目標提升至 22+。啟用內建 Headless Platform（`-Dglass.platform=Headless`），可在所有平台（Windows/Linux/macOS）實現真正的 headless 執行，不需要 Xvfb 或 Monocle。`run_all.py --headless` 旗標已完全可用。
 
 ---
 

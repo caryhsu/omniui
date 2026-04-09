@@ -148,7 +148,7 @@ from omniui import OmniUI
 ROOT = Path(__file__).resolve().parents[2]
 _AGENT_JAR = ROOT / "java-agent" / "target" / "omniui-java-agent-0.1.0-SNAPSHOT.jar"
 _M2 = Path.home() / ".m2" / "repository"
-_JAVAFX_VERSION = "24.0.1"
+_JAVAFX_VERSION = "26"
 _GSON_VERSION = "2.11.0"
 
 
@@ -174,11 +174,14 @@ _HEADLESS: bool = False
 def _headless_jvm_args() -> list[str]:
     """Return JVM args for JavaFX headless mode (empty list when disabled).
 
-    Requires JavaFX 24+ (currently using 24.0.1).
+    Requires JavaFX 26+ (currently using 26).
     """
     if not _HEADLESS:
         return []
-    return ["-Dglass.platform=Headless"]
+    return [
+        "-Dglass.platform=Headless",
+        "--enable-native-access=javafx.graphics",
+    ]
 
 
 def _build_launch_cmd(
@@ -601,7 +604,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--headless", action="store_true",
-        help="Run JavaFX apps in headless mode (requires JavaFX 24+)",
+        help="Run JavaFX apps in headless mode (requires JavaFX 26+)",
     )
     args = parser.parse_args()
     if args.no_launch and args.headless:

@@ -13,9 +13,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 mvn -pl java-agent -am package
 mvn -f demo/java/input-app/pom.xml package
-JAVA_FX_CONTROLS="$USERPROFILE/.m2/repository/org/openjfx/javafx-controls/24.0.1/javafx-controls-24.0.1-win.jar"
-JAVA_FX_GRAPHICS="$USERPROFILE/.m2/repository/org/openjfx/javafx-graphics/24.0.1/javafx-graphics-24.0.1-win.jar"
-JAVA_FX_BASE="$USERPROFILE/.m2/repository/org/openjfx/javafx-base/24.0.1/javafx-base-24.0.1-win.jar"
+JAVA_FX_CONTROLS="$USERPROFILE/.m2/repository/org/openjfx/javafx-controls/26/javafx-controls-26-win.jar"
+JAVA_FX_GRAPHICS="$USERPROFILE/.m2/repository/org/openjfx/javafx-graphics/26/javafx-graphics-26-win.jar"
+JAVA_FX_BASE="$USERPROFILE/.m2/repository/org/openjfx/javafx-base/26/javafx-base-26-win.jar"
 GSON_JAR="$USERPROFILE/.m2/repository/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar"
 AGENT_JAR="$ROOT/java-agent/target/omniui-java-agent-0.1.0-SNAPSHOT.jar"
 MODULE_PATH="$(to_win_path "$ROOT/demo/java/input-app/target/classes");$(to_win_path "$ROOT/java-agent/target/omniui-java-agent-0.1.0-SNAPSHOT.jar");$(to_win_path "$JAVA_FX_CONTROLS");$(to_win_path "$JAVA_FX_GRAPHICS");$(to_win_path "$JAVA_FX_BASE");$(to_win_path "$GSON_JAR")"

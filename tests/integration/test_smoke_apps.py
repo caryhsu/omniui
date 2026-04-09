@@ -66,7 +66,7 @@ def _build_app_cmd(app_dir: str, module_main: str, port: int, extra_jfx: tuple =
                      (e.g. ``("javafx-fxml",)`` for FXML-based apps).
     """
     m2 = Path.home() / ".m2" / "repository"
-    jfx = "24.0.1"
+    jfx = "26"
     gson_ver = "2.11.0"
     clf = _clf()
 
