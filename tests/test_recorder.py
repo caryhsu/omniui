@@ -564,6 +564,151 @@ class RecorderRunTests(unittest.TestCase):
         self.assertIn("Failed to stop recording", mock_error.call_args.args[1])
 
 
+class RecorderFileStateTests(unittest.TestCase):
+    """Tests for save/open/dirty-state/window-title behavior in RecorderApp."""
+
+    def _make_app(self):
+        import sys
+        if sys.platform.startswith("linux"):
+            import os
+            if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+                self.skipTest("No display available")
+
+        import tkinter as tk
+        from unittest.mock import patch
+        from omniui.recorder.gui import RecorderApp
+
+        try:
+            root = tk.Tk()
+            root.withdraw()
+        except tk.TclError:
+            self.skipTest("Tkinter display not available")
+
+        with patch.object(RecorderApp, "_refresh_agents", return_value=None):
+            app = RecorderApp(root)
+        self.addCleanup(root.destroy)
+        return app
+
+    def test_do_save_updates_state_and_title(self) -> None:
+        from unittest.mock import mock_open, patch
+
+        app = self._make_app()
+        app._script_text.delete("1.0", "end")
+        app._script_text.insert("1.0", 'client.click(id="btn")\n')
+        app._dirty = True
+
+        with patch("builtins.open", mock_open()) as mock_file, \
+             patch.object(app.root, "title") as mock_title:
+            self.assertTrue(app._do_save("script.py"))
+
+        mock_file.assert_called_once_with("script.py", "w", encoding="utf-8")
+        self.assertEqual(app._current_file, "script.py")
+        self.assertFalse(app._dirty)
+        self.assertEqual(app._status_var.get(), "Saved → script.py")
+        mock_title.assert_called_with("OmniUI Recorder — script.py")
+
+    def test_do_save_shows_error_on_write_failure(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+        app._script_text.delete("1.0", "end")
+        app._script_text.insert("1.0", "client.click(id=\"btn\")")
+
+        with patch("builtins.open", side_effect=OSError("disk full")), \
+             patch("omniui.recorder.gui.messagebox.showerror") as mock_error:
+            self.assertFalse(app._do_save("script.py"))
+
+        mock_error.assert_called_once()
+        self.assertIn("Save error", mock_error.call_args.args[0])
+
+    def test_save_script_uses_existing_file_path(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+        app._current_file = "existing.py"
+
+        with patch.object(app, "_do_save", return_value=True) as mock_save:
+            self.assertTrue(app._save_script())
+
+        mock_save.assert_called_once_with("existing.py")
+
+    def test_save_script_prompts_save_as_when_no_file_is_set(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+
+        with patch.object(app, "_save_as_script", return_value=True) as mock_save_as:
+            self.assertTrue(app._save_script())
+
+        mock_save_as.assert_called_once()
+
+    def test_open_file_loads_content_and_resets_dirty_state(self) -> None:
+        from unittest.mock import mock_open, patch
+
+        app = self._make_app()
+        app._dirty = True
+        app._current_file = "old.py"
+
+        with patch("omniui.recorder.gui.messagebox.askyesnocancel", return_value=False), \
+             patch("omniui.recorder.gui.filedialog.askopenfilename", return_value="new_script.py"), \
+             patch("builtins.open", mock_open(read_data='client.click(id="btn")\n')) as mock_file, \
+             patch.object(app.root, "title") as mock_title:
+            app._open_file()
+
+        mock_file.assert_called_once_with("new_script.py", encoding="utf-8")
+        self.assertEqual(app._current_file, "new_script.py")
+        self.assertFalse(app._dirty)
+        self.assertEqual(app._status_var.get(), "Opened: new_script.py")
+        mock_title.assert_called_with("OmniUI Recorder — new_script.py")
+
+    def test_open_file_can_be_cancelled_while_dirty(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+        app._dirty = True
+
+        with patch("omniui.recorder.gui.messagebox.askyesnocancel", return_value=None), \
+             patch("omniui.recorder.gui.filedialog.askopenfilename") as mock_open:
+            app._open_file()
+
+        mock_open.assert_not_called()
+
+    def test_on_text_modified_updates_dirty_and_button_state(self) -> None:
+        app = self._make_app()
+        app._script_text.delete("1.0", "end")
+        app._script_text.insert("1.0", "client.click(id=\"btn\")")
+        app._script_text.edit_modified(True)
+
+        app._on_text_modified()
+
+        self.assertTrue(app._dirty)
+        self.assertEqual(app._save_btn["state"], "normal")
+        self.assertIn("OmniUI Recorder", app.root.title())
+
+    def test_update_window_title_reflects_dirty_state_and_filename(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+        app._current_file = "example.py"
+        app._dirty = True
+
+        with patch.object(app.root, "title") as mock_title:
+            app._update_window_title()
+
+        mock_title.assert_called_once_with("* OmniUI Recorder — example.py")
+
+    def test_on_close_destroys_window_when_clean(self) -> None:
+        from unittest.mock import patch
+
+        app = self._make_app()
+        app._dirty = False
+
+        with patch.object(app.root, "destroy") as mock_destroy:
+            app._on_close()
+
+        mock_destroy.assert_called_once()
+
+
 class AssertionCodegenTests(unittest.TestCase):
     """Tests for generate_script with assertion event type."""
 
