@@ -563,6 +563,7 @@ class ReflectiveJavaFxTargetTest {
     @Test
     void stopRecordingFlushClearsBufferAndResetsDeliveredCursor() throws Exception {
         ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        invokePrivate(target, "startRecordingWatchdog", new Class<?>[]{});
         recorderBuffer(target).add(Map.of("type", "click", "fxId", "login"));
         deliveredUpTo(target, 1);
 
@@ -570,6 +571,70 @@ class ReflectiveJavaFxTargetTest {
 
         assertEquals(1, flush.size());
         assertEquals("click", flush.get(0).get("type"));
+        assertTrue(recorderBuffer(target).isEmpty());
+        assertEquals(0, deliveredUpTo(target));
+        assertNull(recordingWatchdogTimer(target));
+        assertEquals(0L, recordingLastPollMillis(target));
+    }
+
+    @Test
+    void recordingWatchdogArmsAndPollRefreshesHeartbeat() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        invokePrivate(target, "startRecordingWatchdog", new Class<?>[]{});
+
+        long armedAt = recordingLastPollMillis(target);
+        assertTrue(armedAt > 0L);
+        assertNotNull(recordingWatchdogTimer(target));
+
+        setField(target, "recordingLastPollMillis", 1L);
+        target.pollEvents();
+
+        assertTrue(recordingLastPollMillis(target) > 1L);
+
+        invokePrivate(target, "stopRecordingWatchdog", new Class<?>[]{});
+        assertNull(recordingWatchdogTimer(target));
+    }
+
+    @Test
+    void recordingWatchdogIgnoresFreshHeartbeat() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        invokePrivate(target, "startRecordingWatchdog", new Class<?>[]{});
+        recorderBuffer(target).add(Map.of("type", "click", "fxId", "login"));
+        setField(target, "mouseEventFilter", new Object());
+        setField(target, "recordingTitleTimer", new java.util.Timer("test-title", true));
+        setField(target, "recordingTitleWindow", new RecordingWindow("Recorder"));
+        setField(target, "recordingLastPollMillis", System.currentTimeMillis());
+
+        invokePrivate(target, "handleRecordingWatchdog", new Class<?>[]{long.class}, System.currentTimeMillis() + 1_000L);
+
+        assertNotNull(mouseEventFilter(target));
+        assertNotNull(recordingWatchdogTimer(target));
+        assertFalse(recorderBuffer(target).isEmpty());
+        assertNotNull(recordingTitleTimer(target));
+
+        invokePrivate(target, "stopRecordingWatchdog", new Class<?>[]{});
+        java.util.Timer titleTimer = recordingTitleTimer(target);
+        if (titleTimer != null) {
+            titleTimer.cancel();
+        }
+    }
+
+    @Test
+    void recordingWatchdogStopsStaleRecordingAndClearsState() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        invokePrivate(target, "startRecordingWatchdog", new Class<?>[]{});
+        recorderBuffer(target).add(Map.of("type", "click", "fxId", "login"));
+        setField(target, "mouseEventFilter", new Object());
+        setField(target, "recordingTitleTimer", new java.util.Timer("test-title", true));
+        setField(target, "recordingTitleWindow", new RecordingWindow("Recorder"));
+        setField(target, "recordingLastPollMillis", System.currentTimeMillis() - 10_000L);
+
+        invokePrivate(target, "handleRecordingWatchdog", new Class<?>[]{long.class}, System.currentTimeMillis());
+
+        assertNull(mouseEventFilter(target));
+        assertNull(recordingWatchdogTimer(target));
+        assertNull(recordingTitleTimer(target));
+        assertNull(recordingTitleWindow(target));
         assertTrue(recorderBuffer(target).isEmpty());
         assertEquals(0, deliveredUpTo(target));
     }
@@ -756,6 +821,42 @@ class ReflectiveJavaFxTargetTest {
         Field field = ReflectiveJavaFxTarget.class.getDeclaredField("dragJustFired");
         field.setAccessible(true);
         return field.getBoolean(target);
+    }
+
+    private java.util.Timer recordingWatchdogTimer(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recordingWatchdogTimer");
+        field.setAccessible(true);
+        return (java.util.Timer) field.get(target);
+    }
+
+    private java.util.Timer recordingTitleTimer(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recordingTitleTimer");
+        field.setAccessible(true);
+        return (java.util.Timer) field.get(target);
+    }
+
+    private Object recordingTitleWindow(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recordingTitleWindow");
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    private Object mouseEventFilter(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("mouseEventFilter");
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    private long recordingLastPollMillis(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recordingLastPollMillis");
+        field.setAccessible(true);
+        return field.getLong(target);
+    }
+
+    private void setField(ReflectiveJavaFxTarget target, String name, Object value) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 
     static class ParentNode {
@@ -1249,6 +1350,22 @@ class ReflectiveJavaFxTargetTest {
 
         public Object getFocusOwner() {
             return focusOwner;
+        }
+    }
+
+    static final class RecordingWindow {
+        private String title;
+
+        RecordingWindow(String title) {
+            this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
         }
     }
 

@@ -71,6 +71,10 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private volatile java.util.Timer recordingTitleTimer    = null;
     private volatile Object          recordingTitleWindow   = null;
     private volatile String          recordingOriginalTitle = "";
+    private volatile java.util.Timer recordingWatchdogTimer = null;
+    private volatile long            recordingLastPollMillis = 0L;
+    private static final long        RECORDING_WATCHDOG_POLL_MS = 3_000L;
+    private static final long        RECORDING_WATCHDOG_STALE_MS = 5_000L;
 
     public ReflectiveJavaFxTarget(String appName, Supplier<Object> sceneSupplier) {
         this.appName = Objects.requireNonNull(appName, "appName");
@@ -295,6 +299,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 Object window = scene.getClass().getMethod("getWindow").invoke(scene);
                 if (window != null) startTitleAnimation(window);
             } catch (Exception ignored) {}
+            startRecordingWatchdog();
             return ActionResult.success("javafx", null, Map.of(), null);
         });
     }
@@ -360,6 +365,141 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
                 });
             } catch (Exception ignored) {}
         }
+    }
+
+    private void startRecordingWatchdog() {
+        stopRecordingWatchdog();
+        recordingLastPollMillis = System.currentTimeMillis();
+        recordingWatchdogTimer = new java.util.Timer("omniui-rec-watchdog", /* daemon */ true);
+        recordingWatchdogTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                handleRecordingWatchdog(System.currentTimeMillis());
+            }
+        }, RECORDING_WATCHDOG_POLL_MS, RECORDING_WATCHDOG_POLL_MS);
+    }
+
+    private void stopRecordingWatchdog() {
+        if (recordingWatchdogTimer != null) {
+            recordingWatchdogTimer.cancel();
+            recordingWatchdogTimer = null;
+        }
+    }
+
+    private void touchRecordingWatchdog() {
+        recordingLastPollMillis = System.currentTimeMillis();
+    }
+
+    private void handleRecordingWatchdog(long nowMillis) {
+        if (mouseEventFilter == null) {
+            return;
+        }
+        long lastPoll = recordingLastPollMillis;
+        if (lastPoll <= 0L || nowMillis - lastPoll < RECORDING_WATCHDOG_STALE_MS) {
+            return;
+        }
+        ReflectiveJavaFxSupport.onFxThread(() -> {
+            if (mouseEventFilter == null) {
+                return null;
+            }
+            finishRecording(false);
+            return null;
+        });
+    }
+
+    private List<Map<String, Object>> finishRecording(boolean preserveEvents) {
+        Object scene = sceneSupplier.get();
+        if (scene != null && mouseEventFilter != null) {
+            try {
+                Class<?> eventHandlerClass = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
+                Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
+                Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
+                Class<?> actionEventClass  = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
+                Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
+                Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
+                Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
+                Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
+                Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
+                Object actionType        = actionEventClass.getField("ACTION").get(null);
+                scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, mouseClickedType, mouseEventFilter);
+                scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                    .invoke(scene, keyTypedType, keyEventFilter);
+                if (mousePressFilter != null) {
+                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                        .invoke(scene, mousePressedType, mousePressFilter);
+                }
+                if (mouseReleaseFilter != null) {
+                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                        .invoke(scene, mouseReleasedType, mouseReleaseFilter);
+                }
+                if (dialogActionFilter != null) {
+                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
+                        .invoke(scene, actionType, dialogActionFilter);
+                }
+            } catch (Exception ignored) { /* best-effort */ }
+        }
+        mouseEventFilter   = null;
+        keyEventFilter     = null;
+        mousePressFilter   = null;
+        mouseReleaseFilter = null;
+        dialogActionFilter = null;
+        dragPressId        = "";
+        dragPressText      = "";
+        dragJustFired      = false;
+        stopRecordingWatchdog();
+
+        // Detach ColorPicker value listeners
+        try {
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object[] pair : colorPickerListeners) {
+                ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                    new Class<?>[]{ changeListenerClass }, pair[1]);
+            }
+        } catch (Exception ignored) {}
+        colorPickerListeners.clear();
+
+        // Detach ComboBox value listeners
+        try {
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object[] pair : comboBoxListeners) {
+                ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                    new Class<?>[]{ changeListenerClass }, pair[1]);
+            }
+        } catch (Exception ignored) {}
+        comboBoxListeners.clear();
+        lastComboValues.clear();
+
+        // Detach DatePicker value listeners
+        try {
+            Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
+            for (Object[] pair : datePickerListeners) {
+                ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
+                    new Class<?>[]{ changeListenerClass }, pair[1]);
+            }
+        } catch (Exception ignored) {}
+        datePickerListeners.clear();
+
+        // Detach filters from overlay windows registered during recording
+        for (Object regScene : registeredWindowScenes) {
+            Object primaryScene = sceneSupplier.get();
+            if (regScene == primaryScene) continue;
+            detachFiltersFromScene(regScene);
+        }
+        registeredWindowScenes.clear();
+
+        // Flush any pending key accumulations
+        flushKeyAccumulator();
+        // Stop title animation and restore original title
+        stopTitleAnimation();
+
+        List<Map<String, Object>> events = preserveEvents ? new ArrayList<>(recorderBuffer) : List.of();
+        recorderBuffer.clear();
+        deliveredUpTo.set(0);
+        keyAccumulator.clear();
+        keyTimestamps.clear();
+        recordingLastPollMillis = 0L;
+        return events;
     }
 
     /** Attach recording event filters to an arbitrary scene (reuses existing proxy objects). */
@@ -739,102 +879,12 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     @Override
     public List<Map<String, Object>> stopRecordingFlush() {
-        return ReflectiveJavaFxSupport.onFxThread(() -> {
-            Object scene = sceneSupplier.get();
-            if (scene != null && mouseEventFilter != null) {
-                try {
-                    Class<?> eventHandlerClass = ReflectiveJavaFxSupport.loadClass("javafx.event.EventHandler");
-                    Class<?> mouseEventClass   = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.MouseEvent");
-                    Class<?> keyEventClass     = ReflectiveJavaFxSupport.loadClass("javafx.scene.input.KeyEvent");
-                    Class<?> actionEventClass  = ReflectiveJavaFxSupport.loadClass("javafx.event.ActionEvent");
-                    Class<?> eventTypeClass    = ReflectiveJavaFxSupport.loadClass("javafx.event.EventType");
-                    Object mouseClickedType  = mouseEventClass.getField("MOUSE_CLICKED").get(null);
-                    Object mousePressedType  = mouseEventClass.getField("MOUSE_PRESSED").get(null);
-                    Object mouseReleasedType = mouseEventClass.getField("MOUSE_RELEASED").get(null);
-                    Object keyTypedType      = keyEventClass.getField("KEY_TYPED").get(null);
-                    Object actionType        = actionEventClass.getField("ACTION").get(null);
-                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
-                        .invoke(scene, mouseClickedType, mouseEventFilter);
-                    scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
-                        .invoke(scene, keyTypedType, keyEventFilter);
-                    if (mousePressFilter != null) {
-                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
-                            .invoke(scene, mousePressedType, mousePressFilter);
-                    }
-                    if (mouseReleaseFilter != null) {
-                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
-                            .invoke(scene, mouseReleasedType, mouseReleaseFilter);
-                    }
-                    if (dialogActionFilter != null) {
-                        scene.getClass().getMethod("removeEventFilter", eventTypeClass, eventHandlerClass)
-                            .invoke(scene, actionType, dialogActionFilter);
-                    }
-                } catch (Exception ignored) { /* best-effort */ }
-            }
-            mouseEventFilter   = null;
-            keyEventFilter     = null;
-            mousePressFilter   = null;
-            mouseReleaseFilter = null;
-            dialogActionFilter = null;
-            dragPressId        = "";
-            dragPressText      = "";
-            dragJustFired      = false;
-
-            // Detach ColorPicker value listeners
-            try {
-                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
-                for (Object[] pair : colorPickerListeners) {
-                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
-                        new Class<?>[]{ changeListenerClass }, pair[1]);
-                }
-            } catch (Exception ignored) {}
-            colorPickerListeners.clear();
-
-            // Detach ComboBox value listeners
-            try {
-                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
-                for (Object[] pair : comboBoxListeners) {
-                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
-                        new Class<?>[]{ changeListenerClass }, pair[1]);
-                }
-            } catch (Exception ignored) {}
-            comboBoxListeners.clear();
-            lastComboValues.clear();
-
-            // Detach DatePicker value listeners
-            try {
-                Class<?> changeListenerClass = ReflectiveJavaFxSupport.loadClass("javafx.beans.value.ChangeListener");
-                for (Object[] pair : datePickerListeners) {
-                    ReflectiveJavaFxSupport.invokeExact(pair[0], "removeListener",
-                        new Class<?>[]{ changeListenerClass }, pair[1]);
-                }
-            } catch (Exception ignored) {}
-            datePickerListeners.clear();
-
-            // Detach filters from overlay windows registered during recording
-            for (Object regScene : registeredWindowScenes) {
-                Object primaryScene = sceneSupplier.get();
-                if (regScene == primaryScene) continue;
-                detachFiltersFromScene(regScene);
-            }
-            registeredWindowScenes.clear();
-
-            // Flush any pending key accumulations
-            flushKeyAccumulator();
-            // Stop title animation and restore original title
-            stopTitleAnimation();
-
-            List<Map<String, Object>> events = new ArrayList<>(recorderBuffer);
-            recorderBuffer.clear();
-            deliveredUpTo.set(0);
-            keyAccumulator.clear();
-            keyTimestamps.clear();
-            return events;
-        });
+        return ReflectiveJavaFxSupport.onFxThread(() -> finishRecording(true));
     }
 
     @Override
     public List<Map<String, Object>> pollEvents() {
+        touchRecordingWatchdog();
         flushKeyAccumulator();
         List<Map<String, Object>> all = new ArrayList<>(recorderBuffer);
         int from = deliveredUpTo.get();
