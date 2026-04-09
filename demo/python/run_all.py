@@ -566,6 +566,18 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    auto_launch = "--no-launch" not in sys.argv
-    verbose = "--verbose" in sys.argv
-    main(auto_launch=auto_launch, verbose=verbose)
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Run all OmniUI demo apps and smoke tests.",
+    )
+    parser.add_argument(
+        "--no-launch", action="store_true",
+        help="Don't auto-launch Java apps (assumes they are already running)",
+    )
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help="Show detailed output including Discover Nodes JSON dump",
+    )
+    args = parser.parse_args()
+    main(auto_launch=not args.no_launch, verbose=args.verbose)
