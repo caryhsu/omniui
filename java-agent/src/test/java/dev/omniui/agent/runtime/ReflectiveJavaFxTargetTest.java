@@ -522,6 +522,88 @@ class ReflectiveJavaFxTargetTest {
         assertEquals(0.0, scrollPane.getVvalue());
     }
 
+    @Test
+    void assertContextBuildsDescriptorAndMasksPasswordText() {
+        ReflectiveJavaFxTarget textTarget = new ReflectiveJavaFxTarget("TestApp", () -> new PickingScene(new PickResult(new Button("Launch"))));
+        Map<String, Object> textContext = textTarget.assertContext(10.0, 20.0);
+
+        assertEquals("button", textContext.get("fxId"));
+        assertEquals("Button", textContext.get("nodeType"));
+        assertEquals("Launch", textContext.get("currentText"));
+        assertEquals(true, textContext.get("visible"));
+        assertEquals(true, textContext.get("enabled"));
+        assertEquals(List.of("verify_text", "verify_visible", "verify_enabled"), textContext.get("availableAssertions"));
+
+        ReflectiveJavaFxTarget passwordTarget = new ReflectiveJavaFxTarget("TestApp", () -> new PickingScene(new PickResult(new PasswordField("secretField", "hidden"))));
+        Map<String, Object> passwordContext = passwordTarget.assertContext(1.0, 1.0);
+
+        assertEquals("secretField", passwordContext.get("fxId"));
+        assertEquals("PasswordField", passwordContext.get("nodeType"));
+        assertNull(passwordContext.get("currentText"));
+        assertEquals(List.of("verify_visible", "verify_enabled"), passwordContext.get("availableAssertions"));
+    }
+
+    @Test
+    void pollEventsFlushesPendingTypingAndAdvancesDeliveredCursor() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        recorderBuffer(target).add(Map.of("type", "click", "fxId", "login"));
+        accumulator(target).put("searchField", new StringBuilder("abc"));
+        timestamps(target).put("searchField", 2_500L);
+
+        List<Map<String, Object>> firstPoll = target.pollEvents();
+        List<Map<String, Object>> secondPoll = target.pollEvents();
+
+        assertEquals(2, firstPoll.size());
+        assertTrue(firstPoll.stream().anyMatch(event -> "click".equals(event.get("type"))));
+        assertTrue(firstPoll.stream().anyMatch(event -> "type".equals(event.get("type")) && "searchField".equals(event.get("fxId"))));
+        assertTrue(secondPoll.isEmpty());
+        assertEquals(2, deliveredUpTo(target));
+    }
+
+    @Test
+    void stopRecordingFlushClearsBufferAndResetsDeliveredCursor() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        recorderBuffer(target).add(Map.of("type", "click", "fxId", "login"));
+        deliveredUpTo(target, 1);
+
+        List<Map<String, Object>> flush = target.stopRecordingFlush();
+
+        assertEquals(1, flush.size());
+        assertEquals("click", flush.get(0).get("type"));
+        assertTrue(recorderBuffer(target).isEmpty());
+        assertEquals(0, deliveredUpTo(target));
+    }
+
+    @Test
+    void mousePressAndReleaseShapeRightClickAndDragEvents() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Button source = new Button("Drag Me");
+        Button destination = new Button("Drop Here");
+
+        invokePrivate(target, "onMousePressed", new Class<?>[]{Object.class}, new MouseEvent("SECONDARY", 12.0, 24.0, source, null));
+        Map<String, Object> rightClick = recorderBuffer(target).removeFirst();
+        assertEquals("right_click", rightClick.get("type"));
+        assertEquals(12.0, rightClick.get("sceneX"));
+        assertEquals(24.0, rightClick.get("sceneY"));
+        assertEquals("button", rightClick.get("fxId"));
+
+        invokePrivate(target, "onMousePressed", new Class<?>[]{Object.class}, new MouseEvent("PRIMARY", 0.0, 0.0, source, null));
+        invokePrivate(
+            target,
+            "onMouseReleased",
+            new Class<?>[]{Object.class},
+            new MouseEvent("PRIMARY", 40.0, 0.0, source, new PickResult(destination))
+        );
+
+        Map<String, Object> drag = recorderBuffer(target).removeFirst();
+        assertEquals("drag", drag.get("type"));
+        assertEquals("button", drag.get("fxId"));
+        assertEquals("Drag Me", drag.get("text"));
+        assertEquals("button", drag.get("toFxId"));
+        assertEquals("Drop Here", drag.get("toText"));
+        assertTrue(dragJustFired(target));
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -654,6 +736,26 @@ class ReflectiveJavaFxTargetTest {
         Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recorderBuffer");
         field.setAccessible(true);
         return (Deque<Map<String, Object>>) field.get(target);
+    }
+
+    private int deliveredUpTo(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("deliveredUpTo");
+        field.setAccessible(true);
+        java.util.concurrent.atomic.AtomicInteger value = (java.util.concurrent.atomic.AtomicInteger) field.get(target);
+        return value.get();
+    }
+
+    private void deliveredUpTo(ReflectiveJavaFxTarget target, int value) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("deliveredUpTo");
+        field.setAccessible(true);
+        java.util.concurrent.atomic.AtomicInteger atomic = (java.util.concurrent.atomic.AtomicInteger) field.get(target);
+        atomic.set(value);
+    }
+
+    private boolean dragJustFired(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("dragJustFired");
+        field.setAccessible(true);
+        return field.getBoolean(target);
     }
 
     static class ParentNode {
@@ -1168,6 +1270,66 @@ class ReflectiveJavaFxTargetTest {
         }
     }
 
+    static final class PickingScene {
+        private final Object pickResult;
+
+        PickingScene(Object pickResult) {
+            this.pickResult = pickResult;
+        }
+
+        public Object pick(double x, double y) {
+            return pickResult;
+        }
+    }
+
+    static final class PickResult {
+        private final Object intersectedNode;
+
+        PickResult(Object intersectedNode) {
+            this.intersectedNode = intersectedNode;
+        }
+
+        public Object getIntersectedNode() {
+            return intersectedNode;
+        }
+    }
+
+    static final class MouseEvent {
+        private final Object button;
+        private final double sceneX;
+        private final double sceneY;
+        private final Object target;
+        private final Object pickResult;
+
+        MouseEvent(Object button, double sceneX, double sceneY, Object target, Object pickResult) {
+            this.button = button;
+            this.sceneX = sceneX;
+            this.sceneY = sceneY;
+            this.target = target;
+            this.pickResult = pickResult;
+        }
+
+        public Object getButton() {
+            return button;
+        }
+
+        public double getSceneX() {
+            return sceneX;
+        }
+
+        public double getSceneY() {
+            return sceneY;
+        }
+
+        public Object getTarget() {
+            return target;
+        }
+
+        public Object getPickResult() {
+            return pickResult;
+        }
+    }
+
     static final class ColorPicker extends ParentNode {
         ColorPicker() {
             super("colorPicker", "");
@@ -1232,6 +1394,12 @@ class ReflectiveJavaFxTargetTest {
     static class Button extends ParentNode {
         Button(String text) {
             super("button", text);
+        }
+    }
+
+    static final class PasswordField extends ParentNode {
+        PasswordField(String id, String text) {
+            super(id, text);
         }
     }
 
