@@ -238,8 +238,9 @@ def main(auto_launch: bool = True, verbose: bool = False) -> None:
         core_ctx = nullcontext()
 
     with core_ctx:
-        _section("Discover Nodes")
-        discover_nodes.main()
+        if verbose:
+            _section("Discover Nodes")
+            discover_nodes.main()
 
         _section("Select ComboBox Role")
         select_combo_role.main()
