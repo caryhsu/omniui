@@ -1,9 +1,9 @@
 """index_selector_demo.py — Smoke test for the index= selector.
 
 Demonstrates selecting nodes by position (0-based) when multiple nodes
-share the same type. Uses get_text() with type="Button" and index=0,1,2
-to read the text of the first, second, and third Button nodes in the
-scene tree, then verifies the results are distinct.
+share the same type. Uses get_text() with type="Label" and index=0,1,2
+to read the text of the first three Label nodes in the core-app scene,
+then verifies all three resolved successfully with distinct values.
 """
 from __future__ import annotations
 
@@ -20,19 +20,21 @@ def main() -> None:
 
     texts: list[str] = []
     for idx in range(3):
-        result = client.get_text(type="Button", index=idx)
+        result = client.get_text(type="Label", index=idx)
         if not result.ok:
             raise SystemExit(
-                f"get_text(type='Button', index={idx}) failed: {result.trace.details}"
+                f"get_text(type='Label', index={idx}) failed: {result.trace.details}"
             )
         text = result.value
-        print(f"  Button[{idx}] text = {text!r}")
+        print(f"  Label[{idx}] text = {text!r}")
         texts.append(text)
 
-    # Verify all three resolved (non-empty) — core proof that index= works
     for idx, text in enumerate(texts):
         if text is None:
-            raise SystemExit(f"Button[{idx}] returned None — resolve failed")
+            raise SystemExit(f"Label[{idx}] returned None — resolve failed")
+
+    if len(set(texts)) < 2:
+        raise SystemExit(f"Expected distinct texts but got: {texts}")
 
     print("index= selector tests passed")
 
