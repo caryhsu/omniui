@@ -9,8 +9,6 @@ from pathlib import Path
 if __package__ in (None, ""):
     import _bootstrap  # type: ignore # noqa: F401
     # Core app demos
-    import core.login_direct as login_direct  # type: ignore
-    import core.login_with_fallback as login_with_fallback  # type: ignore
     import core.select_combo_role as select_combo_role  # type: ignore
     import core.select_list_item as select_list_item  # type: ignore
     import core.select_tree_item as select_tree_item  # type: ignore
@@ -30,6 +28,10 @@ if __package__ in (None, ""):
     import core.clipboard_demo as clipboard_demo  # type: ignore
     import core.click_at_demo as click_at_demo  # type: ignore
     import core.tableview_demo as tableview_demo  # type: ignore
+    # Login app demos
+    import login.login_direct as login_direct  # type: ignore
+    import login.login_with_fallback as login_with_fallback  # type: ignore
+    import login.login_demo as login_demo  # type: ignore
     # Input app demos
     import input.text_area_demo as text_area_demo  # type: ignore
     import input.password_field_demo as password_field_demo  # type: ignore
@@ -78,8 +80,6 @@ if __package__ in (None, ""):
 else:
     from . import _bootstrap  # noqa: F401
     from .core import (
-        login_direct,
-        login_with_fallback,
         select_combo_role,
         select_list_item,
         select_tree_item,
@@ -134,6 +134,7 @@ else:
         discover_advanced_controls,
     )
     from .drag import drag_listview_demo
+    from .login import login_direct, login_with_fallback, login_demo
     from .progress import progress_demo
     from .image import image_demo
     from .color import color_demo
@@ -277,12 +278,6 @@ def main(auto_launch: bool = True, verbose: bool = False, headless: bool = False
         _section("Select TableView Row")
         select_table_row.main()
 
-        _section("Direct Login")
-        login_direct.main()
-
-        _section("Login With Fallback")
-        login_with_fallback.main()
-
         _section("Double-Click Demo")
         double_click_demo.main()
 
@@ -324,6 +319,25 @@ def main(auto_launch: bool = True, verbose: bool = False, headless: bool = False
 
         _section("TableView Demo")
         tableview_demo.main()
+
+    # ── Login App ─────────────────────────────────────────────────────────────
+    _section("Login App demos (port 48108+)")
+    if auto_launch:
+        login_port = OmniUI.find_free_port(48108, 48999)
+        login_cmd = _build_launch_cmd(
+            java_dir / "login-app", "omniui-login-demo",
+            "dev.omniui.demo.login", "dev.omniui.demo.login.LoginApp", login_port,
+        )
+        login_ctx = OmniUI.launch(cmd=login_cmd, port=login_port, timeout=30.0)
+    else:
+        login_ctx = nullcontext()
+
+    with login_ctx:
+        _section("Direct Login")
+        login_direct.main()
+
+        _section("Login With Fallback")
+        login_with_fallback.main()
 
     # ── Input App ─────────────────────────────────────────────────────────────
     _section("Input App demos (port 48101+)")
