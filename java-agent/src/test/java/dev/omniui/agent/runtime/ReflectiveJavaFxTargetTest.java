@@ -2,12 +2,16 @@ package dev.omniui.agent.runtime;
 
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,6 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReflectiveJavaFxTargetTest {
+
+    @AfterEach
+    void resetWindowSupplier() {
+        ReflectiveJavaFxTarget.resetWindowSupplierForTest();
+    }
 
     @Test
     void resolveMatchesByIdTypeAndIndex() throws Exception {
@@ -262,6 +271,257 @@ class ReflectiveJavaFxTargetTest {
         assertNull(absentIndex);
     }
 
+    @Test
+    void menuHelpersFindItemsByTextIdAndPath() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        MenuItemNode open = new MenuItemNode("Open", "openItem");
+        MenuItemNode export = new MenuItemNode("Export", "exportItem");
+        MenuItemNode file = new MenuItemNode("File", "fileMenu", open, export);
+        MenuItemNode edit = new MenuItemNode("Edit", "editMenu");
+        List<MenuItemNode> items = List.of(file, edit);
+
+        Object byText = invokePrivate(target, "findMenuItemInList", new Class<?>[]{List.class, String.class, String.class}, items, "Edit", null);
+        Object byId = invokePrivate(target, "findMenuItemInList", new Class<?>[]{List.class, String.class, String.class}, items, null, "fileMenu");
+        Object byPath = invokePrivate(target, "findMenuItemByPath", new Class<?>[]{Object.class, String[].class}, new ContextMenuWindow(items), new String[]{"File", "Export"});
+        Object missing = invokePrivate(target, "findMenuItemByPath", new Class<?>[]{Object.class, String[].class}, new ContextMenuWindow(items), new String[]{"File", "Missing"});
+
+        assertEquals(edit, byText);
+        assertEquals(file, byId);
+        assertEquals(export, byPath);
+        assertNull(missing);
+    }
+
+    @Test
+    void dialogHelpersBuildDescriptorAndRecognizePane() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Button ok = new Button("OK");
+        Button cancel = new Button("Cancel");
+        ButtonBarNode buttonBar = new ButtonBarNode(ok, cancel);
+        DialogPaneNode dialogPane = new DialogPaneNode("Confirm", "Proceed?", new AlertDialog("CONFIRMATION"), buttonBar);
+        DialogWindow window = new DialogWindow("Delete File");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> descriptor = (Map<String, Object>) invokePrivate(
+            target,
+            "buildDialogDescriptor",
+            new Class<?>[]{Object.class, Object.class},
+            window,
+            dialogPane
+        );
+        boolean pane = (boolean) invokePrivate(target, "isDialogPane", new Class<?>[]{Object.class}, dialogPane);
+        boolean notPane = (boolean) invokePrivate(target, "isDialogPane", new Class<?>[]{Object.class}, buttonBar);
+
+        assertEquals("Delete File", descriptor.get("title"));
+        assertEquals("Confirm", descriptor.get("header"));
+        assertEquals("Proceed?", descriptor.get("content"));
+        assertEquals("CONFIRMATION", descriptor.get("alertType"));
+        assertEquals(List.of("OK", "Cancel"), descriptor.get("buttons"));
+        assertTrue(pane);
+        assertFalse(notPane);
+    }
+
+    @Test
+    void dialogButtonTextFallsBackToAncestorTextOrDefault() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Button ok = new Button("OK");
+        ButtonGraphic graphic = new ButtonGraphic();
+        ok.addChild(graphic);
+
+        String fromAncestor = assertInstanceOf(
+            String.class,
+            invokePrivate(target, "getDialogButtonText", new Class<?>[]{Object.class}, graphic)
+        );
+        String defaultLabel = assertInstanceOf(
+            String.class,
+            invokePrivate(target, "getDialogButtonText", new Class<?>[]{Object.class}, new ParentNode("plain", ""))
+        );
+
+        assertEquals("OK", fromAncestor);
+        assertEquals("OK", defaultLabel);
+    }
+
+    @Test
+    void windowHelpersListTitlesAndHandleStateActions() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Stage primary = new Stage("Primary");
+        Stage secondary = new Stage("Secondary");
+        PopupWindow popup = new PopupWindow("Popup");
+        ReflectiveJavaFxTarget.setWindowSupplierForTest(() -> List.of(primary, secondary, popup));
+
+        ActionResult getWindows = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleGetWindows")
+        );
+        ActionResult maximize = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "maximize_window", selector("title", "Primary"))
+        );
+        ActionResult size = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "get_window_size", selector("title", "Primary"))
+        );
+        ActionResult position = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "set_window_position", selector(Map.of("title", "Primary", "x", 32.5, "y", 48.0)))
+        );
+        ActionResult missing = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "focus_window", selector("title", "Missing"))
+        );
+
+        assertTrue(getWindows.ok());
+        assertEquals(List.of("Primary", "Secondary"), getWindows.value());
+
+        assertTrue(maximize.ok());
+        assertTrue(primary.maximized);
+
+        assertTrue(size.ok());
+        Map<?, ?> sizeValue = assertInstanceOf(Map.class, size.value());
+        assertEquals(640.0, sizeValue.get("width"));
+        assertEquals(480.0, sizeValue.get("height"));
+
+        assertTrue(position.ok());
+        assertEquals(32.5, primary.x);
+        assertEquals(48.0, primary.y);
+
+        assertFalse(missing.ok());
+        assertEquals("window_not_found", traceReason(missing));
+    }
+
+    @Test
+    void parseKeyStringNormalizesAliasesAndCase() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+
+        String[] ctrlShift = assertInstanceOf(
+            String[].class,
+            invokePrivate(target, "parseKeyString", new Class<?>[]{String.class}, "ctrl+Shift+z")
+        );
+        String[] winEnter = assertInstanceOf(
+            String[].class,
+            invokePrivate(target, "parseKeyString", new Class<?>[]{String.class}, "win+enter")
+        );
+
+        assertEquals(List.of("CONTROL", "SHIFT", "Z"), List.of(ctrlShift));
+        assertEquals(List.of("META", "ENTER"), List.of(winEnter));
+    }
+
+    @Test
+    void flushKeyAccumulatorEmitsTypedEventsForIdsAndSyntheticHandles() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        accumulator(target).put("loginField", new StringBuilder("abc"));
+        accumulator(target).put("_handle_7", new StringBuilder("xyz"));
+        timestamps(target).put("loginField", 2_000L);
+        timestamps(target).put("_handle_7", 4_000L);
+
+        invokePrivate(target, "flushKeyAccumulator");
+
+        Deque<Map<String, Object>> buffer = recorderBuffer(target);
+        assertEquals(2, buffer.size());
+
+        List<Map<String, Object>> entries = List.copyOf(buffer);
+        assertTrue(entries.stream().anyMatch(entry ->
+            "type".equals(entry.get("type"))
+                && "loginField".equals(entry.get("fxId"))
+                && "abc".equals(entry.get("text"))
+                && Double.valueOf(2.0).equals(entry.get("timestamp"))
+        ));
+        assertTrue(entries.stream().anyMatch(entry ->
+            "type".equals(entry.get("type"))
+                && "".equals(entry.get("fxId"))
+                && "xyz".equals(entry.get("text"))
+                && Double.valueOf(4.0).equals(entry.get("timestamp"))
+        ));
+
+        assertTrue(accumulator(target).isEmpty());
+        assertTrue(timestamps(target).isEmpty());
+    }
+
+    @Test
+    void keyPressedInDialogFlushesTypingAndRecordsDismissDialog() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        accumulator(target).put("searchField", new StringBuilder("query"));
+        timestamps(target).put("searchField", 1_500L);
+
+        Button ok = new Button("Confirm");
+        DialogScene scene = new DialogScene(new DialogPaneNode("Header", "Body", null), ok);
+        KeyPressedEvent event = new KeyPressedEvent("ENTER", scene);
+
+        invokePrivate(target, "onKeyPressed", new Class<?>[]{Object.class}, event);
+
+        Deque<Map<String, Object>> buffer = recorderBuffer(target);
+        assertEquals(2, buffer.size());
+
+        Map<String, Object> typed = buffer.removeFirst();
+        assertEquals("type", typed.get("type"));
+        assertEquals("searchField", typed.get("fxId"));
+        assertEquals("query", typed.get("text"));
+
+        Map<String, Object> dismiss = buffer.removeFirst();
+        assertEquals("dismiss_dialog", dismiss.get("type"));
+        assertEquals("Confirm", dismiss.get("text"));
+        assertEquals("Button", dismiss.get("nodeType"));
+    }
+
+    @Test
+    void actionableAndInsideHelpersWalkAncestorChains() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+
+        Button button = new Button("Save");
+        ParentNode text = new ParentNode("text", "");
+        button.addChild(text);
+
+        ColorPicker colorPicker = new ColorPicker();
+        ParentNode colorGraphic = new ParentNode("graphic", "");
+        colorPicker.addChild(colorGraphic);
+
+        ComboBox comboBox = new ComboBox();
+        ParentNode comboGraphic = new ParentNode("graphic", "");
+        comboBox.addChild(comboGraphic);
+
+        DatePicker datePicker = new DatePicker();
+        ParentNode dateGraphic = new ParentNode("graphic", "");
+        datePicker.addChild(dateGraphic);
+
+        boolean actionableButton = (boolean) invokePrivate(target, "isActionableNode", new Class<?>[]{Object.class}, button);
+        boolean actionablePane = (boolean) invokePrivate(target, "isActionableNode", new Class<?>[]{Object.class}, new VBoxPane());
+        Object nearest = invokePrivate(target, "nearestActionableAncestor", new Class<?>[]{Object.class}, text);
+        boolean insideColor = (boolean) invokePrivate(target, "isInsideColorPicker", new Class<?>[]{Object.class}, colorGraphic);
+        boolean insideCombo = (boolean) invokePrivate(target, "isInsideComboBox", new Class<?>[]{Object.class}, comboGraphic);
+        boolean insideDate = (boolean) invokePrivate(target, "isInsideDatePicker", new Class<?>[]{Object.class}, dateGraphic);
+
+        assertTrue(actionableButton);
+        assertFalse(actionablePane);
+        assertEquals(button, nearest);
+        assertTrue(insideColor);
+        assertTrue(insideCombo);
+        assertTrue(insideDate);
+    }
+
+    @Test
+    void scrollHelpersClampAndFindNearestScrollPane() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        ScrollPane scrollPane = new ScrollPane();
+        ParentNode content = new ParentNode("content", "");
+        ParentNode child = new ParentNode("child", "");
+        scrollPane.addChild(content);
+        content.addChild(child);
+
+        Object ancestor = invokePrivate(target, "findScrollPaneAncestor", new Class<?>[]{Object.class}, child);
+        invokePrivate(target, "scrollByDelta", new Class<?>[]{Object.class, double.class, double.class}, scrollPane, 0.3, 0.8);
+        invokePrivate(target, "scrollByDelta", new Class<?>[]{Object.class, double.class, double.class}, scrollPane, -2.0, -2.0);
+
+        Object snapshot = discoverySnapshot(
+            nodeRef(new ParentNode("plain", ""), metadata("node-1", "plain", "Pane", "", "/Scene/Pane[1]")),
+            nodeRef(scrollPane, metadata("node-2", "scroll", "ScrollPane", "", "/Scene/ScrollPane[1]"))
+        );
+        Object firstScrollPane = invokePrivate(target, "findFirstScrollPane", new Class<?>[]{snapshot.getClass()}, snapshot);
+
+        assertEquals(scrollPane, ancestor);
+        assertEquals(scrollPane, firstScrollPane);
+        assertEquals(0.0, scrollPane.getHvalue());
+        assertEquals(0.0, scrollPane.getVvalue());
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -375,10 +635,32 @@ class ReflectiveJavaFxTargetTest {
         return (String) ((Map<String, Object>) result.trace().get("details")).get("reason");
     }
 
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<String, StringBuilder> accumulator(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("keyAccumulator");
+        field.setAccessible(true);
+        return (ConcurrentHashMap<String, StringBuilder>) field.get(target);
+    }
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<String, Long> timestamps(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("keyTimestamps");
+        field.setAccessible(true);
+        return (ConcurrentHashMap<String, Long>) field.get(target);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Map<String, Object>> recorderBuffer(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recorderBuffer");
+        field.setAccessible(true);
+        return (Deque<Map<String, Object>>) field.get(target);
+    }
+
     static class ParentNode {
         private final String id;
         private final String text;
         private final List<Object> children = new java.util.ArrayList<>();
+        private Object parent;
 
         ParentNode(String id, String text) {
             this.id = id;
@@ -387,10 +669,21 @@ class ReflectiveJavaFxTargetTest {
 
         void addChild(Object child) {
             children.add(child);
+            if (child instanceof ParentNode parentNode) {
+                parentNode.setParent(this);
+            }
+        }
+
+        void setParent(Object parent) {
+            this.parent = parent;
         }
 
         public List<Object> getChildrenUnmodifiable() {
             return List.copyOf(children);
+        }
+
+        public Object getParent() {
+            return parent;
         }
 
         public String getId() {
@@ -656,6 +949,295 @@ class ReflectiveJavaFxTargetTest {
         @Override
         public String toString() {
             return name + " / " + role;
+        }
+    }
+
+    static class MenuItemNode {
+        private final String text;
+        private final String id;
+        private final List<Object> items = new java.util.ArrayList<>();
+        boolean fired;
+
+        MenuItemNode(String text, String id, Object... items) {
+            this.text = text;
+            this.id = id;
+            this.items.addAll(List.of(items));
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public List<Object> getItems() {
+            return items;
+        }
+
+        public void fire() {
+            fired = true;
+        }
+    }
+
+    static final class ContextMenuWindow {
+        private final List<?> items;
+
+        ContextMenuWindow(List<?> items) {
+            this.items = items;
+        }
+
+        public List<?> getItems() {
+            return items;
+        }
+    }
+
+    static class ButtonBarNode extends ParentNode {
+        private final List<Object> buttons = new java.util.ArrayList<>();
+
+        ButtonBarNode(Object... buttons) {
+            super("buttonBar", "");
+            this.buttons.addAll(List.of(buttons));
+            for (Object button : buttons) {
+                addChild(button);
+                if (button instanceof ParentNode parent) {
+                    parent.setParent(this);
+                }
+            }
+        }
+
+        public List<Object> getButtons() {
+            return buttons;
+        }
+    }
+
+    static class DialogPaneNode extends ParentNode {
+        private final String headerText;
+        private final String contentText;
+        private final Object dialog;
+
+        DialogPaneNode(String headerText, String contentText, Object dialog, Object... children) {
+            super("dialogPane", "");
+            this.headerText = headerText;
+            this.contentText = contentText;
+            this.dialog = dialog;
+            for (Object child : children) {
+                addChild(child);
+                if (child instanceof ParentNode parent) {
+                    parent.setParent(this);
+                }
+            }
+        }
+
+        public String getHeaderText() {
+            return headerText;
+        }
+
+        public String getContentText() {
+            return contentText;
+        }
+
+        public Object getDialog() {
+            return dialog;
+        }
+    }
+
+    static final class DialogWindow {
+        private final String title;
+
+        DialogWindow(String title) {
+            this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+    }
+
+    static class Stage {
+        private final String title;
+        private double width = 640.0;
+        private double height = 480.0;
+        private double x = 10.0;
+        private double y = 20.0;
+        private boolean maximized;
+        private boolean iconified;
+        boolean fronted;
+
+        Stage(String title) {
+            this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void toFront() {
+            fronted = true;
+        }
+
+        public void setMaximized(boolean maximized) {
+            this.maximized = maximized;
+        }
+
+        public void setIconified(boolean iconified) {
+            this.iconified = iconified;
+        }
+
+        public boolean isMaximized() {
+            return maximized;
+        }
+
+        public boolean isIconified() {
+            return iconified;
+        }
+
+        public void setWidth(double width) {
+            this.width = width;
+        }
+
+        public void setHeight(double height) {
+            this.height = height;
+        }
+
+        public double getWidth() {
+            return width;
+        }
+
+        public double getHeight() {
+            return height;
+        }
+
+        public void setX(double x) {
+            this.x = x;
+        }
+
+        public void setY(double y) {
+            this.y = y;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+    }
+
+    static final class PopupWindow extends Stage {
+        PopupWindow(String title) {
+            super(title);
+        }
+    }
+
+    static final class DialogScene {
+        private final Object root;
+        private final Object focusOwner;
+
+        DialogScene(Object root, Object focusOwner) {
+            this.root = root;
+            this.focusOwner = focusOwner;
+        }
+
+        public Object getRoot() {
+            return root;
+        }
+
+        public Object getFocusOwner() {
+            return focusOwner;
+        }
+    }
+
+    static final class KeyPressedEvent {
+        private final Object code;
+        private final Object source;
+
+        KeyPressedEvent(Object code, Object source) {
+            this.code = code;
+            this.source = source;
+        }
+
+        public Object getCode() {
+            return code;
+        }
+
+        public Object getSource() {
+            return source;
+        }
+    }
+
+    static final class ColorPicker extends ParentNode {
+        ColorPicker() {
+            super("colorPicker", "");
+        }
+    }
+
+    static final class ComboBox extends ParentNode {
+        ComboBox() {
+            super("comboBox", "");
+        }
+    }
+
+    static final class DatePicker extends ParentNode {
+        DatePicker() {
+            super("datePicker", "");
+        }
+    }
+
+    static final class VBoxPane extends ParentNode {
+        VBoxPane() {
+            super("vbox", "");
+        }
+    }
+
+    static final class ScrollPane extends ParentNode {
+        private double hvalue;
+        private double vvalue;
+
+        ScrollPane() {
+            super("scrollPane", "");
+        }
+
+        public double getHvalue() {
+            return hvalue;
+        }
+
+        public double getVvalue() {
+            return vvalue;
+        }
+
+        public void setHvalue(double hvalue) {
+            this.hvalue = hvalue;
+        }
+
+        public void setVvalue(double vvalue) {
+            this.vvalue = vvalue;
+        }
+    }
+
+    static final class AlertDialog {
+        private final String alertType;
+
+        AlertDialog(String alertType) {
+            this.alertType = alertType;
+        }
+
+        public Object getAlertType() {
+            return alertType;
+        }
+    }
+
+    static class Button extends ParentNode {
+        Button(String text) {
+            super("button", text);
+        }
+    }
+
+    static final class ButtonGraphic extends ParentNode {
+        ButtonGraphic() {
+            super("graphic", "");
         }
     }
 }

@@ -27,6 +27,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     private static final int OVERLAY_TIMEOUT_MS = 2_000;
     private static final int OVERLAY_POLL_INTERVAL_MS = 50;
     private static final int MAX_RECORDER_EVENTS = 1_000;
+    private static volatile java.util.function.Supplier<List<Object>> windowSupplierForTest = null;
 
     private final String appName;
     private final Supplier<Object> sceneSupplier;
@@ -3527,9 +3528,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private Object findStageByTitle(String title) {
         try {
-            Class<?> windowClass = Class.forName("javafx.stage.Window");
-            Object windows = windowClass.getMethod("getWindows").invoke(null);
-            java.util.List<?> list = (java.util.List<?>) windows;
+            java.util.List<?> list = currentWindows();
             for (Object w : list) {
                 if (!"Stage".equals(w.getClass().getSimpleName())) continue;
                 Object t = w.getClass().getMethod("getTitle").invoke(w);
@@ -3542,9 +3541,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
 
     private ActionResult handleGetWindows() {
         try {
-            Class<?> windowClass = Class.forName("javafx.stage.Window");
-            Object windows = windowClass.getMethod("getWindows").invoke(null);
-            java.util.List<?> list = (java.util.List<?>) windows;
+            java.util.List<?> list = currentWindows();
             List<String> titles = new ArrayList<>();
             for (Object w : list) {
                 if (!"Stage".equals(w.getClass().getSimpleName())) continue;
@@ -3555,6 +3552,23 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
         } catch (Exception ex) {
             return ActionResult.failure(List.of("javafx"), Map.of("reason", "get_windows_failed", "error", ex.getMessage()));
         }
+    }
+
+    private List<?> currentWindows() throws Exception {
+        if (windowSupplierForTest != null) {
+            return windowSupplierForTest.get();
+        }
+        Class<?> windowClass = Class.forName("javafx.stage.Window");
+        Object windows = windowClass.getMethod("getWindows").invoke(null);
+        return (java.util.List<?>) windows;
+    }
+
+    static void setWindowSupplierForTest(java.util.function.Supplier<List<Object>> supplier) {
+        windowSupplierForTest = supplier;
+    }
+
+    static void resetWindowSupplierForTest() {
+        windowSupplierForTest = null;
     }
 
     private ActionResult handleWindowAction(String action, JsonObject payload) {
