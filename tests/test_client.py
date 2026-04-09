@@ -1861,6 +1861,43 @@ class RecorderClientTests(unittest.TestCase):
         finally:
             os.unlink(path)
 
+    @patch("urllib.request.urlopen")
+    def test_stop_recording_ignores_unknown_events_in_script_output(self, mock_urlopen):
+        client = self._make_client(
+            mock_urlopen,
+            events=[
+                {"type": "click", "fxId": "loginBtn", "text": "", "nodeType": "Button", "nodeIndex": 0, "timestamp": 1.0},
+                {"type": "mystery_event", "fxId": "ignored", "text": "", "nodeType": "Pane", "nodeIndex": 0, "timestamp": 2.0},
+            ],
+        )
+        client.start_recording()
+
+        result = client.stop_recording()
+
+        self.assertEqual(len(result.events), 2)
+        self.assertEqual(result.events[1].event_type, "mystery_event")
+        self.assertIn('client.click(id="loginBtn")', result.script)
+        self.assertNotIn("mystery_event", result.script)
+
+    @patch("urllib.request.urlopen")
+    def test_stop_recording_handles_partial_event_payloads(self, mock_urlopen):
+        client = self._make_client(
+            mock_urlopen,
+            events=[
+                {"type": "type", "fxId": "notesField", "text": 'say "hi"', "timestamp": 1.0},
+                {"type": "click", "timestamp": 2.0},
+            ],
+        )
+        client.start_recording()
+
+        result = client.stop_recording()
+
+        self.assertEqual(len(result.events), 2)
+        self.assertEqual(result.events[0].node_type, "")
+        self.assertEqual(result.events[1].fx_id, "")
+        self.assertIn('client.type(id="notesField", text="say \\"hi\\"")', result.script)
+        self.assertIn("WARN: fragile selector", result.script)
+
 
 class DragAndDropTests(unittest.TestCase):
     """Tests for drag() / drag_to() and _DragBuilder."""

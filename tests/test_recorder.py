@@ -497,6 +497,55 @@ class AssertionCodegenTests(unittest.TestCase):
         self.assertEqual(lines[1], 'client.verify_text(id="statusLabel", expected="Success")')
 
 
+class ScriptGenEdgeCaseTests(unittest.TestCase):
+    def test_generate_script_skips_unknown_event_type(self) -> None:
+        events = [
+            RecordedEvent(event_type="click", fx_id="saveButton", text="", node_type="Button", node_index=0, timestamp=0.0),
+            RecordedEvent(event_type="mystery_event", fx_id="ignored", text="", node_type="Pane", node_index=0, timestamp=0.1),
+        ]
+
+        script = generate_script(events, skip_header=True)
+
+        self.assertEqual(script.strip(), 'client.click(id="saveButton")')
+
+    def test_generate_script_type_escapes_quotes_backslashes_and_newlines(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="type",
+                fx_id="notesField",
+                text='say "hi" \\\nnext',
+                node_type="TextField",
+                node_index=0,
+                timestamp=0.0,
+            ),
+        ]
+
+        script = generate_script(events, skip_header=True)
+
+        self.assertIn('client.type(id="notesField", text="say \\"hi\\" \\\\\\nnext")', script)
+
+    def test_generate_script_assertion_escapes_expected_text(self) -> None:
+        events = [
+            RecordedEvent(
+                event_type="assertion",
+                fx_id="statusLabel",
+                text="",
+                node_type="Label",
+                node_index=0,
+                timestamp=0.0,
+                assertion_type="verify_text",
+                expected='line "A"\\done',
+            ),
+        ]
+
+        script = generate_script(events, skip_header=True)
+
+        self.assertIn('client.verify_text(id="statusLabel", expected="line \\"A\\"\\\\done")', script)
+
+    def test_generate_script_empty_events_with_skip_header_returns_empty_body(self) -> None:
+        self.assertEqual(generate_script([], skip_header=True), "")
+
+
 class DoubleClickCodegenTests(unittest.TestCase):
     """Tests for generate_script with double_click event type."""
 

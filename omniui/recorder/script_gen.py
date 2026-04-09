@@ -1,6 +1,8 @@
 """Script generator: convert RecordedEvent list to a Python test script string."""
 from __future__ import annotations
 
+import json
+
 from omniui.core.models import RecordedEvent
 from .selector_inference import infer_selector
 from .wait_injection import inject_waits
@@ -13,9 +15,13 @@ client = OmniUI.connect()
 """
 
 
+def _quote(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
 def _selector_kwargs(sel: dict) -> str:
     fragile = sel.pop("_fragile", False)
-    parts = ", ".join(f'{k}="{v}"' if isinstance(v, str) else f"{k}={v}" for k, v in sel.items())
+    parts = ", ".join(f"{k}={_quote(v)}" if isinstance(v, str) else f"{k}={v}" for k, v in sel.items())
     suffix = "  # WARN: fragile selector" if fragile else ""
     return parts, suffix
 
@@ -73,7 +79,7 @@ def generate_script(
             action_lines.append(f'client.double_click({kwargs}){suffix}')
             action_events.append(event)
         elif event.event_type == "type":
-            action_lines.append(f'client.type({kwargs}, text="{event.text}"){suffix}')
+            action_lines.append(f"client.type({kwargs}, text={_quote(event.text)}){suffix}")
             action_events.append(event)
         elif event.event_type == "drag":
             action_lines.append(_drag_line(event))
@@ -81,37 +87,37 @@ def generate_script(
         elif event.event_type == "set_color":
             color_val = event.color or "#000000"
             if event.fx_id:
-                action_lines.append(f'client.set_color("{color_val}", id="{event.fx_id}")')
+                action_lines.append(f"client.set_color({_quote(color_val)}, id={_quote(event.fx_id)})")
             else:
-                action_lines.append(f'client.set_color("{color_val}")')
+                action_lines.append(f"client.set_color({_quote(color_val)})")
             action_events.append(event)
         elif event.event_type == "select_combo":
             value_str = event.text or ""
             if event.fx_id:
-                action_lines.append(f'client.select("{value_str}", id="{event.fx_id}")')
+                action_lines.append(f"client.select({_quote(value_str)}, id={_quote(event.fx_id)})")
             else:
-                action_lines.append(f'client.select("{value_str}")')
+                action_lines.append(f"client.select({_quote(value_str)})")
             action_events.append(event)
         elif event.event_type == "set_date":
             date_val = event.text or ""
             if event.fx_id:
-                action_lines.append(f'client.set_date("{date_val}", id="{event.fx_id}")')
+                action_lines.append(f"client.set_date({_quote(date_val)}, id={_quote(event.fx_id)})")
             else:
-                action_lines.append(f'client.set_date("{date_val}")')
+                action_lines.append(f"client.set_date({_quote(date_val)})")
             action_events.append(event)
         elif event.event_type == "dismiss_dialog":
             button_text = event.text or "OK"
-            action_lines.append(f'client.dismiss_dialog(button="{button_text}")')
+            action_lines.append(f"client.dismiss_dialog(button={_quote(button_text)})")
             action_events.append(event)
         elif event.event_type == "assertion":
             if event.fx_id:
-                sel_str = f'id="{event.fx_id}"'
+                sel_str = f"id={_quote(event.fx_id)}"
             elif event.text:
-                sel_str = f'text="{event.text}"'
+                sel_str = f"text={_quote(event.text)}"
             else:
                 continue  # no stable selector, skip
             if event.assertion_type == "verify_text":
-                action_lines.append(f'client.verify_text({sel_str}, expected="{event.expected}")')
+                action_lines.append(f"client.verify_text({sel_str}, expected={_quote(event.expected)})")
             elif event.assertion_type == "verify_visible":
                 action_lines.append(f'client.verify_visible({sel_str})')
             elif event.assertion_type == "verify_enabled":
