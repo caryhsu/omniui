@@ -13,7 +13,7 @@ def normalize_selector(
 ) -> Selector:
     normalized_index: int | None
     if isinstance(index, bool):
-        normalized_index = int(index)
+        raise ValueError(f"index must be int, got bool: {index!r}")
     elif isinstance(index, int):
         normalized_index = index
     elif isinstance(index, str) and index.strip():

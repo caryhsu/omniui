@@ -1113,6 +1113,7 @@ class OmniUIClient:
         selector = self.find(**selector_payload)
         if self._scope:
             selector = {**selector, "scope": self._scope}
+        heal_snapshot = self._capture_selector_heal_snapshot(selector_payload)
         result = self._perform_request(action, selector_payload, selector, payload or {})
         if not result.ok and self._should_retry(result):
             try:
@@ -1121,8 +1122,9 @@ class OmniUIClient:
             except Exception:
                 retried = None
             if retried is not None:
-                retried.trace.attempted_tiers = self._merge_attempted_tiers(
+                retried.trace.attempted_tiers = self._merge_attempted_tiers_with_marker(
                     result.trace.attempted_tiers,
+                    "refresh",
                     retried.trace.attempted_tiers,
                 )
                 retried.trace.details = {
@@ -1140,7 +1142,7 @@ class OmniUIClient:
             result = self._fallback_click(selector_payload, result)
             self._record_action(action, result)
         if result.ok:
-            self._update_selector_heal_hint(selector_payload, result)
+            self._update_selector_heal_hint(selector_payload, result, heal_snapshot)
         delay = step_delay_override if step_delay_override is not None else self.step_delay
         if delay > 0:
             time.sleep(delay)
@@ -1290,6 +1292,7 @@ class OmniUIClient:
             return None
 
         attempted_tiers = list(base_result.trace.attempted_tiers or ["javafx"])
+        original_selector = self.find(**selector_payload)
         for strategy, healed_selector in self._selector_fallbacks(heal_hint):
             healed_result = self._perform_request(action, selector_payload, healed_selector, payload)
             healed_result.trace.attempted_tiers = self._merge_attempted_tiers_with_marker(
@@ -1301,7 +1304,7 @@ class OmniUIClient:
                 **healed_result.trace.details,
                 "self_heal": {
                     "used": strategy,
-                    "original_selector": self.find(**selector_payload),
+                    "original_selector": original_selector,
                     "selector": healed_selector,
                     "cached_from": heal_hint,
                 },
@@ -1314,7 +1317,7 @@ class OmniUIClient:
             **base_result.trace.details,
             "self_heal": {
                 "used": None,
-                "original_selector": self.find(**selector_payload),
+                "original_selector": original_selector,
                 "cached_from": heal_hint,
             },
         }
@@ -1322,13 +1325,6 @@ class OmniUIClient:
 
     def _should_retry(self, result: ActionResult) -> bool:
         return result.trace.details.get("reason") == "selector_not_found"
-
-    def _merge_attempted_tiers(self, initial: list[str], retried: list[str]) -> list[str]:
-        merged: list[str] = []
-        for tier in [*initial, "refresh", *retried]:
-            if tier not in merged:
-                merged.append(tier)
-        return merged
 
     def _merge_attempted_tiers_with_marker(
         self,
@@ -1342,16 +1338,33 @@ class OmniUIClient:
                 merged.append(tier)
         return merged
 
-    def _update_selector_heal_hint(self, selector_payload: dict[str, Any], result: ActionResult) -> None:
+    def _capture_selector_heal_snapshot(self, selector_payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+        if not selector_payload.get("_self_heal"):
+            return None
+        if not selector_payload.get("id"):
+            return None
+        if selector_payload.get("text") is not None or selector_payload.get("type") is not None or selector_payload.get("index") is not None:
+            return None
+        try:
+            return self.get_nodes()
+        except Exception:
+            return None
+
+    def _update_selector_heal_hint(
+        self,
+        selector_payload: dict[str, Any],
+        result: ActionResult,
+        nodes_snapshot: list[dict[str, Any]] | None,
+    ) -> None:
         if result.trace.resolved_tier != "javafx":
             return
         if not selector_payload.get("_self_heal"):
             return
         if not selector_payload.get("id"):
             return
-        if selector_payload.get("text") or selector_payload.get("type") or selector_payload.get("index") is not None:
+        if selector_payload.get("text") is not None or selector_payload.get("type") is not None or selector_payload.get("index") is not None:
             return
-        hint = self._build_selector_heal_hint(selector_payload, result)
+        hint = self._build_selector_heal_hint(selector_payload, result, nodes_snapshot)
         if hint is not None:
             self._selector_heal_hints[self._selector_cache_key(selector_payload)] = hint
 
@@ -1359,25 +1372,24 @@ class OmniUIClient:
         self,
         selector_payload: dict[str, Any],
         result: ActionResult,
+        nodes_snapshot: list[dict[str, Any]] | None,
     ) -> dict[str, Any] | None:
         if result.resolved is None:
             return None
-        try:
-            nodes = self.get_nodes()
-        except Exception:
+        if nodes_snapshot is None:
             return None
 
         target_ref = result.resolved.target_ref
-        node = next((item for item in nodes if item.get("handle") == target_ref), None)
+        node = next((item for item in nodes_snapshot if item.get("handle") == target_ref), None)
         if node is None and selector_payload.get("id"):
-            node = next((item for item in nodes if item.get("fxId") == selector_payload["id"]), None)
+            node = next((item for item in nodes_snapshot if item.get("fxId") == selector_payload["id"]), None)
         if node is None:
             return None
 
         node_type = node.get("nodeType")
         type_index = None
         if node_type:
-            siblings = [item for item in nodes if item.get("nodeType") == node_type]
+            siblings = [item for item in nodes_snapshot if item.get("nodeType") == node_type]
             for idx, candidate in enumerate(siblings):
                 if candidate.get("handle") == node.get("handle"):
                     type_index = idx
