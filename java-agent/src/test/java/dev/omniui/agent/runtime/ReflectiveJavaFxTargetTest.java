@@ -462,6 +462,66 @@ class ReflectiveJavaFxTargetTest {
         assertEquals("Button", dismiss.get("nodeType"));
     }
 
+    @Test
+    void actionableAndInsideHelpersWalkAncestorChains() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+
+        Button button = new Button("Save");
+        ParentNode text = new ParentNode("text", "");
+        button.addChild(text);
+
+        ColorPicker colorPicker = new ColorPicker();
+        ParentNode colorGraphic = new ParentNode("graphic", "");
+        colorPicker.addChild(colorGraphic);
+
+        ComboBox comboBox = new ComboBox();
+        ParentNode comboGraphic = new ParentNode("graphic", "");
+        comboBox.addChild(comboGraphic);
+
+        DatePicker datePicker = new DatePicker();
+        ParentNode dateGraphic = new ParentNode("graphic", "");
+        datePicker.addChild(dateGraphic);
+
+        boolean actionableButton = (boolean) invokePrivate(target, "isActionableNode", new Class<?>[]{Object.class}, button);
+        boolean actionablePane = (boolean) invokePrivate(target, "isActionableNode", new Class<?>[]{Object.class}, new VBoxPane());
+        Object nearest = invokePrivate(target, "nearestActionableAncestor", new Class<?>[]{Object.class}, text);
+        boolean insideColor = (boolean) invokePrivate(target, "isInsideColorPicker", new Class<?>[]{Object.class}, colorGraphic);
+        boolean insideCombo = (boolean) invokePrivate(target, "isInsideComboBox", new Class<?>[]{Object.class}, comboGraphic);
+        boolean insideDate = (boolean) invokePrivate(target, "isInsideDatePicker", new Class<?>[]{Object.class}, dateGraphic);
+
+        assertTrue(actionableButton);
+        assertFalse(actionablePane);
+        assertEquals(button, nearest);
+        assertTrue(insideColor);
+        assertTrue(insideCombo);
+        assertTrue(insideDate);
+    }
+
+    @Test
+    void scrollHelpersClampAndFindNearestScrollPane() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        ScrollPane scrollPane = new ScrollPane();
+        ParentNode content = new ParentNode("content", "");
+        ParentNode child = new ParentNode("child", "");
+        scrollPane.addChild(content);
+        content.addChild(child);
+
+        Object ancestor = invokePrivate(target, "findScrollPaneAncestor", new Class<?>[]{Object.class}, child);
+        invokePrivate(target, "scrollByDelta", new Class<?>[]{Object.class, double.class, double.class}, scrollPane, 0.3, 0.8);
+        invokePrivate(target, "scrollByDelta", new Class<?>[]{Object.class, double.class, double.class}, scrollPane, -2.0, -2.0);
+
+        Object snapshot = discoverySnapshot(
+            nodeRef(new ParentNode("plain", ""), metadata("node-1", "plain", "Pane", "", "/Scene/Pane[1]")),
+            nodeRef(scrollPane, metadata("node-2", "scroll", "ScrollPane", "", "/Scene/ScrollPane[1]"))
+        );
+        Object firstScrollPane = invokePrivate(target, "findFirstScrollPane", new Class<?>[]{snapshot.getClass()}, snapshot);
+
+        assertEquals(scrollPane, ancestor);
+        assertEquals(scrollPane, firstScrollPane);
+        assertEquals(0.0, scrollPane.getHvalue());
+        assertEquals(0.0, scrollPane.getVvalue());
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -1105,6 +1165,55 @@ class ReflectiveJavaFxTargetTest {
 
         public Object getSource() {
             return source;
+        }
+    }
+
+    static final class ColorPicker extends ParentNode {
+        ColorPicker() {
+            super("colorPicker", "");
+        }
+    }
+
+    static final class ComboBox extends ParentNode {
+        ComboBox() {
+            super("comboBox", "");
+        }
+    }
+
+    static final class DatePicker extends ParentNode {
+        DatePicker() {
+            super("datePicker", "");
+        }
+    }
+
+    static final class VBoxPane extends ParentNode {
+        VBoxPane() {
+            super("vbox", "");
+        }
+    }
+
+    static final class ScrollPane extends ParentNode {
+        private double hvalue;
+        private double vvalue;
+
+        ScrollPane() {
+            super("scrollPane", "");
+        }
+
+        public double getHvalue() {
+            return hvalue;
+        }
+
+        public double getVvalue() {
+            return vvalue;
+        }
+
+        public void setHvalue(double hvalue) {
+            this.hvalue = hvalue;
+        }
+
+        public void setVvalue(double vvalue) {
+            this.vvalue = vvalue;
         }
     }
 
