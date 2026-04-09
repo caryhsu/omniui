@@ -76,6 +76,69 @@ class OmniPageTests(unittest.TestCase):
         loc = page.locator(id="myBtn")
         self.assertIsInstance(loc, Locator)
 
+    def test_locator_shorthand_delegates_selector_kwargs_to_client(self):
+        client = MagicMock()
+        sentinel = object()
+        client.locator.return_value = sentinel
+        page = OmniPage(client)
+
+        result = page.locator(id="saveBtn", text="Save", type="Button", index=2)
+
+        self.assertIs(result, sentinel)
+        client.locator.assert_called_once_with(
+            id="saveBtn",
+            text="Save",
+            type="Button",
+            index=2,
+        )
+
+    def test_page_methods_can_compose_locator_and_client_calls_without_http(self):
+        client = MagicMock()
+        username_locator = MagicMock()
+        password_locator = MagicMock()
+        submit_locator = MagicMock()
+        client.locator.side_effect = [
+            username_locator,
+            password_locator,
+            submit_locator,
+        ]
+
+        class LoginPage(OmniPage):
+            def login(self, username: str, password: str) -> None:
+                self.locator(id="username").type(username)
+                self.locator(id="password").type(password)
+                self.locator(id="submit").click()
+
+        page = LoginPage(client)
+        page.login("admin", "secret")
+
+        self.assertEqual(
+            client.locator.call_args_list,
+            [
+                unittest.mock.call(id="username"),
+                unittest.mock.call(id="password"),
+                unittest.mock.call(id="submit"),
+            ],
+        )
+        username_locator.type.assert_called_once_with("admin")
+        password_locator.type.assert_called_once_with("secret")
+        submit_locator.click.assert_called_once_with()
+
+    def test_page_subclass_can_expose_locator_backed_component_property(self):
+        client = MagicMock()
+        status_locator = MagicMock()
+        client.locator.return_value = status_locator
+
+        class DashboardPage(OmniPage):
+            @property
+            def status_badge(self):
+                return self.locator(id="statusBadge")
+
+        page = DashboardPage(client)
+
+        self.assertIs(page.status_badge, status_locator)
+        client.locator.assert_called_once_with(id="statusBadge")
+
     @patch("urllib.request.urlopen")
     def test_multiple_page_objects_share_client(self, mock_urlopen):
         mock_urlopen.side_effect = _fake_urlopen_factory()
