@@ -59,4 +59,5 @@ Use it to prioritise future Roadmap items.
 - **Scene graph access** — element identification is exact, not guessed from CSS/XPath
 - **Language-agnostic client** — Python client; TestFX requires Java test code
 - **Multi-modal fallback chain** — scene graph → OCR → vision template match
+- **Self-healing locator** — `id`-based `Locator` caches `text` and `type+index` from a pre-action snapshot; if `fx:id` is later renamed, OmniUI auto-retries with cached fallbacks before failing
 - **No driver install** — agent is embedded in the app JAR; no WebDriver/WinAppDriver setup

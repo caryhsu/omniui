@@ -86,7 +86,13 @@ flowchart TD
     JavaFX -->|selector_not_found| Refresh[Refresh Node Snapshot]
     Refresh --> Retry[Retry JavaFX Resolution]
     Retry -->|Resolved| Done
-    Retry -->|Not Resolved| OCR[Try OCR Text Match]
+    Retry -->|Not Resolved| SelfHeal{Locator has _self_heal hint?}
+    SelfHeal -->|Yes| HealText[Try cached text fallback]
+    HealText -->|Resolved| Done
+    HealText -->|Not Resolved| HealTypeIdx[Try cached type+index fallback]
+    HealTypeIdx -->|Resolved| Done
+    HealTypeIdx -->|Not Resolved| OCR[Try OCR Text Match]
+    SelfHeal -->|No| OCR
     OCR -->|Resolved| OCRDone[Return OCR-based Result]
     OCR -->|Not Resolved| Vision[Try Vision Template Match]
     Vision -->|Resolved| VisionDone[Return Vision-based Result]
@@ -115,3 +121,4 @@ flowchart TD
 - The current fallback path records OCR or vision resolution but does not yet dispatch a real OS-level click for fallback bounds.
 - The JavaFX path is the primary supported execution path in Phase 1.
 - Recorder-lite is generated from action history after execution rather than full low-level desktop recording.
+- Self-healing applies only to `Locator`-created selectors with a single `id` field. The hint (text + type + index) is captured from a node snapshot taken **before** each action to avoid stale post-navigation data. Fallback strategy used is recorded in `result.trace.details["self_heal"]`.
