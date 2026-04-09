@@ -31,6 +31,8 @@ Current Java test scope:
 - JUnit 5 + Maven Surefire test foundation is in place
 - `mvn test` now runs against the `java-agent` module
 - this first batch stays JavaFX-runtime-free
+- runtime helper coverage now includes `ReflectiveJavaFxSupport`
+- registry coverage now includes the discovery path via a test seam in `JavaFxRuntimeDiscovery`
 
 Prerequisite:
 - Maven must run with JDK 22 or newer because this module is compiled with `--release 22`

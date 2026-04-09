@@ -33,6 +33,8 @@ mvn -f java-agent/pom.xml test
 - 已建立 JUnit 5 + Maven Surefire 測試基礎架構
 - `mvn test` 現在可以直接對 `java-agent` module 執行
 - 這一批維持不依賴 JavaFX runtime
+- runtime helper 測試目前已擴到 `ReflectiveJavaFxSupport`
+- registry 測試目前已覆蓋 `JavaFxRuntimeDiscovery` 的 discovery path（透過 test seam）
 
 前置條件：
 - Maven 必須使用 JDK 22 以上，因為此 module 目前以 `--release 22` 編譯

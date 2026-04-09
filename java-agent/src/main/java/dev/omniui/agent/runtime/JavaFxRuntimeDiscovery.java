@@ -5,10 +5,29 @@ import java.util.List;
 import java.util.Optional;
 
 public final class JavaFxRuntimeDiscovery {
+    @FunctionalInterface
+    interface Discoverer {
+        Optional<AutomationTarget> discover(String appName);
+    }
+
+    private static Discoverer discoverer = JavaFxRuntimeDiscovery::discoverViaJavaFxRuntime;
+
     private JavaFxRuntimeDiscovery() {
     }
 
     public static Optional<AutomationTarget> discover(String appName) {
+        return discoverer.discover(appName);
+    }
+
+    static void setDiscovererForTest(Discoverer customDiscoverer) {
+        discoverer = customDiscoverer;
+    }
+
+    static void resetDiscovererForTest() {
+        discoverer = JavaFxRuntimeDiscovery::discoverViaJavaFxRuntime;
+    }
+
+    private static Optional<AutomationTarget> discoverViaJavaFxRuntime(String appName) {
         return discoverSceneSupplier()
             .map(sceneSupplier -> new ReflectiveJavaFxTarget(appName, sceneSupplier));
     }
