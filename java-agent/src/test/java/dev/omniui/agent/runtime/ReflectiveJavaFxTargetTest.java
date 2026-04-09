@@ -5,10 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -402,6 +405,63 @@ class ReflectiveJavaFxTargetTest {
         assertEquals(List.of("META", "ENTER"), List.of(winEnter));
     }
 
+    @Test
+    void flushKeyAccumulatorEmitsTypedEventsForIdsAndSyntheticHandles() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        accumulator(target).put("loginField", new StringBuilder("abc"));
+        accumulator(target).put("_handle_7", new StringBuilder("xyz"));
+        timestamps(target).put("loginField", 2_000L);
+        timestamps(target).put("_handle_7", 4_000L);
+
+        invokePrivate(target, "flushKeyAccumulator");
+
+        Deque<Map<String, Object>> buffer = recorderBuffer(target);
+        assertEquals(2, buffer.size());
+
+        List<Map<String, Object>> entries = List.copyOf(buffer);
+        assertTrue(entries.stream().anyMatch(entry ->
+            "type".equals(entry.get("type"))
+                && "loginField".equals(entry.get("fxId"))
+                && "abc".equals(entry.get("text"))
+                && Double.valueOf(2.0).equals(entry.get("timestamp"))
+        ));
+        assertTrue(entries.stream().anyMatch(entry ->
+            "type".equals(entry.get("type"))
+                && "".equals(entry.get("fxId"))
+                && "xyz".equals(entry.get("text"))
+                && Double.valueOf(4.0).equals(entry.get("timestamp"))
+        ));
+
+        assertTrue(accumulator(target).isEmpty());
+        assertTrue(timestamps(target).isEmpty());
+    }
+
+    @Test
+    void keyPressedInDialogFlushesTypingAndRecordsDismissDialog() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        accumulator(target).put("searchField", new StringBuilder("query"));
+        timestamps(target).put("searchField", 1_500L);
+
+        Button ok = new Button("Confirm");
+        DialogScene scene = new DialogScene(new DialogPaneNode("Header", "Body", null), ok);
+        KeyPressedEvent event = new KeyPressedEvent("ENTER", scene);
+
+        invokePrivate(target, "onKeyPressed", new Class<?>[]{Object.class}, event);
+
+        Deque<Map<String, Object>> buffer = recorderBuffer(target);
+        assertEquals(2, buffer.size());
+
+        Map<String, Object> typed = buffer.removeFirst();
+        assertEquals("type", typed.get("type"));
+        assertEquals("searchField", typed.get("fxId"));
+        assertEquals("query", typed.get("text"));
+
+        Map<String, Object> dismiss = buffer.removeFirst();
+        assertEquals("dismiss_dialog", dismiss.get("type"));
+        assertEquals("Confirm", dismiss.get("text"));
+        assertEquals("Button", dismiss.get("nodeType"));
+    }
+
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
         return invokeAction(target, method, node, fxId, handle, null);
     }
@@ -513,6 +573,27 @@ class ReflectiveJavaFxTargetTest {
     @SuppressWarnings("unchecked")
     private String traceReason(ActionResult result) {
         return (String) ((Map<String, Object>) result.trace().get("details")).get("reason");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<String, StringBuilder> accumulator(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("keyAccumulator");
+        field.setAccessible(true);
+        return (ConcurrentHashMap<String, StringBuilder>) field.get(target);
+    }
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<String, Long> timestamps(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("keyTimestamps");
+        field.setAccessible(true);
+        return (ConcurrentHashMap<String, Long>) field.get(target);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<Map<String, Object>> recorderBuffer(ReflectiveJavaFxTarget target) throws Exception {
+        Field field = ReflectiveJavaFxTarget.class.getDeclaredField("recorderBuffer");
+        field.setAccessible(true);
+        return (Deque<Map<String, Object>>) field.get(target);
     }
 
     static class ParentNode {
@@ -988,6 +1069,42 @@ class ReflectiveJavaFxTargetTest {
     static final class PopupWindow extends Stage {
         PopupWindow(String title) {
             super(title);
+        }
+    }
+
+    static final class DialogScene {
+        private final Object root;
+        private final Object focusOwner;
+
+        DialogScene(Object root, Object focusOwner) {
+            this.root = root;
+            this.focusOwner = focusOwner;
+        }
+
+        public Object getRoot() {
+            return root;
+        }
+
+        public Object getFocusOwner() {
+            return focusOwner;
+        }
+    }
+
+    static final class KeyPressedEvent {
+        private final Object code;
+        private final Object source;
+
+        KeyPressedEvent(Object code, Object source) {
+            this.code = code;
+            this.source = source;
+        }
+
+        public Object getCode() {
+            return code;
+        }
+
+        public Object getSource() {
+            return source;
         }
     }
 
