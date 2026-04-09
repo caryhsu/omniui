@@ -1439,6 +1439,7 @@ class LocatorTests(unittest.TestCase):
         mock_urlopen.side_effect = [
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            _FakeResponse({"nodes": [{"handle": "btn", "fxId": "loginBtn", "nodeType": "Button", "text": "Login"}]}),
             click_resp,
         ]
         client = OmniUI.connect(port=48100)
@@ -1526,6 +1527,7 @@ class StepDelayTests(unittest.TestCase):
         mock_urlopen.side_effect = [
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            _FakeResponse({"nodes": [{"handle": "lbl", "fxId": "label", "nodeType": "Label", "text": "Hello"}]}),
             _FakeResponse({
                 "ok": True,
                 "resolved": {"tier": "javafx", "targetRef": "lbl", "matchedAttributes": {"fxId": "label"}, "confidence": None},
