@@ -23,6 +23,20 @@ mvn -f java-agent/pom.xml package
 java -jar java-agent/target/omniui-java-agent-0.1.0-SNAPSHOT.jar
 ```
 
+執行測試：
+
+```bash
+mvn -f java-agent/pom.xml test
+```
+
+目前 Java 測試範圍：
+- 已建立 JUnit 5 + Maven Surefire 測試基礎架構
+- `mvn test` 現在可以直接對 `java-agent` module 執行
+- 這一批維持不依賴 JavaFX runtime
+
+前置條件：
+- Maven 必須使用 JDK 22 以上，因為此 module 目前以 `--release 22` 編譯
+
 註冊受支援的 JavaFX app：
 
 ```java
