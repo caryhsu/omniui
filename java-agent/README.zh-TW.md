@@ -34,6 +34,7 @@ mvn -f java-agent/pom.xml test
 - `mvn test` 現在可以直接對 `java-agent` module 執行
 - 這一批維持不依賴 JavaFX runtime
 - runtime helper 測試目前已擴到 `ReflectiveJavaFxSupport`
+- `ReflectiveJavaFxTarget` 目前已補 selector resolution、snapshot shaping，以及 range/clamping 類 action helper 的測試
 - registry 測試目前已覆蓋 `JavaFxRuntimeDiscovery` 的 discovery path（透過 test seam）
 
 前置條件：

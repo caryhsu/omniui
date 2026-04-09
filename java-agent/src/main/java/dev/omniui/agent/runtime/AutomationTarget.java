@@ -1,7 +1,5 @@
 package dev.omniui.agent.runtime;
 
-import com.google.gson.JsonObject;
-
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +12,7 @@ public interface AutomationTarget {
 
     List<Map<String, Object>> discover();
 
-    ActionResult perform(String action, JsonObject selector, JsonObject payload);
+    ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload);
 
     byte[] screenshot();
 

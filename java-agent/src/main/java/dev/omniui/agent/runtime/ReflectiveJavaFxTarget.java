@@ -97,7 +97,7 @@ public final class ReflectiveJavaFxTarget implements AutomationTarget {
     }
 
     @Override
-    public ActionResult perform(String action, JsonObject selector, JsonObject payload) {
+    public ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload) {
         return switch (action) {
             case "right_click"     -> performWithOverlayWait(() -> doRightClick(selector),      this::isContextMenuWindow);
             case "open_menu"       -> performWithOverlayWait(() -> doOpenMenu(selector, payload), this::isMenuPopupWindow);

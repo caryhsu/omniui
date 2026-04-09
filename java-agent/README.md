@@ -32,6 +32,7 @@ Current Java test scope:
 - `mvn test` now runs against the `java-agent` module
 - this first batch stays JavaFX-runtime-free
 - runtime helper coverage now includes `ReflectiveJavaFxSupport`
+- reflective target coverage now includes selector resolution, snapshot shaping, and range/clamping action helpers in `ReflectiveJavaFxTarget`
 - registry coverage now includes the discovery path via a test seam in `JavaFxRuntimeDiscovery`
 
 Prerequisite:
