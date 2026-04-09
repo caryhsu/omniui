@@ -67,6 +67,35 @@ class OmniUiAgentServerTest {
     }
 
     @Test
+    void infoEndpointReturnsBoundPortAndVersion() throws Exception {
+        // GIVEN
+        startServer();
+
+        // WHEN
+        TestHttpResponse response = send("GET", "/info", null);
+
+        // THEN
+        assertEquals(200, response.statusCode());
+        Map<String, Object> body = parseBody(response);
+        assertEquals("0.1.0", asString(body.get("version")));
+        assertNotNull(body.get("appName"));
+        assertEquals((double) server.getAddress().getPort(), body.get("port"));
+    }
+
+    @Test
+    void infoEndpointRejectsWrongMethod() throws Exception {
+        // GIVEN
+        startServer();
+
+        // WHEN
+        TestHttpResponse response = send("POST", "/info", "{}");
+
+        // THEN
+        assertEquals(405, response.statusCode());
+        assertEquals("Method not allowed", asString(parseBody(response).get("error")));
+    }
+
+    @Test
     void sessionsEndpointCreatesSessionForRegisteredTarget() throws Exception {
         // GIVEN
         TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
@@ -95,6 +124,19 @@ class OmniUiAgentServerTest {
         // THEN
         assertEquals(404, response.statusCode());
         assertTrue(asString(parseBody(response).get("error")).contains("Target app not available"));
+    }
+
+    @Test
+    void sessionsEndpointReturns400ForMalformedJson() throws Exception {
+        // GIVEN
+        startServer();
+
+        // WHEN
+        TestHttpResponse response = send("POST", "/sessions", "{");
+
+        // THEN
+        assertEquals(400, response.statusCode());
+        assertEquals("Malformed JSON", asString(parseBody(response).get("error")));
     }
 
     @Test
@@ -154,6 +196,36 @@ class OmniUiAgentServerTest {
     }
 
     @Test
+    void actionsEndpointReturns400ForMalformedJson() throws Exception {
+        // GIVEN
+        TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
+        startServer();
+        String sessionId = createSession(APP_NAME);
+
+        // WHEN
+        TestHttpResponse response = send("POST", "/sessions/" + sessionId + "/actions", "{");
+
+        // THEN
+        assertEquals(400, response.statusCode());
+        assertEquals("Malformed JSON", asString(parseBody(response).get("error")));
+    }
+
+    @Test
+    void actionsEndpointReturns400WhenActionIsMissing() throws Exception {
+        // GIVEN
+        TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
+        startServer();
+        String sessionId = createSession(APP_NAME);
+
+        // WHEN
+        TestHttpResponse response = send("POST", "/sessions/" + sessionId + "/actions", "{\"payload\":{}}");
+
+        // THEN
+        assertEquals(400, response.statusCode());
+        assertEquals("Missing action", asString(parseBody(response).get("error")));
+    }
+
+    @Test
     void screenshotEndpointReturnsBase64Payload() throws Exception {
         // GIVEN
         TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
@@ -202,6 +274,36 @@ class OmniUiAgentServerTest {
         Map<String, Object> assertContext = parseBody(assertContextResponse);
         assertEquals("statusLabel", asString(assertContext.get("fxId")));
         assertEquals("Status: 10.5,20.5", asString(assertContext.get("currentText")));
+    }
+
+    @Test
+    void assertContextEndpointReturns400ForMissingCoordinates() throws Exception {
+        // GIVEN
+        TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
+        startServer();
+        String sessionId = createSession(APP_NAME);
+
+        // WHEN
+        TestHttpResponse response = send("GET", "/sessions/" + sessionId + "/events/assert-context", null);
+
+        // THEN
+        assertEquals(400, response.statusCode());
+        assertEquals("Missing coordinates", asString(parseBody(response).get("error")));
+    }
+
+    @Test
+    void assertContextEndpointReturns400ForInvalidCoordinates() throws Exception {
+        // GIVEN
+        TargetRegistry.register(new ServerTestAutomationTarget(APP_NAME));
+        startServer();
+        String sessionId = createSession(APP_NAME);
+
+        // WHEN
+        TestHttpResponse response = send("GET", "/sessions/" + sessionId + "/events/assert-context?x=nope&y=20", null);
+
+        // THEN
+        assertEquals(400, response.statusCode());
+        assertEquals("Invalid coordinates", asString(parseBody(response).get("error")));
     }
 
     @Test

@@ -42,6 +42,7 @@ public final class OmniUiAgentServer {
 
     public static HttpServer start(int port) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        int boundPort = server.getAddress().getPort();
         SessionStore sessionStore = new SessionStore();
 
         server.createContext("/health", exchange -> {
@@ -113,7 +114,7 @@ public final class OmniUiAgentServer {
             } catch (Exception ignored) {}
 
             Map<String, Object> info = new HashMap<>();
-            info.put("port",    port);
+            info.put("port",    boundPort);
             info.put("appName", simpleAppName);
             info.put("version", "0.1.0");
             if (windowTitle != null && !windowTitle.isBlank()) {
@@ -155,7 +156,13 @@ public final class OmniUiAgentServer {
                 return;
             }
 
-            JsonObject request = GSON.fromJson(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), JsonObject.class);
+            JsonObject request;
+            try {
+                request = GSON.fromJson(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), JsonObject.class);
+            } catch (Exception ex) {
+                writeError(exchange, 400, "Malformed JSON");
+                return;
+            }
             JsonObject target = request != null && request.has("target") ? request.getAsJsonObject("target") : new JsonObject();
             String appName = target.has("appName") ? target.get("appName").getAsString() : "LoginDemo";
 
@@ -205,6 +212,10 @@ public final class OmniUiAgentServer {
             if (parts.length == 4 && "actions".equals(parts[3]) && "POST".equals(exchange.getRequestMethod())) {
                 try {
                     JsonObject request = GSON.fromJson(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8), JsonObject.class);
+                    if (request == null || !request.has("action") || request.get("action").isJsonNull()) {
+                        writeError(exchange, 400, "Missing action");
+                        return;
+                    }
                     String action = request.get("action").getAsString();
                     JsonElement selectorEl = request.get("selector");
                     JsonObject selector = (selectorEl != null && selectorEl.isJsonObject()) ? selectorEl.getAsJsonObject() : null;
@@ -212,6 +223,8 @@ public final class OmniUiAgentServer {
                         ? request.getAsJsonObject("payload") : new JsonObject();
                     ActionResult result = session.target().perform(action, selector, payload);
                     writeJson(exchange, 200, result);
+                } catch (com.google.gson.JsonParseException ex) {
+                    writeError(exchange, 400, "Malformed JSON");
                 } catch (Exception ex) {
                     writeError(exchange, 500, ex.getClass().getSimpleName() + ": " + ex.getMessage());
                 }
@@ -253,16 +266,30 @@ public final class OmniUiAgentServer {
                     && "GET".equals(exchange.getRequestMethod())) {
                 String query = exchange.getRequestURI().getQuery();
                 double x = 0, y = 0;
+                boolean hasX = false, hasY = false;
                 if (query != null) {
                     for (String param : query.split("&")) {
                         String[] kv = param.split("=", 2);
                         if (kv.length == 2) {
                             try {
-                                if ("x".equals(kv[0])) x = Double.parseDouble(kv[1]);
-                                if ("y".equals(kv[0])) y = Double.parseDouble(kv[1]);
-                            } catch (NumberFormatException ignored) {}
+                                if ("x".equals(kv[0])) {
+                                    x = Double.parseDouble(kv[1]);
+                                    hasX = true;
+                                }
+                                if ("y".equals(kv[0])) {
+                                    y = Double.parseDouble(kv[1]);
+                                    hasY = true;
+                                }
+                            } catch (NumberFormatException ignored) {
+                                writeError(exchange, 400, "Invalid coordinates");
+                                return;
+                            }
                         }
                     }
+                }
+                if (!hasX || !hasY) {
+                    writeError(exchange, 400, "Missing coordinates");
+                    return;
                 }
                 Map<String, Object> ctx = session.target().assertContext(x, y);
                 if (ctx == null) {
