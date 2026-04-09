@@ -38,7 +38,7 @@ class Locator:
         if not selector:
             raise ValueError("Locator requires at least one selector keyword (id, text, type, ...)")
         self._client = client
-        self._sel: dict[str, Any] = selector
+        self._sel: dict[str, Any] = {**selector, "_self_heal": True}
 
     # ---- Core interaction --------------------------------------------------
 
@@ -189,5 +189,7 @@ class Locator:
     # ---- Dunder ------------------------------------------------------------
 
     def __repr__(self) -> str:
-        sel = ", ".join(f"{k}={v!r}" for k, v in self._sel.items())
+        sel = ", ".join(
+            f"{k}={v!r}" for k, v in self._sel.items() if not k.startswith("_")
+        )
         return f"Locator({sel})"

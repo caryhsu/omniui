@@ -16,6 +16,7 @@ class Selector:
     id: str | None = None
     text: str | None = None
     type: str | None = None
+    index: int | None = None
 
 
 @dataclass(slots=True)
