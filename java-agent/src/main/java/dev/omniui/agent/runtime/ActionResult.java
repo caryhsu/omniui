@@ -18,7 +18,7 @@ public record ActionResult(
         resolved.put("confidence", null);
 
         Map<String, Object> trace = new LinkedHashMap<>();
-        trace.put("attemptedTiers", List.of("javafx"));
+        trace.put("attemptedTiers", List.of(tier));
         trace.put("resolvedTier", tier);
 
         return new ActionResult(

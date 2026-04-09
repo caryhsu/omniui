@@ -21,6 +21,20 @@ mvn -f java-agent/pom.xml package
 java -jar java-agent/target/omniui-java-agent-0.1.0-SNAPSHOT.jar
 ```
 
+Run tests:
+
+```bash
+mvn -f java-agent/pom.xml test
+```
+
+Current Java test scope:
+- JUnit 5 + Maven Surefire test foundation is in place
+- `mvn test` now runs against the `java-agent` module
+- this first batch stays JavaFX-runtime-free
+
+Prerequisite:
+- Maven must run with JDK 22 or newer because this module is compiled with `--release 22`
+
 Register a supported JavaFX app:
 
 ```java
