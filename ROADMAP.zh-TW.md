@@ -114,6 +114,7 @@
 - [x] **獨立 drag-drop demo app** — `demo/java/drag-app/` 獨立 app；左欄（Available）→ 右欄（Selected）逐項拖曳；`demo/python/drag/drag_listview_demo.py`
 - [x] **Hover（懸停）** — `hover(id=...)` 觸發 Tooltip 或 hover 狀態
 - [x] **剪貼簿操作** — `copy()`、`paste()`、`get_clipboard()`
+- [ ] **升級 JavaFX 至 24+** — 目前 demo app 使用 JavaFX 21.0.2，**不支援**內建 Headless Platform（`-Dglass.platform=Headless`）。升級至 JavaFX 24+ 可在所有平台（Windows/Linux/macOS）實現真正的 headless 執行，不需要 Xvfb 或 Monocle。影響範圍：所有 demo `pom.xml` 與 `run_all.py _JAVAFX_VERSION`。`run_all.py --headless` 旗標已實作但受此升級阻擋。
 
 ---
 
