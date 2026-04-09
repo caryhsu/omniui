@@ -13,8 +13,8 @@ def main() -> None:
     client = connect_or_exit()
     recorder = RecorderLite()
 
-    client.click(id="username")
-    client.click(text="Login")
+    client.click(id="regionField")
+    client.click(id="auditEnabled")
 
     print("Recorder output:")
     for line in recorder.generate_script(client.action_history()):

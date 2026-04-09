@@ -74,7 +74,7 @@ def _build_drag_app_cmd(port: int) -> list[str]:
     import platform
 
     m2 = Path.home() / ".m2" / "repository"
-    jfx = "21.0.2"
+    jfx = "26"
     gson = "2.11.0"
     clf = "win" if "windows" in platform.system().lower() else ("mac" if "darwin" in platform.system().lower() else "linux")
 

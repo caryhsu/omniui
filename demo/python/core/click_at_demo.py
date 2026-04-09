@@ -12,12 +12,11 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # Use a normal click first to show the button is reachable by selector
-    result = client.click(id="loginButton")
-    assert result.ok, f"loginButton not accessible: {result}"
+    # Use a normal click first to show the checkbox is reachable by selector
+    result = client.click(id="auditEnabled")
+    assert result.ok, f"auditEnabled not accessible: {result}"
 
-    # Now demonstrate click_at with coordinates — use the same button's
-    # approximate centre in the demo login app (works on most display scales)
+    # Now demonstrate click_at with coordinates — use approximate centre
     at_result = client.click_at(x=200, y=260)
     assert at_result.ok, f"click_at failed: {at_result}"
     print("click_at(x=200, y=260) succeeded (ok)")

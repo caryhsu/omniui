@@ -16,16 +16,15 @@ def main() -> None:
 
     # --- Scenario 1: no failures exits cleanly ---
     with client.soft_assert() as sa:
-        sa.check(lambda: client.verify_text("", id="username", match="contains"))
-        # empty field contains empty string — passes
+        sa.check(lambda: client.verify_text("", id="regionField", match="contains"))
     print("soft_assert with no failures exits cleanly (ok)")
 
     # --- Scenario 2: multiple failures collected and reported together ---
     failures_seen = 0
     try:
         with client.soft_assert() as sa:
-            sa.check(lambda: client.verify_text("__WRONG_A__", id="username"))
-            sa.check(lambda: client.verify_text("__WRONG_B__", id="password"))
+            sa.check(lambda: client.verify_text("__WRONG_A__", id="regionField"))
+            sa.check(lambda: client.verify_text("__WRONG_B__", id="regionLabel"))
     except AssertionError as exc:
         msg = str(exc)
         assert msg.startswith("2 assertion(s) failed:"), f"Unexpected message: {msg}"
@@ -37,7 +36,7 @@ def main() -> None:
     failures_seen = 0
     try:
         with omniui.soft_assert() as sa:
-            sa.check(lambda: client.verify_text("__WRONG__", id="username"))
+            sa.check(lambda: client.verify_text("__WRONG__", id="regionField"))
     except AssertionError as exc:
         assert "1 assertion(s) failed:" in str(exc)
         failures_seen = 1

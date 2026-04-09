@@ -13,13 +13,6 @@ else:
 def main() -> None:
     client = connect_or_exit()
 
-    # Switch ListView to MULTIPLE selection mode via login first
-    client.click(id="username")
-    client.type("admin", id="username")
-    client.click(id="password")
-    client.type("1234", id="password")
-    client.click(id="loginButton")
-
     # Ctrl+click: additive selection — selects an item without clearing existing selection
     result = client.click(id="serverList", modifiers=["Ctrl"])
     if not result.ok:

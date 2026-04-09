@@ -21,18 +21,18 @@ def main() -> None:
     )
     print("set_clipboard / get_clipboard round-trip (ok)")
 
-    # --- paste: write to clipboard, paste into username field ---
-    client.set_clipboard("pasted_user")
-    client.click(id="username")
-    client.paste(id="username")
-    client.verify_text("pasted_user", id="username")
+    # --- paste: write to clipboard, paste into regionField ---
+    client.set_clipboard("pasted_region")
+    client.click(id="regionField")
+    client.paste(id="regionField")
+    client.verify_text("pasted_region", id="regionField")
     print("paste() into text field (ok)")
 
     # --- copy: type text, copy from field, verify clipboard ---
-    client.click(id="username")
-    client.press_key("Control+A", id="username")
-    client.type("copy_source", id="username")
-    client.copy(id="username")
+    client.click(id="regionField")
+    client.press_key("Control+A", id="regionField")
+    client.type("copy_source", id="regionField")
+    client.copy(id="regionField")
     clipboard = client.get_clipboard()
     assert clipboard.value == "copy_source", (
         f"Expected 'copy_source', got {clipboard.value!r}"

@@ -28,27 +28,27 @@ def _check(result, label: str) -> None:
 def main() -> None:
     client = connect_or_exit()
 
-    # loginSectionTitle label has text "Login Flow"
+    # selectionSectionTitle label has text "Selection Controls"
     _check(
-        client.verify_text("Login Flow", id="loginSectionTitle"),
-        "exact: 'Login Flow'"
+        client.verify_text("Selection Controls", id="selectionSectionTitle"),
+        "exact: 'Selection Controls'"
     )
     _check(
-        client.verify_text("Login", match="contains", id="loginSectionTitle"),
-        "contains: 'Login' in 'Login Flow'"
+        client.verify_text("Selection", match="contains", id="selectionSectionTitle"),
+        "contains: 'Selection' in 'Selection Controls'"
     )
     _check(
-        client.verify_text("Login", match="starts_with", id="loginSectionTitle"),
-        "starts_with: 'Login...'"
+        client.verify_text("Selection", match="starts_with", id="selectionSectionTitle"),
+        "starts_with: 'Selection...'"
     )
     _check(
-        client.verify_text(r"^Login \w+$", match="regex", id="loginSectionTitle"),
-        r"regex: '^Login \w+$'"
+        client.verify_text(r"^Selection \w+$", match="regex", id="selectionSectionTitle"),
+        r"regex: '^Selection \w+$'"
     )
 
     # Verify unknown mode raises ValueError
     try:
-        client.verify_text("x", match="fuzzy", id="loginSectionTitle")
+        client.verify_text("x", match="fuzzy", id="selectionSectionTitle")
         raise SystemExit("Expected ValueError for unknown match mode but none raised")
     except ValueError:
         print("  ValueError on unknown match mode  (ok)")

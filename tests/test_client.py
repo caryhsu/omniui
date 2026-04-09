@@ -506,8 +506,9 @@ class LaunchTests(unittest.TestCase):
 
     @patch("subprocess.Popen")
     @patch("urllib.request.urlopen")
+    @patch("omniui.client.OmniUI.find_free_port", return_value=48100)
     def test_launch_starts_process_and_connects(
-        self, mock_urlopen, mock_popen
+        self, mock_find_port, mock_urlopen, mock_popen
     ) -> None:
         import json as _json
 

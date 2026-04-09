@@ -126,13 +126,19 @@ openspec/
 ## Prerequisites
 
 - Python 3.11+
-- Java 21+
+- Java 22+
 - Maven 3.9+
 - Windows is the currently validated desktop target for the demo app build
 
 ## Quick Start
 
-1. Start the JavaFX demo app (core-app, port 48100):
+1. Build all demo apps (Java agent + jlink runtime images):
+
+```bash
+scripts\build_demo_runtime.bat
+```
+
+2. Start the JavaFX demo app (core-app, port 48100):
 
 ```bash
 demo\java\core-app\run-dev-with-agent.bat
@@ -140,7 +146,7 @@ demo\java\core-app\run-dev-with-agent.bat
 
 This launches the core demo window with the OmniUI Java agent enabled on `http://127.0.0.1:48100`.
 
-2. In another terminal, run the Python demo flow:
+3. In another terminal, run the Python demo flow:
 
 ```bash
 python scripts/demo_login_flow.py
@@ -151,7 +157,7 @@ Expected behavior:
 - the login button click is demonstrated through OCR fallback using `text="Login"`
 - the script verifies that the status label becomes `Success`
 
-3. Optional: run the benchmark script while the demo app is still running:
+4. Optional: run the benchmark script while the demo app is still running:
 
 ```bash
 python scripts/benchmark_phase1.py
