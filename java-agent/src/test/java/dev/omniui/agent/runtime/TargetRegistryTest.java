@@ -15,6 +15,7 @@ class TargetRegistryTest {
     void tearDown() {
         TargetRegistry.unregister(REGISTERED_APP);
         TargetRegistry.unregister(MISSING_APP);
+        JavaFxRuntimeDiscovery.resetDiscovererForTest();
     }
 
     @Test
@@ -46,5 +47,21 @@ class TargetRegistryTest {
     void resolveReturnsNullWhenNothingRegisteredOrDiscovered() {
         // THEN
         assertNull(TargetRegistry.resolve(MISSING_APP));
+    }
+
+    @Test
+    void resolveRegistersAndReturnsDiscoveredTarget() {
+        // GIVEN
+        AutomationTarget discovered = new StubAutomationTarget(MISSING_APP);
+        JavaFxRuntimeDiscovery.setDiscovererForTest(appName ->
+            MISSING_APP.equals(appName) ? java.util.Optional.of(discovered) : java.util.Optional.empty()
+        );
+
+        // WHEN
+        AutomationTarget resolved = TargetRegistry.resolve(MISSING_APP);
+
+        // THEN
+        assertSame(discovered, resolved);
+        assertSame(discovered, TargetRegistry.resolve(MISSING_APP));
     }
 }
