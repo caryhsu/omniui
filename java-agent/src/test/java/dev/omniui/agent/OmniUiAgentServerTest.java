@@ -1,6 +1,7 @@
 package dev.omniui.agent;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
 import dev.omniui.agent.runtime.ActionResult;
 import dev.omniui.agent.runtime.AutomationTarget;
@@ -311,7 +312,6 @@ class OmniUiAgentServerTest {
             ));
         }
 
-        @Override
         public ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload) {
             String selectorId = selector != null && selector.has("id") ? selector.get("id").getAsString() : "";
             return ActionResult.success(
@@ -379,7 +379,6 @@ class OmniUiAgentServerTest {
             return List.of();
         }
 
-        @Override
         public ActionResult perform(String action, com.google.gson.JsonObject selector, com.google.gson.JsonObject payload) {
             throw new IllegalStateException("kaboom");
         }
