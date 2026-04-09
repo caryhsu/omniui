@@ -1417,6 +1417,25 @@ class LocatorTests(unittest.TestCase):
         ]
         return OmniUI.connect(port=48100)
 
+    def _make_locator_with_mock_client(self, **selector):
+        from omniui.locator import Locator
+        client = unittest.mock.Mock()
+        return client, Locator(client, **selector)
+
+    def _assert_locator_delegate(self, locator_method: str, client_method: str, *args, selector=None, **kwargs) -> None:
+        selector = selector or {"id": "loginBtn"}
+        client, loc = self._make_locator_with_mock_client(**selector)
+        expected = object()
+        getattr(client, client_method).return_value = expected
+
+        result = getattr(loc, locator_method)(*args, **kwargs)
+
+        self.assertIs(result, expected)
+        getattr(client, client_method).assert_called_once_with(
+            *args,
+            **{**selector, "_self_heal": True, **kwargs},
+        )
+
     @patch("urllib.request.urlopen")
     def test_locator_repr(self, mock_urlopen) -> None:
         client = self._make_client(mock_urlopen)
@@ -1458,6 +1477,72 @@ class LocatorTests(unittest.TestCase):
         client = self._make_client(mock_urlopen)
         with self.assertRaises(ValueError):
             client.find(type="Button", index=True)
+
+    def test_locator_action_methods_delegate_to_client(self) -> None:
+        cases = [
+            ("click", "click", (), {}),
+            ("double_click", "double_click", (), {}),
+            ("right_click", "right_click", (), {}),
+            ("press_key", "press_key", ("Enter",), {}),
+            ("type", "type", ("hello",), {}),
+            ("get_text", "get_text", (), {}),
+            ("verify_text", "verify_text", ("Hello",), {"match": "contains"}),
+            ("get_tooltip", "get_tooltip", (), {}),
+            ("get_style", "get_style", (), {}),
+            ("get_style_class", "get_style_class", (), {}),
+            ("get_value", "get_value", (), {}),
+            ("get_progress", "get_progress", (), {}),
+            ("get_image_url", "get_image_url", (), {}),
+            ("open_colorpicker", "open_colorpicker", (), {}),
+            ("set_color", "set_color", ("#ff0000",), {}),
+            ("get_color", "get_color", (), {}),
+            ("get_selected", "get_selected", (), {}),
+            ("get_selected_items", "get_selected_items", (), {}),
+            ("select", "select", ("Admin",), {}),
+            ("select_multiple", "select_multiple", (["A", "B"],), {}),
+            ("set_selected", "set_selected", (True,), {}),
+            ("set_slider", "set_slider", (0.75,), {}),
+            ("set_spinner", "set_spinner", ("42",), {}),
+            ("step_spinner", "step_spinner", (2,), {}),
+            ("get_tabs", "get_tabs", (), {}),
+            ("select_tab", "select_tab", ("Settings",), {}),
+            ("scroll_to", "scroll_to", (), {}),
+            ("scroll_by", "scroll_by", (0.25, 0.5), {}),
+            ("expand_pane", "expand_pane", (), {}),
+            ("collapse_pane", "collapse_pane", (), {}),
+            ("get_expanded", "get_expanded", (), {}),
+        ]
+
+        for locator_method, client_method, args, kwargs in cases:
+            with self.subTest(locator_method=locator_method):
+                self._assert_locator_delegate(locator_method, client_method, *args, **kwargs)
+
+    def test_locator_boolean_methods_delegate_to_client(self) -> None:
+        cases = [
+            ("is_visible", "is_visible"),
+            ("is_enabled", "is_enabled"),
+            ("is_visited", "is_visited"),
+            ("is_image_loaded", "is_image_loaded"),
+        ]
+
+        for locator_method, client_method in cases:
+            with self.subTest(locator_method=locator_method):
+                self._assert_locator_delegate(locator_method, client_method)
+
+    def test_locator_wait_methods_delegate_to_client_with_id(self) -> None:
+        client, loc = self._make_locator_with_mock_client(id="field")
+
+        loc.wait_for_visible(timeout=1.5)
+        loc.wait_for_enabled(timeout=2.0)
+        loc.wait_for_node(timeout=2.5)
+        loc.wait_for_text("Ready", timeout=3.0)
+        loc.wait_for_value("42", timeout=3.5)
+
+        client.wait_for_visible.assert_called_once_with("field", timeout=1.5)
+        client.wait_for_enabled.assert_called_once_with("field", timeout=2.0)
+        client.wait_for_node.assert_called_once_with("field", timeout=2.5)
+        client.wait_for_text.assert_called_once_with("field", "Ready", timeout=3.0)
+        client.wait_for_value.assert_called_once_with("field", "42", timeout=3.5)
 
 
 class StepDelayTests(unittest.TestCase):
