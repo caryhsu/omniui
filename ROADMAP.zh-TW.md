@@ -108,7 +108,7 @@
 - [ ] **TableView 互動 API** — `click_row(id=..., row=0)` 選取或點擊特定資料列；`get_cell_text(id=..., row=0, column=1)` 讀取儲存格內容；`get_row_count(id=...)` 查詢結果筆數。目前點擊 TableView 資料列儲存格無法產生穩定 selector（儲存格沒有 `fx:id`），錄製時會誤捕為欄位標題點擊。
 - [ ] **TreeView 互動 API** — `select_tree_item(id=..., path=["Documents", "Projects"])` 依路徑選取節點；`get_tree_items(id=...)` 列出所有可見節點。目前點擊 TreeView 節點因 `TreeCell` 沒有 `fx:id`，會被錄製成 `click(type="Group", index=0)`（fragile）。修復方向：Java agent 偵測 `TreeCell` click → 向上追蹤路徑到根節點 → 產出 `tree_select` 事件；codegen 生成 `select_tree_item`；Python engine 實作對應 API。
 - [ ] **錄影功能** — 補充 screenshot 以外的偵錯工具
-- [ ] **Self-healing selector** — 當 locator 因 `fx:id` 被改名或移除而失敗時，自動依序嘗試 `text`、`type+index` 作為備援，成功後記錄所使用的備援方式，提示開發者更新 selector。
+- [x] **Self-healing selector** — 當 locator 因 `fx:id` 被改名或移除而失敗時，自動依序嘗試快取的 `text`、`type+index` 作為備援；action trace 會記錄實際使用的備援方式，提示開發者更新 selector。
 - [x] **拖放（Drag & Drop）** — `drag(id=...).to(id=...)` / `drag_to(id=..., to_x=..., to_y=...)`；觸發 MOUSE_PRESSED → MOUSE_DRAGGED × 5 → MOUSE_RELEASED
 - [ ] **獨立 drag-drop demo app** — 獨立 JavaFX app，左右兩個 ListView 可拖曳項目（左 → 右）；作為更完整的 drag & drop 展示，取代塞在 advanced-app 中的簡陋區塊
 - [x] **獨立 drag-drop demo app** — `demo/java/drag-app/` 獨立 app；左欄（Available）→ 右欄（Selected）逐項拖曳；`demo/python/drag/drag_listview_demo.py`

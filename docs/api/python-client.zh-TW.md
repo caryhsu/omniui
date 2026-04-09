@@ -356,6 +356,10 @@ btn.click()
 btn.verify_text("Login")
 ```
 
+補充：
+- 以 `id=...` 建立的 locator 會快取最近一次成功的 JavaFX 節點資訊。
+- 若之後該 `fx:id` 消失，OmniUI 會依序改用快取的 `text`、`type+index` 重試，並把使用情況寫入 `result.trace.details["self_heal"]`。
+
 若未傳入任何 selector 關鍵字，會拋出 `ValueError`。
 
 ### Locator 方法

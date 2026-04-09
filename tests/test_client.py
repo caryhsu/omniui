@@ -184,6 +184,237 @@ class OmniUiClientTests(unittest.TestCase):
         self.assertEqual(result.trace.attempted_tiers, ["javafx", "refresh"])
         self.assertTrue(result.trace.details["retried_after_refresh"])
 
+    @patch("urllib.request.urlopen")
+    def test_self_heals_id_selector_to_text_after_cached_success(self, mock_urlopen) -> None:
+        captured_selectors: list[dict[str, object]] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "session-1", "appName": "LoginDemo", "platform": "javafx", "capabilities": ["discover", "action"]})
+            if req.full_url.endswith("/discover"):
+                call_count = getattr(fake_urlopen, "_discover_calls", 0)
+                fake_urlopen._discover_calls = call_count + 1
+                if call_count == 0:
+                    return _FakeResponse({"nodes": [
+                        {"handle": "node-login-old", "fxId": "loginButton", "nodeType": "Button", "text": "Login", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True}
+                    ]})
+                return _FakeResponse({"nodes": [
+                    {"handle": "node-login-new", "fxId": "submitButton", "nodeType": "Button", "text": "Login", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True}
+                ]})
+            if req.full_url.endswith("/actions"):
+                body = json.loads(req.data.decode("utf-8"))
+                captured_selectors.append(body.get("selector", {}))
+                call_count = len(captured_selectors)
+                if call_count == 1:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-login-old", "matchedAttributes": {"fxId": "loginButton"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+                if call_count in (2, 3):
+                    return _FakeResponse({
+                        "ok": False,
+                        "resolved": None,
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None, "details": {"reason": "selector_not_found"}},
+                        "value": None,
+                    })
+                if call_count == 4:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-login-new", "matchedAttributes": {"fxId": "submitButton"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+            raise AssertionError(f"Unexpected request: {req.full_url}")
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        loc = client.locator(id="loginButton")
+
+        first = loc.click()
+        self.assertTrue(first.ok)
+
+        result = loc.click()
+
+        self.assertTrue(result.ok)
+        self.assertEqual(captured_selectors[3], {"text": "Login"})
+        self.assertEqual(result.trace.attempted_tiers, ["javafx", "refresh", "self_heal:text"])
+        self.assertEqual(result.trace.details["self_heal"]["used"], "text")
+
+    @patch("urllib.request.urlopen")
+    def test_self_heals_id_selector_to_type_index_when_text_is_unavailable(self, mock_urlopen) -> None:
+        captured_selectors: list[dict[str, object]] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "session-1", "appName": "LoginDemo", "platform": "javafx", "capabilities": ["discover", "action"]})
+            if req.full_url.endswith("/discover"):
+                call_count = getattr(fake_urlopen, "_discover_calls", 0)
+                fake_urlopen._discover_calls = call_count + 1
+                if call_count == 0:
+                    return _FakeResponse({"nodes": [
+                        {"handle": "node-cancel", "fxId": "cancelButton", "nodeType": "Button", "text": "", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True},
+                        {"handle": "node-save-old", "fxId": "saveButton", "nodeType": "Button", "text": "", "hierarchyPath": "/Scene/VBox/Button[2]", "visible": True, "enabled": True},
+                    ]})
+                return _FakeResponse({"nodes": [
+                    {"handle": "node-cancel", "fxId": "cancelButton", "nodeType": "Button", "text": "", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True},
+                    {"handle": "node-save-new", "fxId": "primaryAction", "nodeType": "Button", "text": "", "hierarchyPath": "/Scene/VBox/Button[2]", "visible": True, "enabled": True},
+                ]})
+            if req.full_url.endswith("/actions"):
+                body = json.loads(req.data.decode("utf-8"))
+                captured_selectors.append(body.get("selector", {}))
+                call_count = len(captured_selectors)
+                if call_count == 1:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-save-old", "matchedAttributes": {"fxId": "saveButton"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+                if call_count in (2, 3):
+                    return _FakeResponse({
+                        "ok": False,
+                        "resolved": None,
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None, "details": {"reason": "selector_not_found"}},
+                        "value": None,
+                    })
+                if call_count == 4:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-save-new", "matchedAttributes": {"fxId": "primaryAction"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+            raise AssertionError(f"Unexpected request: {req.full_url}")
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        loc = client.locator(id="saveButton")
+
+        first = loc.click()
+        self.assertTrue(first.ok)
+
+        result = loc.click()
+
+        self.assertTrue(result.ok)
+        self.assertEqual(captured_selectors[3], {"type": "Button", "index": 1})
+        self.assertEqual(result.trace.attempted_tiers, ["javafx", "refresh", "self_heal:type_index"])
+        self.assertEqual(result.trace.details["self_heal"]["used"], "type_index")
+
+    @patch("urllib.request.urlopen")
+    def test_self_heal_hint_survives_navigation_after_successful_click(self, mock_urlopen) -> None:
+        captured_selectors: list[dict[str, object]] = []
+
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "session-1", "appName": "LoginDemo", "platform": "javafx", "capabilities": ["discover", "action"]})
+            if req.full_url.endswith("/discover"):
+                call_count = getattr(fake_urlopen, "_discover_calls", 0)
+                fake_urlopen._discover_calls = call_count + 1
+                if call_count == 0:
+                    return _FakeResponse({"nodes": [
+                        {"handle": "node-login-old", "fxId": "loginButton", "nodeType": "Button", "text": "Login", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True}
+                    ]})
+                return _FakeResponse({"nodes": []})
+            if req.full_url.endswith("/actions"):
+                body = json.loads(req.data.decode("utf-8"))
+                captured_selectors.append(body.get("selector", {}))
+                call_count = len(captured_selectors)
+                if call_count == 1:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-login-old", "matchedAttributes": {"fxId": "loginButton"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+                if call_count in (2, 3):
+                    return _FakeResponse({
+                        "ok": False,
+                        "resolved": None,
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None, "details": {"reason": "selector_not_found"}},
+                        "value": None,
+                    })
+                if call_count == 4:
+                    return _FakeResponse({
+                        "ok": True,
+                        "resolved": {"tier": "javafx", "targetRef": "node-login-new", "matchedAttributes": {"fxId": "submitButton"}, "confidence": None},
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": "javafx"},
+                        "value": None,
+                    })
+            raise AssertionError(f"Unexpected request: {req.full_url}")
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        loc = client.locator(id="loginButton")
+
+        self.assertTrue(loc.click().ok)
+        result = loc.click()
+
+        self.assertTrue(result.ok)
+        self.assertEqual(captured_selectors[3], {"text": "Login"})
+
+    @patch("urllib.request.urlopen")
+    def test_self_heal_records_failed_fallbacks_when_no_strategy_matches(self, mock_urlopen) -> None:
+        def fake_urlopen(req, **_kw):
+            if req.full_url.endswith("/health"):
+                return _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"})
+            if req.full_url.endswith("/sessions"):
+                return _FakeResponse({"sessionId": "session-1", "appName": "LoginDemo", "platform": "javafx", "capabilities": ["discover", "action"]})
+            if req.full_url.endswith("/discover"):
+                call_count = getattr(fake_urlopen, "_discover_calls", 0)
+                fake_urlopen._discover_calls = call_count + 1
+                if call_count == 0:
+                    return _FakeResponse({"nodes": [
+                        {"handle": "node-login-old", "fxId": "loginButton", "nodeType": "Button", "text": "Login", "hierarchyPath": "/Scene/VBox/Button[1]", "visible": True, "enabled": True}
+                    ]})
+                return _FakeResponse({"nodes": []})
+            if req.full_url.endswith("/actions"):
+                body = json.loads(req.data.decode("utf-8"))
+                selector = body.get("selector", {})
+                if selector == {"id": "loginButton"}:
+                    return _FakeResponse({
+                        "ok": False,
+                        "resolved": None,
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None, "details": {"reason": "selector_not_found"}},
+                        "value": None,
+                    })
+                if selector == {"text": "Login"} or selector == {"type": "Button", "index": 0}:
+                    return _FakeResponse({
+                        "ok": False,
+                        "resolved": None,
+                        "trace": {"attemptedTiers": ["javafx"], "resolvedTier": None, "details": {"reason": "selector_not_found"}},
+                        "value": None,
+                    })
+            if req.full_url.endswith("/screenshot"):
+                return _FakeResponse({"contentType": "image/png", "encoding": "base64", "data": ""})
+            raise AssertionError(f"Unexpected request: {req.full_url}")
+
+        mock_urlopen.side_effect = fake_urlopen
+        client = OmniUI.connect(port=48100)
+        loc = client.locator(id="loginButton")
+        client._selector_heal_hints[client._selector_cache_key({"id": "loginButton", "_self_heal": True})] = {
+            "captured_fx_id": "loginButton",
+            "text": "Login",
+            "type": "Button",
+            "index": 0,
+        }
+
+        result = loc.click()
+
+        self.assertFalse(result.ok)
+        self.assertEqual(
+            result.trace.attempted_tiers,
+            ["javafx", "refresh", "self_heal:text", "self_heal:type_index", "ocr", "vision"],
+        )
+        self.assertIsNone(result.trace.details["self_heal"]["used"])
+
 
 class WaitUntilTests(unittest.TestCase):
     @patch("urllib.request.urlopen")
@@ -1208,12 +1439,24 @@ class LocatorTests(unittest.TestCase):
         mock_urlopen.side_effect = [
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            _FakeResponse({"nodes": [{"handle": "btn", "fxId": "loginBtn", "nodeType": "Button", "text": "Login"}]}),
             click_resp,
         ]
         client = OmniUI.connect(port=48100)
         loc = client.locator(id="loginBtn")
         result = loc.click()
         self.assertTrue(result.ok)
+
+    @patch("urllib.request.urlopen")
+    def test_find_preserves_index_selector(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        self.assertEqual(client.find(type="Button", index=2), {"type": "Button", "index": 2})
+
+    @patch("urllib.request.urlopen")
+    def test_find_rejects_bool_index_selector(self, mock_urlopen) -> None:
+        client = self._make_client(mock_urlopen)
+        with self.assertRaises(ValueError):
+            client.find(type="Button", index=True)
 
 
 class StepDelayTests(unittest.TestCase):
@@ -1284,6 +1527,7 @@ class StepDelayTests(unittest.TestCase):
         mock_urlopen.side_effect = [
             _FakeResponse({"status": "ok", "version": "0.1.0", "transport": "http-json"}),
             _FakeResponse({"sessionId": "s1", "appName": "LoginDemo", "platform": "javafx", "capabilities": []}),
+            _FakeResponse({"nodes": [{"handle": "lbl", "fxId": "label", "nodeType": "Label", "text": "Hello"}]}),
             _FakeResponse({
                 "ok": True,
                 "resolved": {"tier": "javafx", "targetRef": "lbl", "matchedAttributes": {"fxId": "label"}, "confidence": None},

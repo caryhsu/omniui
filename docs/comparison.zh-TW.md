@@ -59,4 +59,5 @@
 - **Scene graph 直接存取** — 元素識別精確，不像 CSS/XPath 是猜測
 - **語言無關的 client** — Python client；TestFX 需要寫 Java 測試程式碼
 - **多模態 fallback 鏈** — scene graph → OCR → vision template match
+- **Self-healing locator** — 以 `id` 建立的 `Locator` 會在 action 前快取 `text` 與 `type+index`；若 `fx:id` 被改名，OmniUI 自動以快取備援重試再失敗
 - **無需安裝 driver** — agent 嵌入 app JAR；不需要 WebDriver / WinAppDriver 安裝設定

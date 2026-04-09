@@ -86,7 +86,13 @@ flowchart TD
     JavaFX -->|selector_not_found| Refresh[Refresh Node Snapshot]
     Refresh --> Retry[重新嘗試 JavaFX Resolution]
     Retry -->|Resolved| Done
-    Retry -->|未解析| OCR[嘗試 OCR Text Match]
+    Retry -->|未解析| SelfHeal{Locator 有 _self_heal hint?}
+    SelfHeal -->|有| HealText[嘗試快取的 text fallback]
+    HealText -->|Resolved| Done
+    HealText -->|未解析| HealTypeIdx[嘗試快取的 type+index fallback]
+    HealTypeIdx -->|Resolved| Done
+    HealTypeIdx -->|未解析| OCR[嘗試 OCR Text Match]
+    SelfHeal -->|無| OCR
     OCR -->|Resolved| OCRDone[回傳 OCR-based Result]
     OCR -->|未解析| Vision[嘗試 Vision Template Match]
     Vision -->|Resolved| VisionDone[回傳 Vision-based Result]
@@ -115,3 +121,4 @@ flowchart TD
 - 目前 fallback path 會記錄 OCR / vision resolution，但尚未對 fallback bounds 發出真正的 OS-level click。
 - Phase 1 的主執行路徑仍然是 JavaFX direct interaction。
 - Recorder-lite 是根據 action history 產生，而不是完整的低階桌面錄製。
+- Self-healing 僅適用於以 `id` 單一欄位建立的 `Locator`。hint（text + type + index）在每次 action **前**透過 node snapshot 捕捉，避免跳頁後資料過舊。實際使用的備援策略會記錄在 `result.trace.details["self_heal"]`。

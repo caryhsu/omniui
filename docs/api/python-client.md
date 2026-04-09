@@ -667,6 +667,10 @@ btn.click()
 btn.verify_text("Login")
 ```
 
+Notes:
+- Locators created with `id=...` cache the most recent successful JavaFX match.
+- If that `fx:id` later disappears, OmniUI retries with cached `text`, then cached `type+index`, and records the fallback in `result.trace.details["self_heal"]`.
+
 Raises `ValueError` if called with no selector keywords.
 
 ### Locator methods
