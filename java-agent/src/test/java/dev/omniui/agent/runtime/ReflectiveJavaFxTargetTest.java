@@ -2,6 +2,7 @@ package dev.omniui.agent.runtime;
 
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -17,6 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReflectiveJavaFxTargetTest {
+
+    @AfterEach
+    void resetWindowSupplier() {
+        ReflectiveJavaFxTarget.resetWindowSupplierForTest();
+    }
 
     @Test
     void resolveMatchesByIdTypeAndIndex() throws Exception {
@@ -329,6 +335,71 @@ class ReflectiveJavaFxTargetTest {
 
         assertEquals("OK", fromAncestor);
         assertEquals("OK", defaultLabel);
+    }
+
+    @Test
+    void windowHelpersListTitlesAndHandleStateActions() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+        Stage primary = new Stage("Primary");
+        Stage secondary = new Stage("Secondary");
+        PopupWindow popup = new PopupWindow("Popup");
+        ReflectiveJavaFxTarget.setWindowSupplierForTest(() -> List.of(primary, secondary, popup));
+
+        ActionResult getWindows = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleGetWindows")
+        );
+        ActionResult maximize = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "maximize_window", selector("title", "Primary"))
+        );
+        ActionResult size = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "get_window_size", selector("title", "Primary"))
+        );
+        ActionResult position = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "set_window_position", selector(Map.of("title", "Primary", "x", 32.5, "y", 48.0)))
+        );
+        ActionResult missing = assertInstanceOf(
+            ActionResult.class,
+            invokePrivate(target, "handleWindowAction", new Class<?>[]{String.class, JsonObject.class}, "focus_window", selector("title", "Missing"))
+        );
+
+        assertTrue(getWindows.ok());
+        assertEquals(List.of("Primary", "Secondary"), getWindows.value());
+
+        assertTrue(maximize.ok());
+        assertTrue(primary.maximized);
+
+        assertTrue(size.ok());
+        Map<?, ?> sizeValue = assertInstanceOf(Map.class, size.value());
+        assertEquals(640.0, sizeValue.get("width"));
+        assertEquals(480.0, sizeValue.get("height"));
+
+        assertTrue(position.ok());
+        assertEquals(32.5, primary.x);
+        assertEquals(48.0, primary.y);
+
+        assertFalse(missing.ok());
+        assertEquals("window_not_found", traceReason(missing));
+    }
+
+    @Test
+    void parseKeyStringNormalizesAliasesAndCase() throws Exception {
+        ReflectiveJavaFxTarget target = new ReflectiveJavaFxTarget("TestApp", () -> null);
+
+        String[] ctrlShift = assertInstanceOf(
+            String[].class,
+            invokePrivate(target, "parseKeyString", new Class<?>[]{String.class}, "ctrl+Shift+z")
+        );
+        String[] winEnter = assertInstanceOf(
+            String[].class,
+            invokePrivate(target, "parseKeyString", new Class<?>[]{String.class}, "win+enter")
+        );
+
+        assertEquals(List.of("CONTROL", "SHIFT", "Z"), List.of(ctrlShift));
+        assertEquals(List.of("META", "ENTER"), List.of(winEnter));
     }
 
     private ActionResult invokeAction(ReflectiveJavaFxTarget target, String method, Object node, String fxId, String handle) throws Exception {
@@ -840,6 +911,83 @@ class ReflectiveJavaFxTargetTest {
 
         public String getTitle() {
             return title;
+        }
+    }
+
+    static class Stage {
+        private final String title;
+        private double width = 640.0;
+        private double height = 480.0;
+        private double x = 10.0;
+        private double y = 20.0;
+        private boolean maximized;
+        private boolean iconified;
+        boolean fronted;
+
+        Stage(String title) {
+            this.title = title;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void toFront() {
+            fronted = true;
+        }
+
+        public void setMaximized(boolean maximized) {
+            this.maximized = maximized;
+        }
+
+        public void setIconified(boolean iconified) {
+            this.iconified = iconified;
+        }
+
+        public boolean isMaximized() {
+            return maximized;
+        }
+
+        public boolean isIconified() {
+            return iconified;
+        }
+
+        public void setWidth(double width) {
+            this.width = width;
+        }
+
+        public void setHeight(double height) {
+            this.height = height;
+        }
+
+        public double getWidth() {
+            return width;
+        }
+
+        public double getHeight() {
+            return height;
+        }
+
+        public void setX(double x) {
+            this.x = x;
+        }
+
+        public void setY(double y) {
+            this.y = y;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+    }
+
+    static final class PopupWindow extends Stage {
+        PopupWindow(String title) {
+            super(title);
         }
     }
 
